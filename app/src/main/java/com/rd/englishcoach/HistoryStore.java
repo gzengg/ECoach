@@ -128,6 +128,19 @@ public final class HistoryStore {
         writeArray(new JSONArray());
     }
 
+    /** 删除指定索引的条目 */
+    public synchronized void deleteAt(int index) {
+        try {
+            JSONArray arr = readArray();
+            if (index >= 0 && index < arr.length()) {
+                arr.remove(index);
+                writeArray(arr);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "deleteAt failed", e);
+        }
+    }
+
     /** 获取历史条数 */
     public synchronized int size() {
         return readArray().length();

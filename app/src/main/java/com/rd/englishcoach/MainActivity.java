@@ -158,7 +158,10 @@ public class MainActivity extends Activity {
         layout.setPadding(pad, pad, pad, 0);
 
         for (int i = entries.size() - 1; i >= 0; i--) {
+            final int idx = i;
             HistoryStore.Entry e = entries.get(i);
+
+            // 转录文字（白色）
             TextView tv = new TextView(this);
             String time = new java.text.SimpleDateFormat("MM-dd HH:mm",
                     java.util.Locale.getDefault()).format(new java.util.Date(e.timestamp));
@@ -167,18 +170,58 @@ public class MainActivity extends Activity {
             if (e.answer != null) sb.append("\n答: ").append(e.answer);
             tv.setText(sb.toString());
             tv.setTextSize(14);
-            tv.setTextColor(0xFF333333);
+            tv.setTextColor(0xFFFFFFFF);
+            tv.setTextIsSelectable(true);
             layout.addView(tv);
 
-            if (i > 0) { // 分割线
+            // 操作按钮行：复制 + 删除
+            LinearLayout btnRow = new LinearLayout(this);
+            btnRow.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams btnRowLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            btnRowLp.topMargin = pad / 4;
+            btnRowLp.bottomMargin = pad / 4;
+
+            TextView btnCopy = new TextView(this);
+            btnCopy.setText("📋 复制");
+            btnCopy.setTextSize(12);
+            btnCopy.setTextColor(0xFF4CAF50);
+            btnCopy.setPadding(0, 0, pad, 0);
+            btnCopy.setOnClickListener(v -> {
+                android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                        getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                if (cm != null) {
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("transcript",
+                            e.transcript + (e.answer != null ? "\n答: " + e.answer : "")));
+                    tvStatus.setText("已复制到剪贴板");
+                }
+            });
+            btnRow.addView(btnCopy);
+
+            TextView btnDelete = new TextView(this);
+            btnDelete.setText("🗑 删除");
+            btnDelete.setTextSize(12);
+            btnDelete.setTextColor(0xFFFF5252);
+            btnDelete.setPadding(0, 0, pad, 0);
+            btnDelete.setOnClickListener(v -> {
+                store.deleteAt(idx);
+                tvStatus.setText("已删除");
+                showTranscriptHistory(); // 刷新列表
+            });
+            btnRow.addView(btnDelete);
+
+            layout.addView(btnRow, btnRowLp);
+
+            if (i > 0) {
                 TextView sep = new TextView(this);
                 sep.setText("");
                 sep.setMinimumHeight(1);
-                sep.setBackgroundColor(0xFFDDDDDD);
+                sep.setBackgroundColor(0x33FFFFFF);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, 1);
-                lp.topMargin = pad / 2;
-                lp.bottomMargin = pad / 2;
+                lp.topMargin = pad / 4;
+                lp.bottomMargin = pad / 4;
                 layout.addView(sep, lp);
             }
         }
@@ -190,7 +233,7 @@ public class MainActivity extends Activity {
                 .setTitle("转录历史 (" + entries.size() + " 条)")
                 .setView(scroll)
                 .setPositiveButton("确定", null)
-                .setNeutralButton("清空历史", (d, w) -> {
+                .setNeutralButton("清空全部", (d, w) -> {
                     store.clear();
                     tvStatus.setText("历史已清空");
                 })

@@ -94,6 +94,34 @@ public class HistoryStoreTest {
         assertEquals("Second answer", entries.get(1).answer);
     }
 
+    // ── deleteAt ──────────────────────────────
+
+    @Test
+    public void deleteAt_removesEntry() {
+        store.appendTranscript("A");
+        store.appendTranscript("B");
+        store.appendTranscript("C");
+        store.deleteAt(1); // 删 B
+        List<HistoryStore.Entry> entries = store.getAll();
+        assertEquals(2, entries.size());
+        assertEquals("A", entries.get(0).transcript);
+        assertEquals("C", entries.get(1).transcript);
+    }
+
+    @Test
+    public void deleteAt_outOfBounds_noCrash() {
+        store.appendTranscript("A");
+        store.deleteAt(99);
+        assertEquals(1, store.getAll().size());
+    }
+
+    @Test
+    public void deleteAt_negative_noCrash() {
+        store.appendTranscript("A");
+        store.deleteAt(-1);
+        assertEquals(1, store.getAll().size());
+    }
+
     // ── clear ──────────────────────────────
 
     @Test
