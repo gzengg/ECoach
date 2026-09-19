@@ -30,9 +30,9 @@ public final class ListenToggle {
 
     private volatile boolean listening;
 
-    /** 投屏授权成功、开始采集时调用。 */
+    /** 投屏授权成功、开始采集时调用。默认暂停，用户手动点继续才开始听。 */
     public void onCaptureStarted() {
-        listening = true;
+        listening = false;
     }
 
     /** 投屏被系统停止 / 服务销毁 / 释放采集时调用。 */

@@ -11,40 +11,40 @@ import static org.junit.Assert.*;
  */
 public class ListenToggleTest {
 
-    // ── 回归：授权后必须处于"正在听"，且按钮显示「暂停」 ──
+    // ── 回归：授权后默认暂停，用户手动点继续才开始听 ──
 
     @Test
-    public void afterCaptureStarted_isListening() {
+    public void afterCaptureStarted_isPausedByDefault() {
         ListenToggle t = new ListenToggle();
         t.onCaptureStarted();
-        assertTrue("授权成功即开始采集，状态必须是正在听", t.isListening());
+        assertFalse("授权成功后默认暂停，用户手动点继续才开始听", t.isListening());
     }
 
     @Test
-    public void afterCaptureStarted_buttonLabelIsPause_regression() {
+    public void afterCaptureStarted_buttonLabelIsStartByDefault() {
         ListenToggle t = new ListenToggle();
         t.onCaptureStarted();
-        assertEquals("回归：采集已开始，按钮必须是「暂停」，显示「开始听」会让用户误点并关掉采集",
-                ListenToggle.LABEL_LISTENING, t.buttonLabel());
+        assertEquals("授权成功后默认暂停，按钮应显示「开始听」",
+                ListenToggle.LABEL_PAUSED, t.buttonLabel());
     }
 
     @Test
-    public void afterCaptureStarted_statusIsListening_regression() {
+    public void afterCaptureStarted_statusIsPausedByDefault() {
         ListenToggle t = new ListenToggle();
         t.onCaptureStarted();
-        assertEquals(ListenToggle.STATUS_LISTENING, t.statusLabel());
+        assertEquals(ListenToggle.STATUS_PAUSED, t.statusLabel());
     }
 
     // ── 点击语义 ──────────────────────────────
 
     @Test
-    public void firstToggleAfterStarted_pauses_regression() {
+    public void firstToggleAfterStarted_startsListening() {
         ListenToggle t = new ListenToggle();
         t.onCaptureStarted();
         boolean now = t.toggle();
-        assertFalse("回归：授权后的第一次点击语义必须是「暂停」，不能把已经在录的状态又打开", now);
-        assertEquals(ListenToggle.LABEL_PAUSED, t.buttonLabel());
-        assertEquals(ListenToggle.STATUS_PAUSED, t.statusLabel());
+        assertTrue("授权后的第一次点击语义必须是「开始听」", now);
+        assertEquals(ListenToggle.LABEL_LISTENING, t.buttonLabel());
+        assertEquals(ListenToggle.STATUS_LISTENING, t.statusLabel());
     }
 
     @Test
@@ -116,9 +116,11 @@ public class ListenToggleTest {
     public void checkSegment_instanceMatchesStatic() {
         ListenToggle t = new ListenToggle();
         t.onCaptureStarted();
-        assertEquals(ListenToggle.checkSegment(true, 100), t.checkSegment(100));
-        t.toggle();
+        // 授权后默认暂停
         assertEquals(ListenToggle.checkSegment(false, 100), t.checkSegment(100));
+        t.toggle();
+        // toggle 后正在听
+        assertEquals(ListenToggle.checkSegment(true, 100), t.checkSegment(100));
     }
 
     // ── 文案契约 ──────────────────────────────
