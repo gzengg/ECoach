@@ -78,10 +78,13 @@ public class CaptureService extends Service {
         }
 
         if (ACTION_START.equals(intent.getAction())) {
-            int rc = intent.getIntExtra(EXTRA_RESULT_CODE, -1);
-            Intent data = intent.getParcelableExtra(EXTRA_RESULT_DATA);
-            if (rc == -1 || data == null) {
-                Log.e(TAG, "Missing result code or data");
+            // 注意：Activity.RESULT_OK == -1，所以不能用 -1 当"缺失"哨兵值。
+            boolean hasRc = intent.hasExtra(EXTRA_RESULT_CODE);
+            int rc = intent.getIntExtra(EXTRA_RESULT_CODE, ServiceStartArgs.NO_RESULT_CODE);
+            Intent data = readProjectionData(intent);
+            Log.i(TAG, "ACTION_START hasRc=" + hasRc + " rc=" + rc + " data=" + (data != null));
+            if (!ServiceStartArgs.canStart(hasRc, rc, data)) {
+                Log.e(TAG, "Missing result code or data: hasRc=" + hasRc + " rc=" + rc + " data=" + (data != null));
                 stopSelf();
                 return START_NOT_STICKY;
             }
@@ -105,6 +108,16 @@ public class CaptureService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
+
+    /** 读取投屏授权数据（Android 13+ 用类型化 API，避免隐式类查找失败）。 */
+    private static Intent readProjectionData(Intent intent) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            return intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent.class);
+        }
+        @SuppressWarnings("deprecation")
+        Intent legacy = intent.getParcelableExtra(EXTRA_RESULT_DATA);
+        return legacy;
+    }
 
     // ── 启动采集 ────────────────────────────
 
