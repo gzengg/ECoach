@@ -142,6 +142,11 @@ public final class ConversationManager {
         return null;
     }
 
+    /** 删除指定轮次（长按删除用） */
+    public synchronized boolean deleteById(long id) {
+        return turns.removeIf(t -> t.id == id);
+    }
+
     public synchronized List<Turn> snapshot() {
         return Collections.unmodifiableList(new ArrayList<>(turns));
     }

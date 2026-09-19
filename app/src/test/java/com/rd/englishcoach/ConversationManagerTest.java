@@ -116,6 +116,29 @@ public class ConversationManagerTest {
         assertEquals(5, mgr.size());
     }
 
+    // ── deleteById ────────────────────────────
+
+    @Test
+    public void deleteById_removesExisting() {
+        mgr.addTranscript("A");
+        ConversationManager.Turn t = mgr.addTranscript("B");
+        assertTrue(mgr.deleteById(t.id));
+        assertEquals(1, mgr.size());
+        assertNull(mgr.findById(t.id));
+    }
+
+    @Test
+    public void deleteById_unknownId_returnsFalse() {
+        mgr.addTranscript("A");
+        assertFalse(mgr.deleteById(9999));
+        assertEquals(1, mgr.size());
+    }
+
+    @Test
+    public void deleteById_emptyStore() {
+        assertFalse(mgr.deleteById(1));
+    }
+
     // ── clear ────────────────────────────
 
     @Test

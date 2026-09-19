@@ -415,6 +415,11 @@ public class CaptureService extends Service {
         }
 
         @Override
+        public void onDeleteTurn(long turnId) {
+            if (conversation != null) conversation.deleteById(turnId);
+        }
+
+        @Override
         public void onReconsent() {
             Intent intent = new Intent(CaptureService.this, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)

@@ -27,6 +27,7 @@ public final class FloatingPanel {
         void onTogglePause();
         void onAskAnswer(long turnId);
         void onAskQuestion(long turnId, String question);
+        void onDeleteTurn(long turnId);
         void onReconsent();
         void onClose();
     }
@@ -190,6 +191,12 @@ public final class FloatingPanel {
             tvTranscript.setText(turn.content);
             tvTranscript.setTextSize(prefs.fontSp());
 
+            // 长按转录文字 → 弹出删除/复制菜单
+            tvTranscript.setOnLongClickListener(v -> {
+                showTurnContextMenu(turn.id, turn.content, tvTranscript);
+                return true;
+            });
+
             // 「看参考回答」按钮
             item.findViewById(R.id.btnAskAnswer).setOnClickListener(v -> cb.onAskAnswer(turn.id));
 
@@ -223,6 +230,40 @@ public final class FloatingPanel {
             turnViews.clear();
             scrollTurns.setVisibility(View.GONE);
         });
+    }
+
+    /** 从面板移除某一轮次 */
+    public void removeTurn(long turnId) {
+        mainHandler.post(() -> {
+            View item = turnViews.remove(turnId);
+            if (item != null) turnList.removeView(item);
+            if (turnViews.isEmpty()) scrollTurns.setVisibility(View.GONE);
+        });
+    }
+
+    // ── 长按菜单 ──────────────────────────
+
+    private void showTurnContextMenu(long turnId, String text, TextView anchor) {
+        String[] items = {"📋 复制", "🗑 删除"};
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(ctx);
+        builder.setTitle("转录内容")
+               .setItems(items, (dialog, which) -> {
+                   if (which == 0) {
+                       // 复制到剪贴板
+                       android.content.ClipboardManager cm =
+                               (android.content.ClipboardManager) ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                       if (cm != null) {
+                           android.content.ClipData clip = android.content.ClipData.newPlainText("transcript", text);
+                           cm.setPrimaryClip(clip);
+                           showMessage("已复制到剪贴板");
+                       }
+                   } else {
+                       // 删除
+                       removeTurn(turnId);
+                       cb.onDeleteTurn(turnId);
+                   }
+               });
+        builder.show();
     }
 
     private void applyTurnVisibility(View item, ConversationManager.Turn turn) {
