@@ -54,6 +54,7 @@ public final class FloatingPanel {
     private final Map<Long, View> turnViews = new LinkedHashMap<>();
     private long pendingQuestionTurnId = -1;
     private final Runnable hideInputRunnable = this::dismissInput;
+    private int lastRootHeight = -1;
 
     public FloatingPanel(Context ctx, Callback cb) {
         this.ctx = ctx.getApplicationContext();
@@ -92,12 +93,29 @@ public final class FloatingPanel {
         // 内嵌发送按钮
         btnSendQuestion.setOnClickListener(v -> submitQuestion());
 
-        // 键盘收起 / EditText 失焦时自动收起输入框
-        etQuestion.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) {
-                // 延迟收起，给发送按钮的点击留出触发时间
-                mainHandler.postDelayed(hideInputRunnable, 150);
+        // 键盘收起检测：通过 ViewTreeObserver 监听窗口高度变化
+        root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            int h = root.getHeight();
+            if (lastRootHeight > 0 && h > lastRootHeight && inputRow.getVisibility() == View.VISIBLE) {
+                // 根布局变高 = 键盘收起
+                mainHandler.postDelayed(hideInputRunnable, 50);
             }
+            lastRootHeight = h;
+        });
+
+        // 点击输入框以外的区域也收起输入框
+        root.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN
+                    && inputRow.getVisibility() == View.VISIBLE) {
+                // 判断触摸点是否在 inputRow 之外
+                int[] inputLoc = new int[2];
+                inputRow.getLocationOnScreen(inputLoc);
+                float y = event.getRawY();
+                if (y < inputLoc[1] || y > inputLoc[1] + inputRow.getHeight()) {
+                    mainHandler.postDelayed(hideInputRunnable, 50);
+                }
+            }
+            return false; // 不拦截，让子 View 正常处理
         });
 
         wlp = new WindowManager.LayoutParams(
