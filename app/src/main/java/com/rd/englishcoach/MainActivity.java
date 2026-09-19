@@ -14,7 +14,6 @@ import android.widget.ScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.app.AlertDialog;
-import android.graphics.Typeface;
 
 import java.util.List;
 
@@ -243,13 +242,8 @@ public class MainActivity extends Activity {
     // ── 状态 ──────────────────────────────
 
     private void updateStatus() {
-        if (CaptureService.current != null) {
-            tvStatus.setText("✅ 服务运行中\n\n"
-                + "打开西柚英语放听力，用悬浮窗操作即可。\n"
-                + "锁屏会停止投屏，需要重新授权。");
-        } else {
-            tvStatus.setText("服务未启动\n\n"
-                + "点「开始监听」→ 系统弹窗点「开始录制」→ 悬浮窗出现 → 打开西柚英语");
-        }
+        tvStatus.setText(CaptureService.current != null
+                ? getString(R.string.status_running)
+                : getString(R.string.status_stopped));
     }
 }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 自适应图标的背景色：取自 icon.png 徽标底色的中间调，与前景边缘自然衔接 -->
+    <color name="ic_launcher_background">#FF06A9F8</color>
+</resources>

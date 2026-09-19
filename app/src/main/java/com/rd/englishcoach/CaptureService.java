@@ -325,9 +325,6 @@ public class CaptureService extends Service {
         Log.i(TAG, "Conversation cleared");
     }
 
-    /** 获取持久化的转录历史 */
-    public HistoryStore getHistoryStore() { return history; }
-
     // ── 工具 ──────────────────────────────
 
     private void postMessage(String msg) { if (panel != null) panel.showMessage(msg); }
@@ -357,9 +354,9 @@ public class CaptureService extends Service {
     // ── 通知 ──────────────────────────────
 
     private void createChannel() {
-        NotificationChannel ch = new NotificationChannel(CH_ID, "音频采集",
+        NotificationChannel ch = new NotificationChannel(CH_ID, getString(R.string.notif_channel_name),
                 NotificationManager.IMPORTANCE_LOW);
-        ch.setDescription("系统声音录制服务");
+        ch.setDescription(getString(R.string.notif_channel_desc));
         getSystemService(NotificationManager.class).createNotificationChannel(ch);
     }
 
@@ -368,11 +365,11 @@ public class CaptureService extends Service {
         PendingIntent stopPi = PendingIntent.getService(this, 0, stopIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CH_ID)
-                .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-                .setContentTitle("英语陪练")
-                .setContentText("正在监听系统声音")
+                .setSmallIcon(R.drawable.ic_stat_mic)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.notif_title))
                 .setOngoing(true)
-                .addAction(new Notification.Action.Builder(null, "停止", stopPi).build())
+                .addAction(new Notification.Action.Builder(null, getString(R.string.notif_action_stop), stopPi).build())
                 .build();
     }
 

@@ -30,11 +30,6 @@ public final class Prefs {
           + "- If the student asks a custom question, answer based on all context so far.\n\n"
           + "Output: just the English answer, no numbering, no explanation, no Chinese.";
 
-    // ── 采集参数 ──
-    public static final int DEF_MAX_SECONDS  = 25;
-    public static final int MIN_MAX_SECONDS  = 5;
-    public static final int MAX_MAX_SECONDS  = 60;
-
     // ── 悬浮窗外观 ──
     public static final int DEF_FONT_SP   = 15;
     public static final int MIN_FONT_SP   = 10;
@@ -59,10 +54,6 @@ public final class Prefs {
     public String chatModel() { return sp.getString("chat_model", DEF_CHAT_MODEL); }
     public String sysPrompt() { return sp.getString("sys_prompt", DEF_SYS_PROMPT); }
 
-    public int maxSeconds() {
-        return clamp(sp.getInt("max_seconds", DEF_MAX_SECONDS), MIN_MAX_SECONDS, MAX_MAX_SECONDS);
-    }
-
     public int fontSp() {
         return clamp(sp.getInt("font_sp", DEF_FONT_SP), MIN_FONT_SP, MAX_FONT_SP);
     }
@@ -78,7 +69,6 @@ public final class Prefs {
     public void putChatModel(String v)   { sp.edit().putString("chat_model", nullSafe(v, DEF_CHAT_MODEL)).apply(); }
     public void putSysPrompt(String v)   { sp.edit().putString("sys_prompt", nullSafe(v, DEF_SYS_PROMPT)).apply(); }
 
-    public void putMaxSeconds(int v)     { sp.edit().putInt("max_seconds", clamp(v, MIN_MAX_SECONDS, MAX_MAX_SECONDS)).apply(); }
     public void putFontSp(int v)         { sp.edit().putInt("font_sp",     clamp(v, MIN_FONT_SP, MAX_FONT_SP)).apply(); }
     public void putWidthDp(int v)        { sp.edit().putInt("width_dp",    clamp(v, MIN_WIDTH_DP, MAX_WIDTH_DP)).apply(); }
 

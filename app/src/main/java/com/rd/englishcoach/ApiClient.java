@@ -59,19 +59,6 @@ public final class ApiClient {
         return extractContent(resp);
     }
 
-    /**
-     * 将 ASR 原文发给 deepseek-flash，返回英文参考回答。
-     */
-    public static String answer(String transcript, String baseUrl, String apiKey,
-                                String model, String sysPrompt)
-            throws IOException, ApiException {
-
-        String body = buildChatBody(transcript, model, sysPrompt);
-        String url = baseUrl + "/chat/completions";
-        String resp = post(url, apiKey, body, 60_000);
-        return extractContent(resp);
-    }
-
     // ── JSON 构建（异常包装） ────────────────
 
     private static String buildAsrBody(byte[] wav, String model) throws IOException {
@@ -93,28 +80,6 @@ public final class ApiClient {
             JSONObject body = new JSONObject();
             body.put("model", model);
             body.put("messages", messages);
-            return body.toString();
-        } catch (JSONException e) {
-            throw new IOException("JSON build error: " + e.getMessage(), e);
-        }
-    }
-
-    private static String buildChatBody(String transcript, String model, String sysPrompt)
-            throws IOException {
-        try {
-            JSONObject sysMsg = new JSONObject();
-            sysMsg.put("role", "system");
-            sysMsg.put("content", sysPrompt);
-            JSONObject userMsg = new JSONObject();
-            userMsg.put("role", "user");
-            userMsg.put("content", transcript);
-            JSONArray messages = new JSONArray();
-            messages.put(sysMsg);
-            messages.put(userMsg);
-            JSONObject body = new JSONObject();
-            body.put("model", model);
-            body.put("messages", messages);
-            body.put("temperature", 0.7);
             return body.toString();
         } catch (JSONException e) {
             throw new IOException("JSON build error: " + e.getMessage(), e);

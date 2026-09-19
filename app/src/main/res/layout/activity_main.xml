@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  主界面：只保留「状态 + 5 个按钮」。
+  标题由 ActionBar（android:label="@string/app_name"）承担，不再重复放 TextView。
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -10,25 +14,9 @@
         android:padding="20dp">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="英语陪练（悬浮窗版）"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:alpha="0.7"
-            android:text="录系统内声音 → 转英文文字 → AI 给英文参考回答，全部在悬浮窗里完成"
-            android:textSize="13sp" />
-
-        <TextView
             android:id="@+id/tvStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
             android:background="@android:drawable/editbox_background"
             android:padding="12dp"
             android:textSize="14sp" />
@@ -38,7 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="开始监听（会弹一次系统授权）"
+            android:text="@string/btn_start"
             android:textSize="16sp" />
 
         <Button
@@ -46,46 +34,28 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="停止" />
+            android:text="@string/btn_stop" />
 
         <Button
             android:id="@+id/btnSettings"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="设置（API 地址 / Key / 模型 / 字号）" />
+            android:text="@string/btn_settings" />
 
         <Button
             android:id="@+id/btnNewChat"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="🔄 清空 AI 上下文 · 开启新对话" />
+            android:text="@string/btn_new_chat" />
 
         <Button
             android:id="@+id/btnHistory"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="📜 查看转录历史" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:alpha="0.75"
-            android:lineSpacingExtra="4dp"
-            android:text="怎么用：
-1. 点「开始监听」→ 授权 → 悬浮窗出现
-2. 打开西柚英语放听力，悬浮窗会一直录（看音量条）
-3. 暂停 → 自动上传整段录音并识别原文
-4. 点「💬 参考回答」让 AI 回答，或「❓ 询问AI」自由提问
-5. AI 会记住之前所有录音内容作为上下文
-6. 换新题时点「🔄 清空 AI 上下文 · 开启新对话」\n\n已知限制：
-· 锁屏会停止投屏，需重新授权
-· 状态栏常驻「正在投屏」提示条，点它会停止
-· 只对允许被录的 App 有效（西柚英语已确认允许）"
-            android:textSize="13sp" />
+            android:text="@string/btn_history" />
 
     </LinearLayout>
 </ScrollView>

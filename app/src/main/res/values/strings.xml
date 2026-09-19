@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">英语陪练</string>
+    <string name="app_name">ECoach</string>
     <string name="settings_title">设置</string>
 
-    <string name="perm_record">录音权限</string>
-    <string name="perm_overlay">悬浮窗权限</string>
-    <string name="perm_notify">通知权限</string>
+    <!-- 主界面 -->
+    <string name="btn_start">开始监听</string>
+    <string name="btn_stop">停止</string>
+    <string name="btn_settings">设置</string>
+    <string name="btn_new_chat">清空上下文</string>
+    <string name="btn_history">转录历史</string>
 
-    <string name="hint_start">开始监听系统声音</string>
-    <string name="hint_stop">停止</string>
-    <string name="hint_settings">设置</string>
+    <!-- 主界面状态 -->
+    <string name="status_running">✅ 运行中\n打开西柚英语放听力，用悬浮窗操作。锁屏后需重新授权。</string>
+    <string name="status_stopped">未启动\n点「开始监听」，系统弹窗点「开始录制」。</string>
+
+    <!-- 通知 -->
+    <string name="notif_channel_name">音频采集</string>
+    <string name="notif_channel_desc">系统声音录制服务</string>
+    <string name="notif_title">正在监听系统声音</string>
+    <string name="notif_action_stop">停止</string>
 </resources>

@@ -2,6 +2,16 @@ plugins {
     id 'com.android.application'
 }
 
+// ── release 签名 ────────────────────────────────────────────
+// 凭证放在项目根的 keystore.properties（已 gitignore，不入库）。
+// 文件不存在时 release 退回 debug 签名，保证在没有密钥的机器上也能编译。
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+def hasReleaseKey = keystoreProps.getProperty('storeFile') != null
+
 android {
     namespace 'com.rd.englishcoach'
     compileSdk 35
@@ -19,19 +29,29 @@ android {
         versionName "1.0"
     }
 
-    testOptions {
-        unitTests.all {
-            // 允许测试访问 sun.misc.Unsafe（用于绕过 Android Context 构造 HistoryStore）
-            jvmArgs '--add-opens', 'java.base/sun.misc=ALL-UNNAMED'
-            jvmArgs '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED'
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile file(keystoreProps.getProperty('storeFile'))
+                storePassword keystoreProps.getProperty('storePassword')
+                keyAlias keystoreProps.getProperty('keyAlias')
+                keyPassword keystoreProps.getProperty('keyPassword')
+            }
         }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            // 自用：release 直接用 debug 签名，方便直接装机
-            signingConfig signingConfigs.debug
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    testOptions {
+        unitTests.all {
+            // 允许测试访问 sun.misc.Unsafe（用于绕过 Android Context 构造 HistoryStore）
+            jvmArgs '--add-opens', 'java.base/sun.misc=ALL-UNNAMED'
+            jvmArgs '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED'
         }
     }
 
@@ -41,9 +61,8 @@ android {
     }
 }
 
-// 刻意不加任何第三方依赖：只用 Android 框架自带 API，
+// 刻意不加任何第三方运行时依赖：只用 Android 框架自带 API，
 // 这样在 maven.google.com 被墙的环境下也能稳定编译。
-// 零第三方运行时依赖（不用 AndroidX / OkHttp / Compose）
 // 单元测试仅引入 JUnit，不影响 APK 体积
 dependencies {
     testImplementation 'junit:junit:4.13.2'

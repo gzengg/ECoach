@@ -38,11 +38,11 @@
         android:layout_marginBottom="6dp" android:max="100" android:progress="0"
         android:progressBackgroundTint="#33FFFFFF" android:progressTint="#4CAF50" />
 
-    <!-- 暂停/继续 按钮（整段上传，不再切句） -->
+    <!-- 暂停/继续 按钮（整段上传，不再切句）。文案由 ListenToggle.LABEL_PAUSED 派生 -->
     <TextView android:id="@+id/btnPause"
         android:layout_width="match_parent" android:layout_height="40dp"
         android:layout_marginBottom="6dp" android:background="@drawable/bg_chip"
-        android:gravity="center" android:text="▶ 继续" android:textColor="#FFFFFF" android:textSize="15sp" />
+        android:gravity="center" android:text="继续" android:textColor="#FFFFFF" android:textSize="15sp" />
 
     <!-- 重新授权（默认隐藏） -->
     <TextView android:id="@+id/btnReconsent"

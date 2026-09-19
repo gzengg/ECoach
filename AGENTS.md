@@ -7,7 +7,7 @@
 
 ## 1. 项目是什么
 
-一个**自用、侧载、不上架**的 Android App（项目名 EnglishCoach，包名 `com.rd.englishcoach`）。
+一个**自用、侧载、不上架**的 Android App（项目名 EnglishCoach，应用显示名 **ECoach**，包名 `com.rd.englishcoach`）。
 
 用户在**西柚英语**（`com.xiyou.english`）里练听力，本 App 用一个**悬浮窗**浮在学习 App 上方：
 听到一句想问的内容 → 点悬浮窗里的「这句完了」→ App 把刚才那段**系统内声音**转成英文文字（ASR）→ 再让 AI 给一句**英文参考回答** → 显示在悬浮窗里，用户照着念。
@@ -152,8 +152,18 @@ If the transcript is not a question, give a natural thing the learner could say 
 - 构建命令：
   ```bash
   cd E:/rd/EnglishCoach
-  JAVA_HOME="E:/JAVA/20" ./gradlew assembleDebug
+  JAVA_HOME="E:/JAVA/20" ./gradlew test            # 单元测试
+  JAVA_HOME="E:/JAVA/20" ./gradlew assembleRelease # 签名发行版
   ```
+- **release 签名**：`E:/huaian.jks`（JKS，alias `huaian`，storePass `Z20081127z`，keyPass `z20081127`）。
+  凭证写在项目根 `keystore.properties`（已 gitignore，不入库）；文件缺失时 release 退回 debug 签名，保证别的机器也能编译。
+  产物：`app/build/outputs/apk/release/app-release.apk`。校验：
+  ```bash
+  "$LOCALAPPDATA/Android/Sdk/build-tools/36.0.0/apksigner.bat" verify --print-certs app/build/outputs/apk/release/app-release.apk
+  ```
+- **图标**：源图 `E:/rd/icon.png`（2048×2048，圆角方形蓝色徽标）。
+  各密度 `mipmap-*/ic_launcher.png`、`ic_launcher_round.png`、`ic_launcher_foreground.png` 由一次性 Java 程序（ImageIO，逐步折半缩放）生成；
+  `mipmap-anydpi-v26/ic_launcher.xml` 用自适应图标（前景内容占 108dp 画布的 65%，落在 66dp 安全区内；背景色 `@color/ic_launcher_background`）。
 - 装机 / 调试：
   ```bash
   export PATH="$LOCALAPPDATA/Android/Sdk/platform-tools:$PATH"   # 必须先放 platform-tools
@@ -170,18 +180,27 @@ If the transcript is not a question, give a natural thing the learner could say 
 app/src/main/
   AndroidManifest.xml          权限、两个 Activity、CaptureService(foregroundServiceType=mediaProjection)
   java/com/rd/englishcoach/
-    Prefs.java                 所有配置项 + 默认值（Base URL/Key/模型/秒数/字号/宽度/显示原文/提示词）
+    Prefs.java                 所有配置项 + 默认值（Base URL/Key/模型/字号/宽度/提示词）
     WavUtil.java               PCM16 → WAV 头
-    PcmRing.java               环形缓冲：保留最近 N 秒 PCM，快照 + 清空
-    ApiClient.java             HttpURLConnection 调 ASR 与 deepseek-flash（含错误体截断展示）
-    CaptureService.java        前台服务：MediaProjection 会话 + AudioRecord 采集 + 切段 + 网络 + 驱动悬浮窗
-    FloatingPanel.java         悬浮窗 UI：拖动、字号/宽度、音量条、答案列表、重新授权按钮
+    PcmBuffer.java             可增长 PCM 缓冲（暂停时上传整段）
+    ApiClient.java             HttpURLConnection 调 ASR 与回答模型（含错误体截断展示）
+    CaptureService.java        前台服务：MediaProjection 会话 + AudioRecord 采集 + 网络 + 驱动悬浮窗
+    ConversationManager.java   对话轮次 + 发给 AI 的消息历史
+    HistoryStore.java          转录历史 JSON 持久化
+    ListenToggle.java          听/暂停的<b>唯一状态源</b> + 文案唯一来源
+    ServiceStartArgs.java      ACTION_START 入参校验（哨兵值避开 RESULT_OK=-1）
+    FloatingPanel.java         悬浮窗 UI：拖动、字号/宽度、音量条、轮次卡片、重新授权
     MaxHeightScrollView.java   ScrollView 限高（框架无 maxHeight，自己写）
     MainActivity.java          权限申请（录音/通知/悬浮窗）、发起投屏授权、开始/停止服务、重新授权入口
     SettingsActivity.java      设置页（改完即时作用到悬浮窗）
-  res/layout/{activity_main,activity_settings,window_panel}.xml
-  res/drawable/{bg_panel,bg_chip,bg_answer,ic_stat_mic}.xml
+  res/layout/{activity_main,activity_settings,window_panel,item_segment}.xml
+  res/drawable/{bg_panel,bg_chip,bg_answer,ic_stat_mic}.xml   ic_stat_mic 同时用作通知小图标
+  res/values/{strings,colors}.xml
+  res/mipmap-*/                图标（见第 7 节）
 ```
+
+主界面（`activity_main.xml`）**刻意只留「状态 + 5 个按钮」**：标题交给 ActionBar（`@string/app_name`），
+不放副标题、不放「怎么用 / 已知限制」大段说明——这些内容属于 AGENTS.md 与本节，不属于用户界面。
 
 行为约定：
 - 采集线程只负责读 `AudioRecord` 写入环形缓冲；**网络在单线程 Executor 里串行**（避免并发打同一接口）；UI 更新走主线程 `Handler`。
@@ -193,18 +212,21 @@ app/src/main/
 
 ---
 
-## 9. 进度状态（截至本次会话）
+## 9. 进度状态
 
 已完成：
 - 需求确认、API 实测、平台可行性验证（西柚英语 `allowPlaybackCapture=true`）、构建环境勘察。
-- 工程骨架：`settings.gradle`、`build.gradle`(root/app)、`gradle.properties`、`local.properties`、gradle wrapper（jar 从 `E:/onef/android` 拷入）、`AndroidManifest.xml`、`strings.xml`、4 个 drawable、`activity_main.xml`、`activity_settings.xml`。
+- 全部功能代码：采集链路、整段上传 + ASR、对话上下文 + 参考回答 / 询问AI、转录历史持久化、设置页、悬浮窗（拖动 / 字号 / 宽度 / 音量条 / 长按复制删除 / 重新授权）。
+- 真机联调完成，历史 bug（授权后服务不启动、面板状态不一致、白底白字、输入框闪退、键盘收起）均已修复。
+- **代码整理**：删掉已被取代的死代码（`PcmRing`、`SegmentStore` 及其测试），删掉死配置（`Prefs.maxSeconds`）、死方法（`ApiClient.answer`、`CaptureService.getHistoryStore`）；文案收敛到 `strings.xml` / `ListenToggle`，不再散落在 UI 代码里。
+- **主界面精简**：只保留「状态 + 5 个按钮」，删掉副标题与「怎么用 / 已知限制」大段文字。
+- **改名 + 图标**：应用显示名改为 `ECoach`；图标由 `E:/rd/icon.png` 生成（含自适应图标）。
+- **签名发行版**：`keystore.properties` + `assembleRelease`，产物 `app-release.apk` 已用 `apksigner` 验证通过。
 
-未完成（下一步按此顺序）：
-1. `window_panel.xml` 悬浮窗布局。
-2. Java 代码：`Prefs` → `WavUtil` → `PcmRing` → `ApiClient` → `MaxHeightScrollView` → `FloatingPanel` → `CaptureService` → `MainActivity` → `SettingsActivity`。
-3. `./gradlew assembleDebug` 编译通过（预计要处理一两个 AGP 8.6.1 的 DSL 小问题）。
-4. 装机，**先验最小风险项**：授权 → 播西柚英语 → 看音量条是否动（确认"不建虚拟显示也能录到"）→ 点「这句完了」看是否出英文答案。
-5. 真机联调清单：拖动/字号/宽度、暂停恢复、锁屏后重新授权流程、状态栏提示条被点后的恢复、连续多句、网络异常提示。
+后续可做（按优先级）：
+1. 无障碍服务自动点投屏授权弹窗（方案 B，见第 4 节）。
+2. 应用内检查更新 / 版本号管理（当前 `versionCode 1`，每次发版需手动递增）。
+3. 第 4 节列出的其余未做项（发音打分、翻译讲解、导出历史等）。
 
 ## 10. 必须一直遵守的用户可见限制（不要"优化掉"）
 

@@ -6,8 +6,8 @@ import static org.junit.Assert.*;
 /**
  * ListenToggle 的回归测试。
  *
- * <p>核心场景（修复前的 bug）：授权成功后服务已经在采集，但面板显示「已暂停 / 开始听」。
- * 用户看到「开始听」就点了一下，反而把采集关掉，且面板文字不变 → 表现为「这句完了用不了」。</p>
+ * <p>核心场景（修复前的 bug）：授权成功后服务已经在采集，但面板显示「已暂停」。
+ * 用户看到「继续」就点了一下，反而把采集关掉，且面板文字不变 → 表现为「按钮点了没反应」。</p>
  */
 public class ListenToggleTest {
 
@@ -21,10 +21,10 @@ public class ListenToggleTest {
     }
 
     @Test
-    public void afterCaptureStarted_buttonLabelIsStartByDefault() {
+    public void afterCaptureStarted_buttonLabelIsContinueByDefault() {
         ListenToggle t = new ListenToggle();
         t.onCaptureStarted();
-        assertEquals("授权成功后默认暂停，按钮应显示「开始听」",
+        assertEquals("授权成功后默认暂停，按钮应显示「继续」",
                 ListenToggle.LABEL_PAUSED, t.buttonLabel());
     }
 
@@ -77,50 +77,16 @@ public class ListenToggleTest {
         assertFalse(t.isListening());
     }
 
-    // ── 「这句完了」的判定 ──────────────────────
+    // ── 静态文案派生（面板只允许用这两个静态方法取文案） ──
 
     @Test
-    public void checkSegment_paused() {
-        assertEquals(ListenToggle.SegmentCheck.PAUSED,
-                ListenToggle.checkSegment(false, 800000));
-    }
-
-    @Test
-    public void checkSegment_pausedTakesPrecedenceOverEmpty() {
-        // 暂停且无数据时，应该提示"先点开始听"，而不是"没听到声音"
-        assertEquals(ListenToggle.SegmentCheck.PAUSED,
-                ListenToggle.checkSegment(false, 0));
-    }
-
-    @Test
-    public void checkSegment_empty() {
-        assertEquals(ListenToggle.SegmentCheck.EMPTY,
-                ListenToggle.checkSegment(true, 0));
-    }
-
-    @Test
-    public void checkSegment_negativeBytesIsEmpty() {
-        assertEquals(ListenToggle.SegmentCheck.EMPTY,
-                ListenToggle.checkSegment(true, -1));
-    }
-
-    @Test
-    public void checkSegment_ok() {
-        assertEquals(ListenToggle.SegmentCheck.OK,
-                ListenToggle.checkSegment(true, 1));
-        assertEquals(ListenToggle.SegmentCheck.OK,
-                ListenToggle.checkSegment(true, 800000));
-    }
-
-    @Test
-    public void checkSegment_instanceMatchesStatic() {
+    public void staticLabels_matchInstanceState() {
         ListenToggle t = new ListenToggle();
-        t.onCaptureStarted();
-        // 授权后默认暂停
-        assertEquals(ListenToggle.checkSegment(false, 100), t.checkSegment(100));
+        assertEquals(ListenToggle.labelFor(false), t.buttonLabel());
+        assertEquals(ListenToggle.statusFor(false), t.statusLabel());
         t.toggle();
-        // toggle 后正在听
-        assertEquals(ListenToggle.checkSegment(true, 100), t.checkSegment(100));
+        assertEquals(ListenToggle.labelFor(true), t.buttonLabel());
+        assertEquals(ListenToggle.statusFor(true), t.statusLabel());
     }
 
     // ── 文案契约 ──────────────────────────────

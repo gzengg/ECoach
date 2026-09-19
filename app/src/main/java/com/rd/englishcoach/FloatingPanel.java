@@ -180,7 +180,7 @@ public final class FloatingPanel {
 
     public void setListening(boolean on) {
         mainHandler.post(() -> {
-            btnPause.setText(on ? "⏸ 暂停" : "▶ 继续");
+            btnPause.setText(ListenToggle.labelFor(on));
             tvDot.setTextColor(on ? 0xFF4CAF50 : 0xFF888888);
             tvStatus.setText(ListenToggle.statusFor(on));
         });
@@ -295,7 +295,7 @@ public final class FloatingPanel {
         TextView tvAnswerText  = item.findViewById(R.id.tvAnswerText);
         View btnAnswer         = item.findViewById(R.id.btnAskAnswer);
         View btnAsk            = item.findViewById(R.id.btnAskQuestion);
-        TextView tvStatus      = item.findViewById(R.id.tvAnswerStatus);
+        TextView tvAnswerStatus = item.findViewById(R.id.tvAnswerStatus);
 
         switch (turn.state) {
             case NONE:
@@ -303,15 +303,15 @@ public final class FloatingPanel {
                 tvAnswerText.setVisibility(View.GONE);
                 btnAnswer.setVisibility(View.VISIBLE);
                 btnAsk.setVisibility(View.VISIBLE);
-                tvStatus.setVisibility(View.GONE);
+                tvAnswerStatus.setVisibility(View.GONE);
                 break;
             case LOADING:
                 tvAnswerLabel.setVisibility(View.GONE);
                 tvAnswerText.setVisibility(View.GONE);
                 btnAnswer.setVisibility(View.GONE);
                 btnAsk.setVisibility(View.GONE);
-                tvStatus.setText("AI 思考中…");
-                tvStatus.setVisibility(View.VISIBLE);
+                tvAnswerStatus.setText("AI 思考中…");
+                tvAnswerStatus.setVisibility(View.VISIBLE);
                 break;
             case READY:
                 tvAnswerLabel.setVisibility(View.VISIBLE);
@@ -319,15 +319,15 @@ public final class FloatingPanel {
                 tvAnswerText.setText(turn.aiAnswer);
                 btnAnswer.setVisibility(View.GONE);
                 btnAsk.setVisibility(View.VISIBLE); // 仍可追问
-                tvStatus.setVisibility(View.GONE);
+                tvAnswerStatus.setVisibility(View.GONE);
                 break;
             case ERROR:
                 tvAnswerLabel.setVisibility(View.GONE);
                 tvAnswerText.setVisibility(View.GONE);
                 btnAnswer.setVisibility(View.VISIBLE);
                 btnAsk.setVisibility(View.VISIBLE);
-                tvStatus.setText("出错: " + turn.error + "（点击重试）");
-                tvStatus.setVisibility(View.VISIBLE);
+                tvAnswerStatus.setText("出错: " + turn.error + "（点击重试）");
+                tvAnswerStatus.setVisibility(View.VISIBLE);
                 break;
         }
     }
