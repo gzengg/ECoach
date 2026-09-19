@@ -262,26 +262,27 @@ public final class FloatingPanel {
     // ── 长按菜单 ──────────────────────────
 
     private void showTurnContextMenu(long turnId, String text, TextView anchor) {
-        String[] items = {"📋 复制", "🗑 删除"};
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(ctx);
-        builder.setTitle("转录内容")
-               .setItems(items, (dialog, which) -> {
-                   if (which == 0) {
-                       // 复制到剪贴板
-                       android.content.ClipboardManager cm =
-                               (android.content.ClipboardManager) ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
-                       if (cm != null) {
-                           android.content.ClipData clip = android.content.ClipData.newPlainText("transcript", text);
-                           cm.setPrimaryClip(clip);
-                           showMessage("已复制到剪贴板");
-                       }
-                   } else {
-                       // 删除
-                       removeTurn(turnId);
-                       cb.onDeleteTurn(turnId);
-                   }
-               });
-        builder.show();
+        android.widget.PopupMenu popup = new android.widget.PopupMenu(ctx, anchor);
+        popup.getMenu().add(0, 1, 0, "📋 复制");
+        popup.getMenu().add(0, 2, 1, "🗑 删除");
+        popup.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == 1) {
+                android.content.ClipboardManager cm =
+                        (android.content.ClipboardManager) ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                if (cm != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("transcript", text);
+                    cm.setPrimaryClip(clip);
+                    showMessage("已复制到剪贴板");
+                }
+                return true;
+            } else if (item.getItemId() == 2) {
+                removeTurn(turnId);
+                cb.onDeleteTurn(turnId);
+                return true;
+            }
+            return false;
+        });
+        popup.show();
     }
 
     private void applyTurnVisibility(View item, ConversationManager.Turn turn) {
