@@ -52,6 +52,7 @@ public final class FloatingPanel {
 
     private final Map<Long, View> turnViews = new LinkedHashMap<>();
     private long pendingQuestionTurnId = -1;
+    private final Runnable hideInputRunnable = this::dismissInput;
 
     public FloatingPanel(Context ctx, Callback cb) {
         this.ctx = ctx.getApplicationContext();
@@ -90,6 +91,14 @@ public final class FloatingPanel {
         // 内嵌发送按钮
         btnSendQuestion.setOnClickListener(v -> submitQuestion());
 
+        // 键盘收起 / EditText 失焦时自动收起输入框
+        etQuestion.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                // 延迟收起，给发送按钮的点击留出触发时间
+                mainHandler.postDelayed(hideInputRunnable, 150);
+            }
+        });
+
         wlp = new WindowManager.LayoutParams(
                 dpToPx(prefs.widthDp()), WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -110,9 +119,19 @@ public final class FloatingPanel {
         long turnId = pendingQuestionTurnId;
         pendingQuestionTurnId = -1;
         etQuestion.setText("");
-        inputRow.setVisibility(View.GONE);
-        // 需要先隐藏输入行，再让外部处理焦点问题
+        mainHandler.removeCallbacks(hideInputRunnable);
+        dismissInput();
         cb.onAskQuestion(turnId, q);
+    }
+
+    /** 收起内嵌输入框，恢复 FLAG_NOT_FOCUSABLE */
+    private void dismissInput() {
+        if (inputRow.getVisibility() != View.VISIBLE) return;
+        inputRow.setVisibility(View.GONE);
+        etQuestion.clearFocus();
+        // 恢复 FLAG_NOT_FOCUSABLE 让触摸穿透到下面的 App
+        wlp.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        if (root.getParent() != null) wm.updateViewLayout(root, wlp);
     }
 
     /** 显示内嵌提问输入框 */
@@ -122,6 +141,9 @@ public final class FloatingPanel {
             etQuestion.setText("");
             inputRow.setVisibility(View.VISIBLE);
             etQuestion.requestFocus();
+            // 动态去掉 FLAG_NOT_FOCUSABLE 让键盘弹出
+            wlp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+            wm.updateViewLayout(root, wlp);
         });
     }
 
