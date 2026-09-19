@@ -83,6 +83,20 @@ public final class HistoryStore {
         append(transcript, null);
     }
 
+    /** 更新最后一条记录的答案（ASR 后再获取 AI 回答时调用） */
+    public synchronized void updateLastAnswer(String answer) {
+        try {
+            JSONArray arr = readArray();
+            if (arr.length() > 0) {
+                JSONObject last = arr.getJSONObject(arr.length() - 1);
+                last.put("answer", answer);
+                writeArray(arr);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "updateLastAnswer failed", e);
+        }
+    }
+
     /** 获取全部历史（从旧到新） */
     public synchronized List<Entry> getAll() {
         List<Entry> result = new ArrayList<>();

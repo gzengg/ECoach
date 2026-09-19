@@ -279,6 +279,7 @@ public class CaptureService extends Service {
                         p.baseUrl(), p.apiKey(), p.chatModel());
                 Log.i(TAG, "Answer #" + turnId + ": " + answer);
                 conversation.completeAnswer(turnId, answer);
+                if (history != null) history.updateLastAnswer(answer);
                 if (panel != null) panel.updateTurn(conversation.findById(turnId));
             } catch (Exception e) {
                 Log.e(TAG, "Answer failed #" + turnId, e);
@@ -305,6 +306,7 @@ public class CaptureService extends Service {
                 String answer = ApiClient.answerWithHistory(msgs,
                         p.baseUrl(), p.apiKey(), p.chatModel());
                 conversation.completeAnswer(qt.id, answer);
+                if (history != null) history.updateLastAnswer(answer);
                 if (panel != null) panel.updateTurn(conversation.findById(qt.id));
             } catch (Exception e) {
                 Log.e(TAG, "AskQuestion failed", e);
@@ -319,8 +321,8 @@ public class CaptureService extends Service {
     public void clearHistory() {
         if (conversation != null) conversation.clear();
         if (panel != null) panel.clearTurns();
-        if (history != null) history.clear();
-        Log.i(TAG, "History cleared");
+        // 注意：不清空持久化的转录历史文件，让用户随时可查看历史
+        Log.i(TAG, "Conversation cleared");
     }
 
     /** 获取持久化的转录历史 */

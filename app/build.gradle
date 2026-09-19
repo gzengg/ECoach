@@ -19,6 +19,14 @@ android {
         versionName "1.0"
     }
 
+    testOptions {
+        unitTests.all {
+            // 允许测试访问 sun.misc.Unsafe（用于绕过 Android Context 构造 HistoryStore）
+            jvmArgs '--add-opens', 'java.base/sun.misc=ALL-UNNAMED'
+            jvmArgs '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED'
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
