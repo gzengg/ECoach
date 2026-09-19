@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">英语陪练</string>
+    <string name="settings_title">设置</string>
+
+    <string name="perm_record">录音权限</string>
+    <string name="perm_overlay">悬浮窗权限</string>
+    <string name="perm_notify">通知权限</string>
+
+    <string name="hint_start">开始监听系统声音</string>
+    <string name="hint_stop">停止</string>
+    <string name="hint_settings">设置</string>
+</resources>

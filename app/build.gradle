@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.rd.englishcoach'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.rd.englishcoach"
+        minSdk 29
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // 自用：release 直接用 debug 签名，方便直接装机
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// 刻意不加任何第三方依赖：只用 Android 框架自带 API，
+// 这样在 maven.google.com 被墙的环境下也能稳定编译。
+// 零第三方运行时依赖（不用 AndroidX / OkHttp / Compose）
+// 单元测试仅引入 JUnit，不影响 APK 体积
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    // 测试环境用 JVM 版 org.json（Android 框架的 org.json 在 JVM 上未实现）
+    testImplementation 'org.json:json:20231013'
+}

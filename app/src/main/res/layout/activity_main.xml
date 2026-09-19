@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="英语陪练（悬浮窗版）"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:alpha="0.7"
+            android:text="录系统内声音 → 转英文文字 → AI 给英文参考回答，全部在悬浮窗里完成"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="@android:drawable/editbox_background"
+            android:padding="12dp"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="开始监听（会弹一次系统授权）"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btnStop"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="停止" />
+
+        <Button
+            android:id="@+id/btnSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="设置（API 地址 / Key / 模型 / 字号）" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:alpha="0.75"
+            android:lineSpacingExtra="4dp"
+            android:text="怎么用：\n1. 点上面「开始监听」，系统弹窗里点「开始录制」——之后这次会话一直有效，悬浮窗里随时开关，不会再弹窗。\n2. 打开西柚英语放听力，悬浮窗会一直听着（看音量条动没动就知道有没有录到）。\n3. 听到一句想问的，点悬浮窗里的「这句完了」，等 2~5 秒就会出英文参考回答。\n\n已知限制：\n· 锁屏/息屏时系统会自动掐断投屏，要重新授权一次。\n· 状态栏会常驻一个「正在投屏」提示条，点它会停止。\n· 只对允许被录的 App 有效（西柚英语已确认允许）。"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+</ScrollView>
