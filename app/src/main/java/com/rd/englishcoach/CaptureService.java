@@ -1,6 +1,5 @@
 package com.rd.englishcoach;
 
-import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -19,9 +18,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.util.Log;
-import android.view.WindowManager;
-import android.widget.EditText;
-import android.widget.FrameLayout;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -55,6 +51,7 @@ public class CaptureService extends Service {
     private final ListenToggle listen = new ListenToggle();
     private volatile boolean stopped = false;
     private int sampleRate = 16000;
+    private HistoryStore history;
 
     // ── 生命周期 ────────────────────────────
 
@@ -123,6 +120,7 @@ public class CaptureService extends Service {
     private void startCapture(int resultCode, Intent data) {
         buffer = new PcmBuffer();
         conversation = new ConversationManager(50);
+        history = new HistoryStore(CaptureService.this);
 
         MediaProjectionManager mpm = getSystemService(MediaProjectionManager.class);
         projection = mpm.getMediaProjection(resultCode, data);
@@ -251,6 +249,8 @@ public class CaptureService extends Service {
 
                 // 转录入对话历史 + 显示卡片
                 ConversationManager.Turn turn = conversation.addTranscript(transcript);
+                // 持久化到转录历史文件
+                if (history != null) history.appendTranscript(transcript);
                 if (panel != null) {
                     panel.addTurn(turn);
                     panel.setStatus(listen.statusLabel());
@@ -319,8 +319,12 @@ public class CaptureService extends Service {
     public void clearHistory() {
         if (conversation != null) conversation.clear();
         if (panel != null) panel.clearTurns();
+        if (history != null) history.clear();
         Log.i(TAG, "History cleared");
     }
+
+    /** 获取持久化的转录历史 */
+    public HistoryStore getHistoryStore() { return history; }
 
     // ── 工具 ──────────────────────────────
 
@@ -404,27 +408,8 @@ public class CaptureService extends Service {
         }
 
         @Override
-        public void onAskQuestion(long turnId) {
-            // 弹出输入框
-            EditText input = new EditText(CaptureService.this);
-            input.setHint("输入你的问题…");
-            int pad = (int) (16 * getResources().getDisplayMetrics().density);
-            FrameLayout container = new FrameLayout(CaptureService.this);
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(pad, pad / 2, pad, 0);
-            container.addView(input, lp);
-
-            new AlertDialog.Builder(CaptureService.this,
-                    android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("询问 AI")
-                    .setView(container)
-                    .setPositiveButton("发送", (d, w) -> {
-                        String q = input.getText().toString().trim();
-                        if (!q.isEmpty()) doAskQuestion(turnId, q);
-                    })
-                    .setNegativeButton("取消", null)
-                    .show();
+        public void onAskQuestion(long turnId, String question) {
+            doAskQuestion(turnId, question);
         }
 
         @Override

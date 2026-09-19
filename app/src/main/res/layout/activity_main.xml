@@ -62,6 +62,13 @@
             android:layout_marginTop="8dp"
             android:text="🔄 清空 AI 上下文 · 开启新对话" />
 
+        <Button
+            android:id="@+id/btnHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="📜 查看转录历史" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

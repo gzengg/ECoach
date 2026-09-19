@@ -4,11 +4,12 @@ import android.content.Context;
 import android.graphics.PixelFormat;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.DisplayMetrics;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -18,13 +19,14 @@ import java.util.Map;
 /**
  * 悬浮窗面板。
  * 暂停 → 上传整段 → 显示原文；「看参考回答」/「询问AI」按需触发。
+ * 询问AI 使用内嵌输入框（不用 AlertDialog，避免 Service 上下文闪退）。
  */
 public final class FloatingPanel {
 
     public interface Callback {
         void onTogglePause();
         void onAskAnswer(long turnId);
-        void onAskQuestion(long turnId);
+        void onAskQuestion(long turnId, String question);
         void onReconsent();
         void onClose();
     }
@@ -43,8 +45,13 @@ public final class FloatingPanel {
     private ProgressBar levelBar;
     private MaxHeightScrollView scrollTurns;
     private android.widget.LinearLayout turnList;
+    // 内嵌提问输入框
+    private View inputRow;
+    private EditText etQuestion;
+    private TextView btnSendQuestion;
 
     private final Map<Long, View> turnViews = new LinkedHashMap<>();
+    private long pendingQuestionTurnId = -1;
 
     public FloatingPanel(Context ctx, Callback cb) {
         this.ctx = ctx.getApplicationContext();
@@ -57,17 +64,20 @@ public final class FloatingPanel {
     private void init() {
         root = LayoutInflater.from(ctx).inflate(R.layout.window_panel, null);
 
-        tvDot        = root.findViewById(R.id.tvDot);
-        tvStatus     = root.findViewById(R.id.tvStatus);
-        tvMessage    = root.findViewById(R.id.tvMessage);
-        btnPause     = root.findViewById(R.id.btnPause);
-        btnReconsent = root.findViewById(R.id.btnReconsent);
-        btnClose     = root.findViewById(R.id.btnClose);
-        btnFontMinus = root.findViewById(R.id.btnFontMinus);
-        btnFontPlus  = root.findViewById(R.id.btnFontPlus);
-        levelBar     = root.findViewById(R.id.levelBar);
-        scrollTurns  = root.findViewById(R.id.scrollTurns);
-        turnList     = root.findViewById(R.id.turnList);
+        tvDot          = root.findViewById(R.id.tvDot);
+        tvStatus       = root.findViewById(R.id.tvStatus);
+        tvMessage      = root.findViewById(R.id.tvMessage);
+        btnPause       = root.findViewById(R.id.btnPause);
+        btnReconsent   = root.findViewById(R.id.btnReconsent);
+        btnClose       = root.findViewById(R.id.btnClose);
+        btnFontMinus   = root.findViewById(R.id.btnFontMinus);
+        btnFontPlus    = root.findViewById(R.id.btnFontPlus);
+        levelBar       = root.findViewById(R.id.levelBar);
+        scrollTurns    = root.findViewById(R.id.scrollTurns);
+        turnList       = root.findViewById(R.id.turnList);
+        inputRow       = root.findViewById(R.id.inputRow);
+        etQuestion     = root.findViewById(R.id.etQuestion);
+        btnSendQuestion = root.findViewById(R.id.btnSendQuestion);
 
         root.findViewById(R.id.dragBar).setOnTouchListener(new DragTouchListener());
 
@@ -77,15 +87,42 @@ public final class FloatingPanel {
         btnFontMinus.setOnClickListener(v -> { prefs.putFontSp(prefs.fontSp() - 1); applyFontSize(prefs.fontSp()); });
         btnFontPlus.setOnClickListener(v -> { prefs.putFontSp(prefs.fontSp() + 1); applyFontSize(prefs.fontSp()); });
 
+        // 内嵌发送按钮
+        btnSendQuestion.setOnClickListener(v -> submitQuestion());
+
         wlp = new WindowManager.LayoutParams(
                 dpToPx(prefs.widthDp()), WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT);
-        wlp.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
+        wlp.gravity = Gravity.TOP | Gravity.START;
         wlp.x = 20; wlp.y = 200;
 
         applyFontSize(prefs.fontSp());
+    }
+
+    // ── 内嵌提问 ──────────────────────────
+
+    private void submitQuestion() {
+        if (pendingQuestionTurnId < 0) return;
+        String q = etQuestion.getText().toString().trim();
+        if (q.isEmpty()) return;
+        long turnId = pendingQuestionTurnId;
+        pendingQuestionTurnId = -1;
+        etQuestion.setText("");
+        inputRow.setVisibility(View.GONE);
+        // 需要先隐藏输入行，再让外部处理焦点问题
+        cb.onAskQuestion(turnId, q);
+    }
+
+    /** 显示内嵌提问输入框 */
+    public void showQuestionInput(long turnId) {
+        mainHandler.post(() -> {
+            pendingQuestionTurnId = turnId;
+            etQuestion.setText("");
+            inputRow.setVisibility(View.VISIBLE);
+            etQuestion.requestFocus();
+        });
     }
 
     // ── 显示 / 隐藏 ────────────────────────
@@ -132,12 +169,10 @@ public final class FloatingPanel {
             tvTranscript.setTextSize(prefs.fontSp());
 
             // 「看参考回答」按钮
-            View btnAnswer = item.findViewById(R.id.btnAskAnswer);
-            btnAnswer.setOnClickListener(v -> cb.onAskAnswer(turn.id));
+            item.findViewById(R.id.btnAskAnswer).setOnClickListener(v -> cb.onAskAnswer(turn.id));
 
-            // 「询问AI」按钮
-            View btnAsk = item.findViewById(R.id.btnAskQuestion);
-            btnAsk.setOnClickListener(v -> cb.onAskQuestion(turn.id));
+            // 「询问AI」按钮 → 展开内嵌输入框
+            item.findViewById(R.id.btnAskQuestion).setOnClickListener(v -> showQuestionInput(turn.id));
 
             applyTurnVisibility(item, turn);
 

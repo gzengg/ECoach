@@ -10,7 +10,13 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.media.projection.MediaProjectionManager;
 import android.widget.Button;
+import android.widget.ScrollView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.app.AlertDialog;
+import android.graphics.Typeface;
+
+import java.util.List;
 
 public class MainActivity extends Activity {
 
@@ -20,7 +26,7 @@ public class MainActivity extends Activity {
     private static final int REQ_PROJECTION = 103;
 
     private TextView tvStatus;
-    private Button btnStart, btnStop, btnSettings, btnNewChat;
+    private Button btnStart, btnStop, btnSettings, btnNewChat, btnHistory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +38,7 @@ public class MainActivity extends Activity {
         btnStop    = findViewById(R.id.btnStop);
         btnSettings= findViewById(R.id.btnSettings);
         btnNewChat = findViewById(R.id.btnNewChat);
+        btnHistory = findViewById(R.id.btnHistory);
 
         btnStart.setOnClickListener(v -> checkAndStart());
         btnStop.setOnClickListener(v -> {
@@ -42,6 +49,7 @@ public class MainActivity extends Activity {
         });
         btnSettings.setOnClickListener(v ->
                 startActivity(new Intent(this, SettingsActivity.class)));
+        btnHistory.setOnClickListener(v -> showTranscriptHistory());
         btnNewChat.setOnClickListener(v -> {
             if (CaptureService.current != null) {
                 CaptureService.current.clearHistory();
@@ -128,6 +136,65 @@ public class MainActivity extends Activity {
                 tvStatus.setText("投屏授权被拒绝");
             }
         }
+    }
+
+    // ── 转录历史 ────────────────────────
+
+    private void showTranscriptHistory() {
+        HistoryStore store = new HistoryStore(this);
+        List<HistoryStore.Entry> entries = store.getAll();
+        if (entries.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("转录历史")
+                    .setMessage("暂无记录")
+                    .setPositiveButton("确定", null)
+                    .show();
+            return;
+        }
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad, pad, 0);
+
+        for (int i = entries.size() - 1; i >= 0; i--) {
+            HistoryStore.Entry e = entries.get(i);
+            TextView tv = new TextView(this);
+            String time = new java.text.SimpleDateFormat("MM-dd HH:mm",
+                    java.util.Locale.getDefault()).format(new java.util.Date(e.timestamp));
+            StringBuilder sb = new StringBuilder();
+            sb.append("[ ").append(time).append(" ] ").append(e.transcript);
+            if (e.answer != null) sb.append("\n答: ").append(e.answer);
+            tv.setText(sb.toString());
+            tv.setTextSize(14);
+            tv.setTextColor(0xFF333333);
+            layout.addView(tv);
+
+            if (i > 0) { // 分割线
+                TextView sep = new TextView(this);
+                sep.setText("");
+                sep.setMinimumHeight(1);
+                sep.setBackgroundColor(0xFFDDDDDD);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 1);
+                lp.topMargin = pad / 2;
+                lp.bottomMargin = pad / 2;
+                layout.addView(sep, lp);
+            }
+        }
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(layout);
+
+        new AlertDialog.Builder(this)
+                .setTitle("转录历史 (" + entries.size() + " 条)")
+                .setView(scroll)
+                .setPositiveButton("确定", null)
+                .setNeutralButton("清空历史", (d, w) -> {
+                    store.clear();
+                    tvStatus.setText("历史已清空");
+                })
+                .show();
     }
 
     // ── 状态 ──────────────────────────────

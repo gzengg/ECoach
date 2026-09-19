@@ -66,4 +66,33 @@
             android:orientation="vertical" />
     </com.rd.englishcoach.MaxHeightScrollView>
 
+    <!-- 内嵌提问输入框（默认隐藏，点击「询问AI」时展开） -->
+    <LinearLayout android:id="@+id/inputRow"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+        <EditText android:id="@+id/etQuestion"
+            android:layout_width="0dp" android:layout_height="36dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_chip"
+            android:hint="输入问题…"
+            android:inputType="text"
+            android:textColor="#FFFFFFFF"
+            android:textColorHint="#80FFFFFF"
+            android:textSize="13sp"
+            android:singleLine="true"
+            android:paddingHorizontal="10dp" />
+        <TextView android:id="@+id/btnSendQuestion"
+            android:layout_width="wrap_content" android:layout_height="36dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_chip"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="发送"
+            android:textColor="#4CAF50"
+            android:textSize="13sp" />
+    </LinearLayout>
+
 </LinearLayout>
