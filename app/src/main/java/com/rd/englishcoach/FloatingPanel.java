@@ -55,6 +55,7 @@ public final class FloatingPanel {
     private long pendingQuestionTurnId = -1;
     private final Runnable hideInputRunnable = this::dismissInput;
     private int lastRootHeight = -1;
+    private long inputShownAt = 0; // 输入框显示的时间戳，防止误判
 
     public FloatingPanel(Context ctx, Callback cb) {
         this.ctx = ctx.getApplicationContext();
@@ -96,8 +97,11 @@ public final class FloatingPanel {
         // 键盘收起检测：通过 ViewTreeObserver 监听窗口高度变化
         root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             int h = root.getHeight();
-            if (lastRootHeight > 0 && h > lastRootHeight && inputRow.getVisibility() == View.VISIBLE) {
-                // 根布局变高 = 键盘收起
+            long now = System.currentTimeMillis();
+            if (lastRootHeight > 0 && h > lastRootHeight
+                    && inputRow.getVisibility() == View.VISIBLE
+                    && now - inputShownAt > 300) {
+                // 根布局变高 = 键盘收起（排除刚显示输入框导致的布局变化）
                 mainHandler.postDelayed(hideInputRunnable, 50);
             }
             lastRootHeight = h;
@@ -159,6 +163,7 @@ public final class FloatingPanel {
             pendingQuestionTurnId = turnId;
             etQuestion.setText("");
             inputRow.setVisibility(View.VISIBLE);
+            inputShownAt = System.currentTimeMillis(); // 记录显示时间
             etQuestion.requestFocus();
             // 动态去掉 FLAG_NOT_FOCUSABLE 让键盘弹出
             wlp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
