@@ -1,90 +1,110 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clipToPadding="false">
 
+    <!--
+      focusableInTouchMode=true：让根布局抢走初始焦点，输入框不会自动获得焦点，
+      打开设置页时键盘不弹出、页面也不会自己滚走。
+    -->
     <LinearLayout
+        android:id="@+id/settingsRoot"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp"
+        android:focusable="true"
+        android:focusableInTouchMode="true">
 
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="API 设置" android:textSize="16sp" android:textStyle="bold" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Base URL" android:layout_marginTop="12dp" android:textSize="13sp" />
-        <EditText android:id="@+id/etBaseUrl" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:singleLine="true" android:textSize="14sp" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="API Key" android:layout_marginTop="8dp" android:textSize="13sp" />
-        <EditText android:id="@+id/etApiKey" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:singleLine="true" android:textSize="14sp"
-            android:inputType="textPassword" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="ASR 模型" android:layout_marginTop="8dp" android:textSize="13sp" />
-        <EditText android:id="@+id/etAsrModel" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:singleLine="true" android:textSize="14sp" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="回答模型" android:layout_marginTop="8dp" android:textSize="13sp" />
-        <EditText android:id="@+id/etChatModel" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:singleLine="true" android:textSize="14sp" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="系统提示词（告诉 AI 怎么回答）" android:layout_marginTop="8dp" android:textSize="13sp" />
-        <EditText android:id="@+id/etSysPrompt" android:layout_width="match_parent"
-            android:layout_height="120dp" android:gravity="top" android:textSize="13sp"
-            android:inputType="textMultiLine" />
-
-        <!-- 字号 / 宽度 / 显示原文 -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="悬浮窗外观" android:layout_marginTop="20dp" android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginTop="10dp"
-            android:gravity="center_vertical">
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:text="字号" android:textSize="14sp" />
-            <TextView android:id="@+id/btnFontMinus" android:layout_width="40dp"
-                android:layout_height="36dp" android:gravity="center" android:text="−"
-                android:textSize="18sp" android:background="@drawable/bg_chip" />
-            <TextView android:id="@+id/tvFontValue" android:layout_width="60dp"
-                android:layout_height="wrap_content" android:gravity="center" android:text="15sp"
-                android:textSize="14sp" />
-            <TextView android:id="@+id/btnFontPlus" android:layout_width="40dp"
-                android:layout_height="36dp" android:gravity="center" android:text="+"
-                android:textSize="18sp" android:background="@drawable/bg_chip" />
+        <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+            <TextView style="@style/SettingLabel"
+                android:text="@string/set_base_url"
+                android:labelFor="@id/etBaseUrl" />
+            <EditText android:id="@+id/etBaseUrl" style="@style/SettingInput"
+                android:inputType="textUri"
+                android:hint="@string/set_base_url_hint" />
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginTop="8dp"
-            android:gravity="center_vertical">
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:text="窗口宽度" android:textSize="14sp" />
-            <TextView android:id="@+id/btnWidthMinus" android:layout_width="40dp"
-                android:layout_height="36dp" android:gravity="center" android:text="−"
-                android:textSize="18sp" android:background="@drawable/bg_chip" />
-            <TextView android:id="@+id/tvWidthValue" android:layout_width="60dp"
-                android:layout_height="wrap_content" android:gravity="center" android:text="300dp"
-                android:textSize="14sp" />
-            <TextView android:id="@+id/btnWidthPlus" android:layout_width="40dp"
-                android:layout_height="36dp" android:gravity="center" android:text="+"
-                android:textSize="18sp" android:background="@drawable/bg_chip" />
+        <LinearLayout style="@style/SettingRow">
+            <TextView style="@style/SettingLabel"
+                android:text="@string/set_api_key"
+                android:labelFor="@id/etApiKey" />
+            <EditText android:id="@+id/etApiKey" style="@style/SettingInput"
+                android:inputType="textPassword" />
+            <TextView android:id="@+id/btnToggleKey"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="8dp"
+                android:textSize="13sp"
+                android:text="@string/set_show_key" />
         </LinearLayout>
 
+        <LinearLayout style="@style/SettingRow">
+            <TextView style="@style/SettingLabel"
+                android:text="@string/set_asr_model"
+                android:labelFor="@id/etAsrModel" />
+            <EditText android:id="@+id/etAsrModel" style="@style/SettingInput" />
+        </LinearLayout>
 
-        <!-- 按钮 -->
-        <Button android:id="@+id/btnSave" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="24dp"
-            android:text="保存并返回" android:textSize="16sp" />
+        <LinearLayout style="@style/SettingRow">
+            <TextView style="@style/SettingLabel"
+                android:text="@string/set_chat_model"
+                android:labelFor="@id/etChatModel" />
+            <EditText android:id="@+id/etChatModel" style="@style/SettingInput" />
+        </LinearLayout>
 
-        <Button android:id="@+id/btnReset" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="8dp"
-            android:text="恢复默认值" android:textSize="14sp" />
+        <TextView android:id="@+id/etSysPromptLabel" style="@style/SettingHeader"
+            android:text="@string/set_sys_prompt"
+            android:labelFor="@id/etSysPrompt" />
+        <EditText android:id="@+id/etSysPrompt" style="@style/SettingField"
+            android:layout_height="88dp"
+            android:gravity="top|start"
+            android:inputType="textMultiLine|textNoSuggestions"
+            android:scrollbars="vertical" />
+
+        <TextView style="@style/SettingHeader"
+            android:text="@string/set_appearance" />
+
+        <LinearLayout style="@style/SettingRow">
+            <TextView style="@style/SettingLabel"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:text="@string/set_font_size" />
+            <TextView android:id="@+id/btnFontMinus" style="@style/SettingStepper"
+                android:text="-" />
+            <TextView android:id="@+id/tvFontValue" style="@style/SettingValue" />
+            <TextView android:id="@+id/btnFontPlus" style="@style/SettingStepper"
+                android:text="+" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/SettingRow">
+            <TextView style="@style/SettingLabel"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:text="@string/set_width" />
+            <TextView android:id="@+id/btnWidthMinus" style="@style/SettingStepper"
+                android:text="-" />
+            <TextView android:id="@+id/tvWidthValue" style="@style/SettingValue" />
+            <TextView android:id="@+id/btnWidthPlus" style="@style/SettingStepper"
+                android:text="+" />
+        </LinearLayout>
+
+        <Button android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:textSize="15sp"
+            android:text="@string/set_save" />
+
+        <Button android:id="@+id/btnReset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="14sp"
+            android:text="@string/set_reset" />
 
     </LinearLayout>
 </ScrollView>

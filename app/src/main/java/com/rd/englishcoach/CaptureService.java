@@ -124,11 +124,11 @@ public class CaptureService extends Service {
 
         MediaProjectionManager mpm = getSystemService(MediaProjectionManager.class);
         projection = mpm.getMediaProjection(resultCode, data);
-        if (projection == null) { notifyReconsentNeeded("投屏授权失败"); return; }
+        if (projection == null) { notifyReconsentNeeded(getString(R.string.msg_projection_failed)); return; }
         projection.registerCallback(new ProjectionCallback(), bgHandler);
 
         audioRecord = createAudioRecord(projection);
-        if (audioRecord == null) { notifyReconsentNeeded("无法创建录音"); return; }
+        if (audioRecord == null) { notifyReconsentNeeded(getString(R.string.msg_audio_init_failed)); return; }
 
         listen.onCaptureStarted();
         panel = new FloatingPanel(this, new PanelCallback());
@@ -196,7 +196,7 @@ public class CaptureService extends Service {
         try { audioRecord.startRecording(); }
         catch (Exception e) {
             Log.e(TAG, "startRecording failed: " + e);
-            notifyReconsentNeeded("录音启动失败: " + e.getMessage());
+            notifyReconsentNeeded(getString(R.string.msg_record_start_failed, e.getMessage()));
             return;
         }
         short[] buf = new short[4096];
@@ -227,18 +227,18 @@ public class CaptureService extends Service {
         if (panel != null) panel.setListening(listen.isListening());
 
         if (buffer == null || buffer.size() == 0) {
-            if (panel != null) panel.showMessage("还没录到声音");
+            if (panel != null) panel.showMessage(getString(R.string.msg_no_audio));
             return;
         }
 
         byte[] pcm = buffer.snapshotAndClear();
-        if (panel != null) panel.setStatus("识别中…");
+        if (panel != null) panel.setStatus(getString(R.string.msg_recognizing));
 
         networkExec.execute(() -> {
             try {
                 byte[] trimmed = trimSilence(pcm);
                 if (trimmed.length < 3200) { // < 0.5s
-                    postMessage("录音太短，请多录一点再暂停");
+                    postMessage(getString(R.string.msg_too_short));
                     return;
                 }
                 Prefs prefs = new Prefs(CaptureService.this);
@@ -257,7 +257,7 @@ public class CaptureService extends Service {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Pause/ASR failed", e);
-                postMessage("识别出错: " + e.getMessage());
+                postMessage(getString(R.string.msg_asr_failed, e.getMessage()));
             }
         });
     }
@@ -377,9 +377,9 @@ public class CaptureService extends Service {
 
     private void notifyReconsentNeeded(String reason) {
         if (panel != null) {
-            panel.showMessage(reason + "，请重新授权");
+            panel.showMessage(getString(R.string.msg_reconsent_suffix, reason));
             panel.setReconsentVisible(true);
-            panel.setStatus("投屏已停止");
+            panel.setStatus(getString(R.string.msg_projection_stopped));
         }
     }
 
@@ -389,7 +389,7 @@ public class CaptureService extends Service {
             Log.i(TAG, "Projection stopped");
             releaseCapture();
             if (panel != null) panel.setListening(listen.isListening());
-            notifyReconsentNeeded("投屏被系统停止");
+            notifyReconsentNeeded(getString(R.string.msg_projection_killed));
         }
     }
 

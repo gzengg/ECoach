@@ -29,7 +29,8 @@
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
-            android:label="@string/settings_title" />
+            android:label="@string/settings_title"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
 
         <service
             android:name=".CaptureService"

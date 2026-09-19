@@ -11,12 +11,85 @@
     <string name="btn_history">转录历史</string>
 
     <!-- 主界面状态 -->
-    <string name="status_running">✅ 运行中\n打开西柚英语放听力，用悬浮窗操作。锁屏后需重新授权。</string>
+    <string name="status_running">运行中\n打开西柚英语放听力，用悬浮窗操作。锁屏后需重新授权。</string>
     <string name="status_stopped">未启动\n点「开始监听」，系统弹窗点「开始录制」。</string>
+    <string name="status_chat_cleared">已清空上下文，开始新对话</string>
+    <string name="status_service_off">服务未运行</string>
+    <string name="status_started">已启动，悬浮窗应该出现了</string>
+    <string name="status_projection_denied">投屏授权被拒绝</string>
+    <string name="status_permission_missing">缺少必要权限，请在设置里手动授予</string>
+    <string name="status_copied">已复制到剪贴板</string>
+    <string name="status_deleted">已删除</string>
+    <string name="status_history_cleared">历史已清空</string>
+
+    <!-- 设置页 -->
+    <string name="set_base_url">Base URL</string>
+    <string name="set_base_url_hint">https://…/v1</string>
+    <string name="set_api_key">API Key</string>
+    <string name="set_asr_model">ASR 模型</string>
+    <string name="set_chat_model">回答模型</string>
+    <string name="set_sys_prompt">系统提示词（告诉 AI 怎么回答）</string>
+    <string name="set_appearance">悬浮窗外观</string>
+    <string name="set_font_size">字号</string>
+    <string name="set_width">窗口宽度</string>
+    <string name="set_save">保存并返回</string>
+    <string name="set_reset">恢复默认值</string>
+    <string name="set_show_key">显示</string>
+    <string name="set_hide_key">隐藏</string>
+
+    <!-- 转录历史 -->
+    <string name="history_title">转录历史</string>
+    <string name="history_title_count">转录历史（%1$d 条）</string>
+    <string name="history_empty">暂无记录</string>
+    <string name="history_clear_all">清空全部</string>
+    <string name="history_answer_prefix">答: </string>
+    <string name="dialog_ok">确定</string>
+
+    <!-- 悬浮窗 / 服务提示 -->
+    <string name="menu_copy">复制</string>
+    <string name="menu_delete">删除</string>
+    <string name="msg_copied">已复制到剪贴板</string>
+    <string name="msg_ai_thinking">AI 思考中…</string>
+    <string name="msg_error_retry">出错: %1$s（点击重试）</string>
+    <string name="msg_projection_failed">投屏授权失败</string>
+    <string name="msg_audio_init_failed">无法创建录音</string>
+    <string name="msg_record_start_failed">录音启动失败: %1$s</string>
+    <string name="msg_no_audio">还没录到声音</string>
+    <string name="msg_recognizing">识别中…</string>
+    <string name="msg_too_short">录音太短，请多录一点再暂停</string>
+    <string name="msg_asr_failed">识别出错: %1$s</string>
+    <string name="msg_reconsent_suffix">%1$s，请重新授权</string>
+    <string name="msg_projection_stopped">投屏已停止</string>
+    <string name="msg_projection_killed">投屏被系统停止</string>
 
     <!-- 通知 -->
     <string name="notif_channel_name">音频采集</string>
     <string name="notif_channel_desc">系统声音录制服务</string>
     <string name="notif_title">正在监听系统声音</string>
     <string name="notif_action_stop">停止</string>
+
+    <!-- 悬浮窗权限被系统限制 -->
+    <string name="overlay_blocked_title">悬浮窗权限被系统限制</string>
+    <string name="overlay_blocked_msg">ColorOS / 一加等系统对侧载应用的「显示在其他应用上层」有安全限制，设置页里那个开关会被锁死，点了也打不开。
+
+下面三种办法任选一种：
+
+1）电脑执行 adb 命令（最省事）
+   手机打开「USB 调试」并连上电脑，执行：
+   adb shell appops set %1$s SYSTEM_ALERT_WINDOW allow
+
+2）关掉系统的权限监控
+   设置 → 关于手机 → 连点「版本号」7 次，开启开发者选项
+   设置 → 系统设置 → 开发者选项 → 打开「停用权限监控」
+   注意：ColorOS 16 把这个开关藏起来了，需要先把系统语言切成
+   English，它会以 Disable permission monitoring 出现，打开后再
+   切回中文即可。
+
+3）手机管家 → 权限隐私 → 悬浮窗管理 → 允许 ECoach
+
+改完回到本页，再点一次「开始监听」。</string>
+    <string name="overlay_retry">重新授权</string>
+    <string name="overlay_copy_cmd">复制 adb 命令</string>
+    <string name="overlay_close">关闭</string>
+    <string name="overlay_cmd_copied">adb 命令已复制，粘贴到电脑终端执行</string>
 </resources>

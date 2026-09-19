@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      设置页统一样式。
+      历史教训：旧版每个输入框上方单独占一行标签，整页高达 746dp，
+      而 ColorOS 上可用视口只有约 645dp，必须滚动；滚到底时最上面那行
+      会被切成半截（看起来像乱码）。改成「标签在左、输入框在右」后
+      整页约 570dp，一屏放得下，不再出现半截行。
+    -->
+
+    <!-- 一行：左侧标签 + 右侧控件 -->
+    <style name="SettingRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:layout_marginTop">6dp</item>
+    </style>
+
+    <style name="SettingLabel">
+        <item name="android:layout_width">76dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- 单行输入框：跟随右侧剩余宽度 -->
+    <style name="SettingInput">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:inputType">text</item>
+    </style>
+
+    <!-- 独占一行的多行输入框 -->
+    <style name="SettingField">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- 分组小标题 -->
+    <style name="SettingHeader">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:layout_marginTop">14dp</item>
+    </style>
+
+    <!-- 加减按钮 -->
+    <style name="SettingStepper">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:background">@drawable/bg_chip</item>
+    </style>
+
+    <!-- 加减按钮中间显示的当前值 -->
+    <style name="SettingValue">
+        <item name="android:layout_width">64dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+</resources>

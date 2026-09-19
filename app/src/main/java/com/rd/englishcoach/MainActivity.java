@@ -2,18 +2,21 @@ package com.rd.englishcoach;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.media.projection.MediaProjectionManager;
 import android.widget.Button;
-import android.widget.ScrollView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
-import android.app.AlertDialog;
 
 import java.util.List;
 
@@ -52,9 +55,9 @@ public class MainActivity extends Activity {
         btnNewChat.setOnClickListener(v -> {
             if (CaptureService.current != null) {
                 CaptureService.current.clearHistory();
-                tvStatus.setText("已清空上下文，开始新对话");
+                tvStatus.setText(R.string.status_chat_cleared);
             } else {
-                tvStatus.setText("服务未运行");
+                tvStatus.setText(R.string.status_service_off);
             }
         });
 
@@ -89,13 +92,49 @@ public class MainActivity extends Activity {
         }
         // 3) 悬浮窗权限
         if (!Settings.canDrawOverlays(this)) {
-            Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName()));
-            startActivityForResult(i, REQ_OVERLAY);
+            requestOverlayPermission();
             return;
         }
         // 4) 投屏授权
         requestProjection();
+    }
+
+    private void requestOverlayPermission() {
+        try {
+            startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())), REQ_OVERLAY);
+        } catch (Exception e) {
+            // 少数 ROM 没有这个设置页
+            showOverlayBlockedDialog();
+        }
+    }
+
+    /**
+     * ColorOS / 一加等系统会对侧载应用锁死「显示在其他应用上层」，
+     * 系统设置页里的开关点不动。这里给出可落地的绕行办法。
+     */
+    private void showOverlayBlockedDialog() {
+        String cmd = overlayAdbCommand();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.overlay_blocked_title)
+                .setMessage(getString(R.string.overlay_blocked_msg, getPackageName()))
+                .setPositiveButton(R.string.overlay_retry,
+                        (d, w) -> requestOverlayPermission())
+                .setNeutralButton(R.string.overlay_copy_cmd, (d, w) -> {
+                    copyToClipboard(cmd);
+                    tvStatus.setText(R.string.overlay_cmd_copied);
+                })
+                .setNegativeButton(R.string.overlay_close, null)
+                .show();
+    }
+
+    private String overlayAdbCommand() {
+        return "adb shell appops set " + getPackageName() + " SYSTEM_ALERT_WINDOW allow";
+    }
+
+    private void copyToClipboard(String text) {
+        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("ECoach", text));
     }
 
     private void requestProjection() {
@@ -111,7 +150,7 @@ public class MainActivity extends Activity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 checkAndStart(); // 从头再来，检查下一项
             } else {
-                tvStatus.setText("缺少必要权限，请在设置里手动授予");
+                tvStatus.setText(R.string.status_permission_missing);
             }
         }
     }
@@ -119,20 +158,23 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        android.util.Log.i("MainAct", "onActivityResult req=" + requestCode + " rc=" + resultCode + " data=" + (data != null ? "ok" : "null"));
         if (requestCode == REQ_OVERLAY) {
-            checkAndStart();
+            // 从系统设置页回来：还是没拿到权限，多半是被 ROM 锁了
+            if (Settings.canDrawOverlays(this)) {
+                checkAndStart();
+            } else {
+                showOverlayBlockedDialog();
+            }
         } else if (requestCode == REQ_PROJECTION) {
             if (resultCode == Activity.RESULT_OK && data != null) {
-                android.util.Log.i("MainAct", "Starting CaptureService");
                 Intent i = new Intent(this, CaptureService.class)
                         .setAction(CaptureService.ACTION_START)
                         .putExtra(CaptureService.EXTRA_RESULT_CODE, resultCode)
                         .putExtra(CaptureService.EXTRA_RESULT_DATA, data);
                 startForegroundService(i);
-                tvStatus.setText("已启动，悬浮窗应该出现了");
+                tvStatus.setText(R.string.status_started);
             } else {
-                tvStatus.setText("投屏授权被拒绝");
+                tvStatus.setText(R.string.status_projection_denied);
             }
         }
     }
@@ -144,9 +186,9 @@ public class MainActivity extends Activity {
         List<HistoryStore.Entry> entries = store.getAll();
         if (entries.isEmpty()) {
             new AlertDialog.Builder(this)
-                    .setTitle("转录历史")
-                    .setMessage("暂无记录")
-                    .setPositiveButton("确定", null)
+                    .setTitle(R.string.history_title)
+                    .setMessage(R.string.history_empty)
+                    .setPositiveButton(R.string.dialog_ok, null)
                     .show();
             return;
         }
@@ -160,13 +202,15 @@ public class MainActivity extends Activity {
             final int idx = i;
             HistoryStore.Entry e = entries.get(i);
 
-            // 转录文字（白色）
+            // 转录文字
             TextView tv = new TextView(this);
             String time = new java.text.SimpleDateFormat("MM-dd HH:mm",
                     java.util.Locale.getDefault()).format(new java.util.Date(e.timestamp));
             StringBuilder sb = new StringBuilder();
             sb.append("[ ").append(time).append(" ] ").append(e.transcript);
-            if (e.answer != null) sb.append("\n答: ").append(e.answer);
+            if (e.answer != null) {
+                sb.append("\n").append(getString(R.string.history_answer_prefix)).append(e.answer);
+            }
             tv.setText(sb.toString());
             tv.setTextSize(14);
             tv.setTextColor(0xFFFFFFFF);
@@ -183,29 +227,25 @@ public class MainActivity extends Activity {
             btnRowLp.bottomMargin = pad / 4;
 
             TextView btnCopy = new TextView(this);
-            btnCopy.setText("📋 复制");
+            btnCopy.setText(R.string.menu_copy);
             btnCopy.setTextSize(12);
             btnCopy.setTextColor(0xFF4CAF50);
             btnCopy.setPadding(0, 0, pad, 0);
             btnCopy.setOnClickListener(v -> {
-                android.content.ClipboardManager cm = (android.content.ClipboardManager)
-                        getSystemService(android.content.Context.CLIPBOARD_SERVICE);
-                if (cm != null) {
-                    cm.setPrimaryClip(android.content.ClipData.newPlainText("transcript",
-                            e.transcript + (e.answer != null ? "\n答: " + e.answer : "")));
-                    tvStatus.setText("已复制到剪贴板");
-                }
+                copyToClipboard(e.transcript
+                        + (e.answer != null ? "\n" + getString(R.string.history_answer_prefix) + e.answer : ""));
+                tvStatus.setText(R.string.status_copied);
             });
             btnRow.addView(btnCopy);
 
             TextView btnDelete = new TextView(this);
-            btnDelete.setText("🗑 删除");
+            btnDelete.setText(R.string.menu_delete);
             btnDelete.setTextSize(12);
             btnDelete.setTextColor(0xFFFF5252);
             btnDelete.setPadding(0, 0, pad, 0);
             btnDelete.setOnClickListener(v -> {
                 store.deleteAt(idx);
-                tvStatus.setText("已删除");
+                tvStatus.setText(R.string.status_deleted);
                 showTranscriptHistory(); // 刷新列表
             });
             btnRow.addView(btnDelete);
@@ -229,12 +269,12 @@ public class MainActivity extends Activity {
         scroll.addView(layout);
 
         new AlertDialog.Builder(this)
-                .setTitle("转录历史 (" + entries.size() + " 条)")
+                .setTitle(getString(R.string.history_title_count, entries.size()))
                 .setView(scroll)
-                .setPositiveButton("确定", null)
-                .setNeutralButton("清空全部", (d, w) -> {
+                .setPositiveButton(R.string.dialog_ok, null)
+                .setNeutralButton(R.string.history_clear_all, (d, w) -> {
                     store.clear();
-                    tvStatus.setText("历史已清空");
+                    tvStatus.setText(R.string.status_history_cleared);
                 })
                 .show();
     }

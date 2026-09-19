@@ -195,12 +195,20 @@ app/src/main/
     SettingsActivity.java      设置页（改完即时作用到悬浮窗）
   res/layout/{activity_main,activity_settings,window_panel,item_segment}.xml
   res/drawable/{bg_panel,bg_chip,bg_answer,ic_stat_mic}.xml   ic_stat_mic 同时用作通知小图标
-  res/values/{strings,colors}.xml
+  res/values/{strings,colors,styles}.xml   styles.xml 是设置页的行/标签/输入框/小标题/加减按钮样式
   res/mipmap-*/                图标（见第 7 节）
+  app/src/test/java/...        单元测试（JUnit，101 个）；其中 FloatingPanelLayoutTest /
+                               SegmentCardLayoutTest / SettingsLayoutTest 是「布局契约测试」：
+                               用 classpath 读 res 源文件做断言，不依赖真机/模拟机。
 ```
 
 主界面（`activity_main.xml`）**刻意只留「状态 + 5 个按钮」**：标题交给 ActionBar（`@string/app_name`），
 不放副标题、不放「怎么用 / 已知限制」大段说明——这些内容属于 AGENTS.md 与本节，不属于用户界面。
+
+设置页（`activity_settings.xml`）**必须一屏放得下**（标签在左、输入框在右，整页约 567dp）：
+旧版标签独占一行导致整页 746dp > 可用视口 ~645dp，必须滚动，滚到底时最上面那行被切成半截、
+看起来像乱码（用户报的「设置界面显示不完全」）。`SettingsLayoutTest.contentFitsOnOneScreen`
+把这条线卡在 640dp——加行/加间距前先跑它。
 
 行为约定：
 - 采集线程只负责读 `AudioRecord` 写入环形缓冲；**网络在单线程 Executor 里串行**（避免并发打同一接口）；UI 更新走主线程 `Handler`。
@@ -222,10 +230,17 @@ app/src/main/
 - **主界面精简**：只保留「状态 + 5 个按钮」，删掉副标题与「怎么用 / 已知限制」大段文字。
 - **改名 + 图标**：应用显示名改为 `ECoach`；图标由 `E:/rd/icon.png` 生成（含自适应图标）。
 - **签名发行版**：`keystore.properties` + `assembleRelease`，产物 `app-release.apk` 已用 `apksigner` 验证通过。
+- **v1.1（tag `v1.1`）**：修设置页显示不全（标签改到左侧、整页 746dp → 567dp，加 `SettingsLayoutTest` 卡高度预算；
+  根布局 `focusableInTouchMode` 防打开就弹键盘/自己滚走；API Key 加「显示/隐藏」开关，免得把掩码圆点当乱码；
+  去掉已废弃的 `singleLine`；Manifest 给设置页加 `adjustResize|stateHidden`）。
+  清理残留 emoji（`📋`/`🗑` 会渲染成豆腐块）并把 `FloatingPanel`/`CaptureService` 里硬编码的中文全部收敛到 `strings.xml`。
+  悬浮窗权限被 ROM 锁死时（ColorOS「受安全限制禁止开启」）在 `MainActivity` 弹引导：
+  重试 / 复制 `adb shell appops set <pkg> SYSTEM_ALERT_WINDOW allow` / 关闭。
+  ⚠️ ColorOS 这层限制是系统行为，应用侧无解（`TYPE_ACCESSIBILITY_OVERLAY` 也一样会被拦），只做了引导。
 
 后续可做（按优先级）：
 1. 无障碍服务自动点投屏授权弹窗（方案 B，见第 4 节）。
-2. 应用内检查更新 / 版本号管理（当前 `versionCode 1`，每次发版需手动递增）。
+2. 应用内检查更新 / 版本号管理（当前 `versionCode 2` / `versionName 1.1`，每次发版需手动递增）。
 3. 第 4 节列出的其余未做项（发音打分、翻译讲解、导出历史等）。
 
 ## 10. 必须一直遵守的用户可见限制（不要"优化掉"）
@@ -235,3 +250,7 @@ app/src/main/
 - 每句要等约 2~5 秒，且必须联网。
 - ASR 听错 → AI 答案跟着偏（这是保留"显示原文"开关的理由）。
 - 只对允许被录的 App 有效（西柚英语已确认允许；通话类内容永远录不到）。
+- **ColorOS / 一加等 ROM 可能直接禁止侧载应用开启「显示在其他应用上层」**（提示「受安全限制禁止开启」）。
+  这是系统策略，应用侧绕不过（换 `TYPE_ACCESSIBILITY_OVERLAY` 也一样被拦），只能靠用户侧绕行：
+  `adb shell appops set com.rd.englishcoach SYSTEM_ALERT_WINDOW allow`，
+  或开发者选项 →「停用权限监控」（ColorOS 16 隐藏该项，可先切英文系统语言再开）。

@@ -2,6 +2,7 @@ package com.rd.englishcoach;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.text.method.PasswordTransformationMethod;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -13,7 +14,7 @@ import android.widget.TextView;
 public class SettingsActivity extends Activity {
 
     private EditText etBaseUrl, etApiKey, etAsrModel, etChatModel, etSysPrompt;
-    private TextView tvFontPreview, tvWidthPreview;
+    private TextView tvFontPreview, tvWidthPreview, btnToggleKey;
     private Prefs prefs;
 
     @Override
@@ -29,17 +30,13 @@ public class SettingsActivity extends Activity {
         etChatModel = findViewById(R.id.etChatModel);
         etSysPrompt = findViewById(R.id.etSysPrompt);
 
-        etBaseUrl.setText(prefs.baseUrl());
-        etApiKey.setText(prefs.apiKey());
-        etAsrModel.setText(prefs.asrModel());
-        etChatModel.setText(prefs.chatModel());
-        etSysPrompt.setText(prefs.sysPrompt());
-
         tvFontPreview  = findViewById(R.id.tvFontValue);
         tvWidthPreview = findViewById(R.id.tvWidthValue);
+        btnToggleKey   = findViewById(R.id.btnToggleKey);
 
-        tvFontPreview.setText(prefs.fontSp() + "sp");
-        tvWidthPreview.setText(prefs.widthDp() + "dp");
+        loadAll();
+
+        btnToggleKey.setOnClickListener(v -> toggleKeyVisible());
 
         findViewById(R.id.btnFontMinus).setOnClickListener(v -> {
             prefs.putFontSp(prefs.fontSp() - 1);
@@ -68,14 +65,26 @@ public class SettingsActivity extends Activity {
         Button btnReset = findViewById(R.id.btnReset);
         btnReset.setOnClickListener(v -> {
             prefs.resetAll();
-            etBaseUrl.setText(prefs.baseUrl());
-            etApiKey.setText(prefs.apiKey());
-            etAsrModel.setText(prefs.asrModel());
-            etChatModel.setText(prefs.chatModel());
-            etSysPrompt.setText(prefs.sysPrompt());
-            tvFontPreview.setText(prefs.fontSp() + "sp");
-            tvWidthPreview.setText(prefs.widthDp() + "dp");
+            loadAll();
         });
+    }
+
+    private void loadAll() {
+        etBaseUrl.setText(prefs.baseUrl());
+        etApiKey.setText(prefs.apiKey());
+        etAsrModel.setText(prefs.asrModel());
+        etChatModel.setText(prefs.chatModel());
+        etSysPrompt.setText(prefs.sysPrompt());
+        tvFontPreview.setText(prefs.fontSp() + "sp");
+        tvWidthPreview.setText(prefs.widthDp() + "dp");
+    }
+
+    /** API Key 默认打码成一排圆点；点「显示」可以明文核对，免得把圆点当成乱码。 */
+    private void toggleKeyVisible() {
+        boolean masked = etApiKey.getTransformationMethod() instanceof PasswordTransformationMethod;
+        etApiKey.setTransformationMethod(masked ? null : new PasswordTransformationMethod());
+        btnToggleKey.setText(masked ? R.string.set_hide_key : R.string.set_show_key);
+        etApiKey.setSelection(etApiKey.getText().length());
     }
 
     private void save() {

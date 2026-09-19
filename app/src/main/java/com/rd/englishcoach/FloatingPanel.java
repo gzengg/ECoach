@@ -268,8 +268,8 @@ public final class FloatingPanel {
 
     private void showTurnContextMenu(long turnId, String text, TextView anchor) {
         android.widget.PopupMenu popup = new android.widget.PopupMenu(ctx, anchor);
-        popup.getMenu().add(0, 1, 0, "📋 复制");
-        popup.getMenu().add(0, 2, 1, "🗑 删除");
+        popup.getMenu().add(0, 1, 0, ctx.getString(R.string.menu_copy));
+        popup.getMenu().add(0, 2, 1, ctx.getString(R.string.menu_delete));
         popup.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == 1) {
                 android.content.ClipboardManager cm =
@@ -277,7 +277,7 @@ public final class FloatingPanel {
                 if (cm != null) {
                     android.content.ClipData clip = android.content.ClipData.newPlainText("transcript", text);
                     cm.setPrimaryClip(clip);
-                    showMessage("已复制到剪贴板");
+                    showMessage(ctx.getString(R.string.msg_copied));
                 }
                 return true;
             } else if (item.getItemId() == 2) {
@@ -310,7 +310,7 @@ public final class FloatingPanel {
                 tvAnswerText.setVisibility(View.GONE);
                 btnAnswer.setVisibility(View.GONE);
                 btnAsk.setVisibility(View.GONE);
-                tvAnswerStatus.setText("AI 思考中…");
+                tvAnswerStatus.setText(R.string.msg_ai_thinking);
                 tvAnswerStatus.setVisibility(View.VISIBLE);
                 break;
             case READY:
@@ -326,7 +326,7 @@ public final class FloatingPanel {
                 tvAnswerText.setVisibility(View.GONE);
                 btnAnswer.setVisibility(View.VISIBLE);
                 btnAsk.setVisibility(View.VISIBLE);
-                tvAnswerStatus.setText("出错: " + turn.error + "（点击重试）");
+                tvAnswerStatus.setText(ctx.getString(R.string.msg_error_retry, turn.error));
                 tvAnswerStatus.setVisibility(View.VISIBLE);
                 break;
         }
