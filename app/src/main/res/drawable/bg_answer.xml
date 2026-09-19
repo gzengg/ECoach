@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  回答卡片底板。
+  注意：必须是不透明深色，且与文字颜色有足够对比度（见 AnswerCardContrastTest）。
+  历史 bug：这里曾是 #F2FFFFFF（近白），而文字是 #FFFFFF（白），对比度 1:1 -> 回答看不见。
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#F2FFFFFF" />
+    <solid android:color="#FF232833" />
     <corners android:radius="8dp" />
 </shape>

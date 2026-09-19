@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  单条回答卡片。
+  颜色契约（由 AnswerCardContrastTest 守住）：
+  - tvAnswerText     白色正文，与 bg_answer 对比度需 >= 4.5:1
+  - tvTranscriptText 浅灰蓝次要文字，同样需 >= 4.5:1
+  历史 bug：白底 + 白字，回答完全看不见。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -10,7 +17,7 @@
         android:id="@+id/tvAnswerText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
+        android:textColor="#FFFFFFFF"
         android:textSize="15sp" />
 
     <TextView
@@ -18,7 +25,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:textColor="#80FFFFFF"
+        android:textColor="#FFA8B0C0"
         android:textSize="11sp"
         android:visibility="gone" />
 
