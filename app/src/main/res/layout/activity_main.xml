@@ -55,13 +55,29 @@
             android:layout_marginTop="8dp"
             android:text="设置（API 地址 / Key / 模型 / 字号）" />
 
+        <Button
+            android:id="@+id/btnNewChat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="🔄 清空 AI 上下文 · 开启新对话" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:alpha="0.75"
             android:lineSpacingExtra="4dp"
-            android:text="怎么用：\n1. 点上面「开始监听」，系统弹窗里点「开始录制」——之后这次会话一直有效，悬浮窗里随时开关，不会再弹窗。\n2. 打开西柚英语放听力，悬浮窗会一直听着（看音量条动没动就知道有没有录到）。\n3. 听到一句想问的，点悬浮窗里的「这句完了」，等 2~5 秒就会出英文参考回答。\n\n已知限制：\n· 锁屏/息屏时系统会自动掐断投屏，要重新授权一次。\n· 状态栏会常驻一个「正在投屏」提示条，点它会停止。\n· 只对允许被录的 App 有效（西柚英语已确认允许）。"
+            android:text="怎么用：
+1. 点「开始监听」→ 授权 → 悬浮窗出现
+2. 打开西柚英语放听力，悬浮窗会一直录（看音量条）
+3. 暂停 → 自动上传整段录音并识别原文
+4. 点「💬 参考回答」让 AI 回答，或「❓ 询问AI」自由提问
+5. AI 会记住之前所有录音内容作为上下文
+6. 换新题时点「🔄 清空 AI 上下文 · 开启新对话」\n\n已知限制：
+· 锁屏会停止投屏，需重新授权
+· 状态栏常驻「正在投屏」提示条，点它会停止
+· 只对允许被录的 App 有效（西柚英语已确认允许）"
             android:textSize="13sp" />
 
     </LinearLayout>

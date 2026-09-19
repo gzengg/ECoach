@@ -1,5 +1,6 @@
 package com.rd.englishcoach;
 
+import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -17,17 +18,18 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Looper;
 import android.util.Log;
+import android.view.WindowManager;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 前台服务：MediaProjection 投屏会话 + AudioRecord 采集 + 环形缓冲 + ASR→AI 链路。
+ * 前台服务：MediaProjection + AudioRecord + 可增长缓冲区 + 对话历史 + ASR→AI。
  *
- * <p>生命周期：MainActivity 发 ACTION_START（携带投屏授权数据）→ 服务常驻前台，
- * 悬浮窗控制开始/暂停/切段 → 用户点停止或投屏被系统掐断时结束。</p>
+ * <p>暂停 = 上传整段录音 → ASR → 显示原文。用户可选「看参考回答」或「询问AI」。</p>
  */
 public class CaptureService extends Service {
 
@@ -40,19 +42,19 @@ public class CaptureService extends Service {
     public static final String EXTRA_RESULT_CODE = "rc";
     public static final String EXTRA_RESULT_DATA  = "rd";
 
-    /** 静态引用，供 FloatingPanel 回调。Activity/Service 同进程，不会序列化。 */
     public static CaptureService current;
 
     private MediaProjection projection;
     private AudioRecord audioRecord;
-    private PcmRing ring;
+    private PcmBuffer buffer;
+    private ConversationManager conversation;
     FloatingPanel panel;
     private HandlerThread bgThread;
     private Handler bgHandler;
     private ExecutorService networkExec;
     private final ListenToggle listen = new ListenToggle();
-    private SegmentStore segments;
     private volatile boolean stopped = false;
+    private int sampleRate = 16000;
 
     // ── 生命周期 ────────────────────────────
 
@@ -69,7 +71,6 @@ public class CaptureService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // ── 关键：必须先调 startForeground()，否则 Android 12+ 会崩 ──
         startForeground(NOTIF_ID, buildNotification(),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
 
@@ -79,19 +80,17 @@ public class CaptureService extends Service {
         }
 
         if (ACTION_START.equals(intent.getAction())) {
-            // 注意：Activity.RESULT_OK == -1，所以不能用 -1 当"缺失"哨兵值。
             boolean hasRc = intent.hasExtra(EXTRA_RESULT_CODE);
             int rc = intent.getIntExtra(EXTRA_RESULT_CODE, ServiceStartArgs.NO_RESULT_CODE);
             Intent data = readProjectionData(intent);
             Log.i(TAG, "ACTION_START hasRc=" + hasRc + " rc=" + rc + " data=" + (data != null));
             if (!ServiceStartArgs.canStart(hasRc, rc, data)) {
-                Log.e(TAG, "Missing result code or data: hasRc=" + hasRc + " rc=" + rc + " data=" + (data != null));
+                Log.e(TAG, "Missing result code or data");
                 stopSelf();
                 return START_NOT_STICKY;
             }
             startCapture(rc, data);
         }
-
         return START_NOT_STICKY;
     }
 
@@ -110,7 +109,6 @@ public class CaptureService extends Service {
     @Override
     public IBinder onBind(Intent intent) { return null; }
 
-    /** 读取投屏授权数据（Android 13+ 用类型化 API，避免隐式类查找失败）。 */
     private static Intent readProjectionData(Intent intent) {
         if (Build.VERSION.SDK_INT >= 33) {
             return intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent.class);
@@ -123,36 +121,24 @@ public class CaptureService extends Service {
     // ── 启动采集 ────────────────────────────
 
     private void startCapture(int resultCode, Intent data) {
-        Prefs prefs = new Prefs(this);
-        ring = new PcmRing(prefs.maxSeconds() * 16000 * 2);
-        segments = new SegmentStore(20);
+        buffer = new PcmBuffer();
+        conversation = new ConversationManager(50);
 
-        // 2) 获取 MediaProjection
         MediaProjectionManager mpm = getSystemService(MediaProjectionManager.class);
         projection = mpm.getMediaProjection(resultCode, data);
-        if (projection == null) {
-            notifyReconsentNeeded("投屏授权失败");
-            return;
-        }
+        if (projection == null) { notifyReconsentNeeded("投屏授权失败"); return; }
         projection.registerCallback(new ProjectionCallback(), bgHandler);
 
-        // 3) 创建 AudioRecord
         audioRecord = createAudioRecord(projection);
-        if (audioRecord == null) {
-            notifyReconsentNeeded("无法创建录音（可能该 App 禁止被录）");
-            return;
-        }
+        if (audioRecord == null) { notifyReconsentNeeded("无法创建录音"); return; }
 
-        // 4) 创建悬浮窗（面板文字必须与真实采集状态一致，否则用户第一次点击会把采集关掉）
         listen.onCaptureStarted();
         panel = new FloatingPanel(this, new PanelCallback());
         panel.show();
         panel.setListening(listen.isListening());
 
-        // 5) 开始读取
         bgHandler.post(this::readLoop);
-
-        Log.i(TAG, "Capture started, panel=" + listen.buttonLabel());
+        Log.i(TAG, "Capture started");
     }
 
     private void releaseCapture() {
@@ -168,7 +154,7 @@ public class CaptureService extends Service {
         }
     }
 
-    // ── AudioRecord 创建 ──────────────────
+    // ── AudioRecord ────────────────────────
 
     private AudioRecord createAudioRecord(MediaProjection proj) {
         int[] rates = {16000, 44100, 48000};
@@ -180,30 +166,26 @@ public class CaptureService extends Service {
                                 .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
                                 .addMatchingUsage(AudioAttributes.USAGE_GAME)
                                 .build();
-
                 AudioFormat format = new AudioFormat.Builder()
                         .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                         .setSampleRate(rate)
                         .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
                         .build();
-
                 int minBuf = AudioRecord.getMinBufferSize(rate,
                         AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
-                int bufSize = Math.max(minBuf, rate * 2); // 至少 1 秒缓冲
-
                 AudioRecord rec = new AudioRecord.Builder()
                         .setAudioPlaybackCaptureConfig(capCfg)
                         .setAudioFormat(format)
-                        .setBufferSizeInBytes(bufSize)
+                        .setBufferSizeInBytes(Math.max(minBuf, rate * 2))
                         .build();
-
                 if (rec.getState() == AudioRecord.STATE_INITIALIZED) {
-                    Log.i(TAG, "AudioRecord created: " + rate + "Hz, buf=" + bufSize);
+                    sampleRate = rate;
+                    Log.i(TAG, "AudioRecord: " + rate + "Hz");
                     return rec;
                 }
                 rec.release();
             } catch (Exception e) {
-                Log.w(TAG, "AudioRecord init failed at " + rate + "Hz: " + e.getMessage());
+                Log.w(TAG, "AudioRecord failed at " + rate + "Hz: " + e.getMessage());
             }
         }
         return null;
@@ -213,120 +195,153 @@ public class CaptureService extends Service {
 
     private void readLoop() {
         if (audioRecord == null) return;
-        try {
-            audioRecord.startRecording();
-        } catch (Exception e) {
+        try { audioRecord.startRecording(); }
+        catch (Exception e) {
             Log.e(TAG, "startRecording failed: " + e);
             notifyReconsentNeeded("录音启动失败: " + e.getMessage());
             return;
         }
-
         short[] buf = new short[4096];
         while (!stopped && audioRecord != null) {
             int n = audioRecord.read(buf, 0, buf.length);
             if (n <= 0) break;
-
-            if (listen.isListening()) {
-                // short[] → byte[] (LE)
+            if (listen.isListening() && buffer != null) {
                 byte[] bytes = new byte[n * 2];
                 for (int i = 0; i < n; i++) {
                     bytes[i * 2]     = (byte) (buf[i] & 0xFF);
                     bytes[i * 2 + 1] = (byte) ((buf[i] >> 8) & 0xFF);
                 }
-                ring.write(bytes, 0, bytes.length);
-
-                // 更新音量条（RMS → 0-100）
+                buffer.write(bytes, 0, bytes.length);
                 if (panel != null) {
                     long sum = 0;
                     for (int i = 0; i < n; i++) sum += (long) buf[i] * buf[i];
-                    int rms = (int) Math.sqrt(sum / n);
-                    int level = Math.min(100, rms / 100);
-                    panel.setLevel(level);
+                    panel.setLevel(Math.min(100, (int) Math.sqrt(sum / n) / 100));
                 }
             }
         }
     }
 
-    // ── 切段 → ASR → AI ─────────────────────
+    // ── 暂停 → 上传整段 → ASR → 显示原文 ────
 
-    private void doSegment() {
-        ListenToggle.SegmentCheck check = listen.checkSegment(ring == null ? 0 : ring.size());
-        if (check != ListenToggle.SegmentCheck.OK) {
-            if (panel != null) {
-                panel.showMessage(check == ListenToggle.SegmentCheck.PAUSED
-                        ? "现在是暂停状态，先点「开始听」"
-                        : "还没听到声音，先放一段听力");
-            }
+    private void doPause() {
+        // 暂停采集
+        listen.toggle();
+        if (panel != null) panel.setListening(listen.isListening());
+
+        if (buffer == null || buffer.size() == 0) {
+            if (panel != null) panel.showMessage("还没录到声音");
             return;
         }
 
-        byte[] pcm = ring.snapshotAndClear();
+        byte[] pcm = buffer.snapshotAndClear();
         if (panel != null) panel.setStatus("识别中…");
 
         networkExec.execute(() -> {
             try {
-                // 静音裁剪
                 byte[] trimmed = trimSilence(pcm);
-                if (trimmed.length < 3200) { // < 0.5s @ 16kHz mono 16-bit
-                    postMessage("声音太短（<0.5秒），请多录一点");
+                if (trimmed.length < 3200) { // < 0.5s
+                    postMessage("录音太短，请多录一点再暂停");
                     return;
                 }
-
-                // PCM → WAV
                 Prefs prefs = new Prefs(CaptureService.this);
-                byte[] wav = WavUtil.toWav(trimmed, 16000);
-
-                // ASR 出原文（立刻显示，不用等 AI）
+                byte[] wav = WavUtil.toWav(trimmed, sampleRate);
                 String transcript = ApiClient.transcribe(wav,
                         prefs.baseUrl(), prefs.apiKey(), prefs.asrModel());
                 Log.i(TAG, "ASR: " + transcript);
 
-                // 原文入列表，显示在悬浮窗（参考答案不默认生成，见功能2）
-                SegmentStore.Segment seg = segments.addTranscript(transcript);
+                // 转录入对话历史 + 显示卡片
+                ConversationManager.Turn turn = conversation.addTranscript(transcript);
                 if (panel != null) {
-                    panel.addSegment(seg);
+                    panel.addTurn(turn);
                     panel.setStatus(listen.statusLabel());
                 }
-
             } catch (Exception e) {
-                Log.e(TAG, "Segment failed", e);
-                postMessage("出错: " + e.getMessage());
+                Log.e(TAG, "Pause/ASR failed", e);
+                postMessage("识别出错: " + e.getMessage());
             }
         });
     }
 
-    private void postMessage(String msg) {
-        if (panel != null) panel.showMessage(msg);
+    // ── 「看参考回答」：调 AI ─────────────────
+
+    private void doAnswer(long turnId) {
+        if (conversation == null) return;
+        ConversationManager.Turn turn = conversation.findById(turnId);
+        if (turn == null) return;
+        if (!conversation.beginAnswerRequest(turnId)) return;
+        if (panel != null) panel.updateTurn(turn);
+
+        networkExec.execute(() -> {
+            try {
+                Prefs p = new Prefs(CaptureService.this);
+                String[][] msgs = conversation.buildMessages(p.sysPrompt());
+                String answer = ApiClient.answerWithHistory(msgs,
+                        p.baseUrl(), p.apiKey(), p.chatModel());
+                Log.i(TAG, "Answer #" + turnId + ": " + answer);
+                conversation.completeAnswer(turnId, answer);
+                if (panel != null) panel.updateTurn(conversation.findById(turnId));
+            } catch (Exception e) {
+                Log.e(TAG, "Answer failed #" + turnId, e);
+                conversation.failAnswer(turnId, e.getMessage());
+                if (panel != null) panel.updateTurn(conversation.findById(turnId));
+            }
+        });
     }
 
-    // ── 静音裁剪 ────────────────────────────
+    // ── 「询问AI」：用户自定义提问 ─────────────
+
+    private void doAskQuestion(long turnId, String question) {
+        if (conversation == null || question == null || question.trim().isEmpty()) return;
+        ConversationManager.Turn qt = conversation.addQuestion(question.trim());
+        if (panel != null) panel.addTurn(qt);
+
+        if (!conversation.beginAnswerRequest(qt.id)) return;
+        if (panel != null) panel.updateTurn(qt);
+
+        networkExec.execute(() -> {
+            try {
+                Prefs p = new Prefs(CaptureService.this);
+                String[][] msgs = conversation.buildMessages(p.sysPrompt());
+                String answer = ApiClient.answerWithHistory(msgs,
+                        p.baseUrl(), p.apiKey(), p.chatModel());
+                conversation.completeAnswer(qt.id, answer);
+                if (panel != null) panel.updateTurn(conversation.findById(qt.id));
+            } catch (Exception e) {
+                Log.e(TAG, "AskQuestion failed", e);
+                conversation.failAnswer(qt.id, e.getMessage());
+                if (panel != null) panel.updateTurn(conversation.findById(qt.id));
+            }
+        });
+    }
+
+    // ── 清空对话上下文 ──────────────────────
+
+    public void clearHistory() {
+        if (conversation != null) conversation.clear();
+        if (panel != null) panel.clearTurns();
+        Log.i(TAG, "History cleared");
+    }
+
+    // ── 工具 ──────────────────────────────
+
+    private void postMessage(String msg) { if (panel != null) panel.showMessage(msg); }
 
     private byte[] trimSilence(byte[] pcm) {
         int threshold = 300;
         int sampleCount = pcm.length / 2;
         short[] samples = new short[sampleCount];
-        for (int i = 0; i < sampleCount; i++) {
+        for (int i = 0; i < sampleCount; i++)
             samples[i] = (short) ((pcm[i * 2] & 0xFF) | (pcm[i * 2 + 1] << 8));
-        }
-
-        // 找第一个超过阈值的位置
         int start = 0;
-        for (int i = 0; i < sampleCount; i++) {
+        for (int i = 0; i < sampleCount; i++)
             if (Math.abs(samples[i]) > threshold) { start = i; break; }
-        }
-        // 找最后一个超过阈值的位置
         int end = sampleCount - 1;
-        for (int i = sampleCount - 1; i >= 0; i--) {
+        for (int i = sampleCount - 1; i >= 0; i--)
             if (Math.abs(samples[i]) > threshold) { end = i; break; }
-        }
-
-        // 加 0.3s 余量（@16kHz = 4800 samples）
-        int pad = 4800;
+        int pad = sampleRate / 3; // 0.3s
         start = Math.max(0, start - pad);
         end = Math.min(sampleCount - 1, end + pad);
-
         if (end <= start) return new byte[0];
-
         int bytes = (end - start + 1) * 2;
         byte[] out = new byte[bytes];
         System.arraycopy(pcm, start * 2, out, 0, bytes);
@@ -346,15 +361,13 @@ public class CaptureService extends Service {
         Intent stopIntent = new Intent(this, CaptureService.class).setAction(ACTION_STOP);
         PendingIntent stopPi = PendingIntent.getService(this, 0, stopIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        Notification.Builder b = new Notification.Builder(this, CH_ID)
+        return new Notification.Builder(this, CH_ID)
                 .setSmallIcon(android.R.drawable.ic_btn_speak_now)
                 .setContentTitle("英语陪练")
                 .setContentText("正在监听系统声音")
                 .setOngoing(true)
-                .addAction(new Notification.Action.Builder(
-                        null, "停止", stopPi).build());
-        return b.build();
+                .addAction(new Notification.Action.Builder(null, "停止", stopPi).build())
+                .build();
     }
 
     // ── 投屏被系统停止 ──────────────────────
@@ -370,7 +383,7 @@ public class CaptureService extends Service {
     private class ProjectionCallback extends MediaProjection.Callback {
         @Override
         public void onStop() {
-            Log.i(TAG, "Projection stopped by system");
+            Log.i(TAG, "Projection stopped");
             releaseCapture();
             if (panel != null) panel.setListening(listen.isListening());
             notifyReconsentNeeded("投屏被系统停止");
@@ -381,21 +394,41 @@ public class CaptureService extends Service {
 
     private class PanelCallback implements FloatingPanel.Callback {
         @Override
-        public void onToggleListen() {
-            boolean now = listen.toggle();
-            if (panel != null) panel.setListening(now);
-            if (now && ring != null) ring.clear(); // 恢复时清空缓冲
-            Log.i(TAG, "toggle -> " + listen.buttonLabel());
+        public void onTogglePause() {
+            doPause();
         }
 
         @Override
-        public void onSegment() {
-            doSegment();
+        public void onAskAnswer(long turnId) {
+            doAnswer(turnId);
+        }
+
+        @Override
+        public void onAskQuestion(long turnId) {
+            // 弹出输入框
+            EditText input = new EditText(CaptureService.this);
+            input.setHint("输入你的问题…");
+            int pad = (int) (16 * getResources().getDisplayMetrics().density);
+            FrameLayout container = new FrameLayout(CaptureService.this);
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+            lp.setMargins(pad, pad / 2, pad, 0);
+            container.addView(input, lp);
+
+            new AlertDialog.Builder(CaptureService.this,
+                    android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("询问 AI")
+                    .setView(container)
+                    .setPositiveButton("发送", (d, w) -> {
+                        String q = input.getText().toString().trim();
+                        if (!q.isEmpty()) doAskQuestion(turnId, q);
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
         }
 
         @Override
         public void onReconsent() {
-            // 拉起 MainActivity 走重新授权
             Intent intent = new Intent(CaptureService.this, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     .putExtra("reconsent", true);
@@ -404,33 +437,8 @@ public class CaptureService extends Service {
 
         @Override
         public void onClose() {
-            if (segments != null) segments.clear();
+            clearHistory();
             stopSelf();
-        }
-
-        @Override
-        public void onAskAnswer(long segmentId) {
-            if (segments == null) return;
-            SegmentStore.Segment seg = segments.findById(segmentId);
-            if (seg == null) return;
-
-            if (!segments.beginAnswerRequest(segmentId)) return; // 正在加载或已有答案
-            if (panel != null) panel.updateSegment(seg);
-
-            networkExec.execute(() -> {
-                try {
-                    Prefs p = new Prefs(CaptureService.this);
-                    String answer = ApiClient.answer(seg.transcript,
-                            p.baseUrl(), p.apiKey(), p.chatModel(), p.sysPrompt());
-                    Log.i(TAG, "Answer for #" + segmentId + ": " + answer);
-                    segments.completeAnswer(segmentId, answer);
-                    if (panel != null) panel.updateSegment(segments.findById(segmentId));
-                } catch (Exception e) {
-                    Log.e(TAG, "Answer failed for #" + segmentId, e);
-                    segments.failAnswer(segmentId, e.getMessage());
-                    if (panel != null) panel.updateSegment(segments.findById(segmentId));
-                }
-            });
         }
     }
 }

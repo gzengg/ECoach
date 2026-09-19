@@ -49,6 +49,16 @@ public final class ApiClient {
 
     // ── Chat：原文 → 英文参考回答 ────────────
 
+    /** 将完整对话历史发给 AI，返回回答。 */
+    public static String answerWithHistory(String[][] messages, String baseUrl,
+                                           String apiKey, String model)
+            throws IOException, ApiException {
+        String body = buildHistoryBody(messages, model);
+        String url = baseUrl + "/chat/completions";
+        String resp = post(url, apiKey, body, 60_000);
+        return extractContent(resp);
+    }
+
     /**
      * 将 ASR 原文发给 deepseek-flash，返回英文参考回答。
      */
@@ -104,6 +114,25 @@ public final class ApiClient {
             JSONObject body = new JSONObject();
             body.put("model", model);
             body.put("messages", messages);
+            body.put("temperature", 0.7);
+            return body.toString();
+        } catch (JSONException e) {
+            throw new IOException("JSON build error: " + e.getMessage(), e);
+        }
+    }
+
+    private static String buildHistoryBody(String[][] messages, String model) throws IOException {
+        try {
+            JSONArray msgs = new JSONArray();
+            for (String[] m : messages) {
+                JSONObject o = new JSONObject();
+                o.put("role", m[0]);
+                o.put("content", m[1]);
+                msgs.put(o);
+            }
+            JSONObject body = new JSONObject();
+            body.put("model", model);
+            body.put("messages", msgs);
             body.put("temperature", 0.7);
             return body.toString();
         } catch (JSONException e) {

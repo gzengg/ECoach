@@ -20,7 +20,7 @@ public class MainActivity extends Activity {
     private static final int REQ_PROJECTION = 103;
 
     private TextView tvStatus;
-    private Button btnStart, btnStop, btnSettings;
+    private Button btnStart, btnStop, btnSettings, btnNewChat;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +31,7 @@ public class MainActivity extends Activity {
         btnStart   = findViewById(R.id.btnStart);
         btnStop    = findViewById(R.id.btnStop);
         btnSettings= findViewById(R.id.btnSettings);
+        btnNewChat = findViewById(R.id.btnNewChat);
 
         btnStart.setOnClickListener(v -> checkAndStart());
         btnStop.setOnClickListener(v -> {
@@ -41,6 +42,14 @@ public class MainActivity extends Activity {
         });
         btnSettings.setOnClickListener(v ->
                 startActivity(new Intent(this, SettingsActivity.class)));
+        btnNewChat.setOnClickListener(v -> {
+            if (CaptureService.current != null) {
+                CaptureService.current.clearHistory();
+                tvStatus.setText("已清空上下文，开始新对话");
+            } else {
+                tvStatus.setText("服务未运行");
+            }
+        });
 
         // 处理重新授权请求
         if (getIntent().getBooleanExtra("reconsent", false)) {

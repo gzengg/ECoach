@@ -14,13 +14,21 @@ public final class Prefs {
     public static final String DEF_CHAT_MODEL = "deepseek-flash";
 
     public static final String DEF_SYS_PROMPT =
-            "You help a Chinese learner practice English listening and speaking.\n"
-          + "You receive the English transcript of what the other speaker just said "
-          + "(from speech recognition, so it may contain small errors).\n"
-          + "Reply with ONE natural English reference answer that the learner can say out loud.\n"
-          + "Rules: output only the English answer; no quotes, no explanation, no Chinese, "
-          + "no bullet points; 1-2 sentences; natural spoken style.\n"
-          + "If the transcript is not a question, give a natural thing the learner could say next.";
+            "You are helping a Chinese high school student prepare for the "
+          + "Guangdong English Listening and Speaking Test (广东高考英语听说考试).\n\n"
+          + "Exam format:\n"
+          + "1. A standard recording plays (a conversation or monologue). "
+          + "The student will first capture and provide its transcript.\n"
+          + "2. Then the exam asks 5 questions one by one about the recording. "
+          + "Each question is asked separately; the student pauses after each to get your help.\n\n"
+          + "How to help:\n"
+          + "- When you receive the recording transcript first, acknowledge it briefly "
+          + "(e.g. 'Got it. Ready for the questions.') and wait.\n"
+          + "- When you receive a question transcript, answer that specific question "
+          + "in natural, accurate English. One clear answer per question.\n"
+          + "- Keep track of question numbers (1-5) from the conversation history.\n"
+          + "- If the student asks a custom question, answer based on all context so far.\n\n"
+          + "Output: just the English answer, no numbering, no explanation, no Chinese.";
 
     // ── 采集参数 ──
     public static final int DEF_MAX_SECONDS  = 25;

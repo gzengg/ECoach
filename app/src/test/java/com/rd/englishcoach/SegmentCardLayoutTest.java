@@ -68,6 +68,12 @@ public class SegmentCardLayoutTest {
     }
 
     @Test
+    public void has_bothAnswerAndQuestionButtons() throws Exception {
+        assertNotNull("应有「参考回答」按钮", elementById("btnAskAnswer"));
+        assertNotNull("应有「询问AI」按钮", elementById("btnAskQuestion"));
+    }
+
+    @Test
     public void cardBackground_isOpaque() throws Exception {
         int bg = parseColor(bgColor());
         assertEquals("卡片底板必须不透明", 0xFF, (bg >>> 24) & 0xFF);

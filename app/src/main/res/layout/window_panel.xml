@@ -7,7 +7,7 @@
     android:orientation="vertical"
     android:padding="10dp">
 
-    <!-- ====== 拖动栏 ====== -->
+    <!-- 拖动栏 -->
     <LinearLayout
         android:id="@+id/dragBar"
         android:layout_width="match_parent"
@@ -15,137 +15,54 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingBottom="6dp">
-
-        <TextView
-            android:id="@+id/tvDot"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="●"
-            android:textColor="#4CAF50"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:layout_weight="1"
-            android:text="已暂停"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/btnFontMinus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_chip"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
-            android:text="A−"
-            android:textColor="#CCFFFFFF"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/btnFontPlus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:background="@drawable/bg_chip"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
-            android:text="A+"
-            android:textColor="#CCFFFFFF"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/btnClose"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:paddingHorizontal="6dp"
-            android:text="✕"
-            android:textColor="#CCFFFFFF"
-            android:textSize="16sp" />
+        <TextView android:id="@+id/tvDot" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="●" android:textColor="#4CAF50" android:textSize="14sp" />
+        <TextView android:id="@+id/tvStatus" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:layout_marginStart="6dp" android:text="已暂停" android:textColor="#FFFFFF" android:textSize="13sp" />
+        <TextView android:id="@+id/btnFontMinus" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:background="@drawable/bg_chip"
+            android:paddingHorizontal="8dp" android:paddingVertical="2dp" android:text="A−" android:textColor="#CCFFFFFF" android:textSize="12sp" />
+        <TextView android:id="@+id/btnFontPlus" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_marginStart="4dp" android:background="@drawable/bg_chip"
+            android:paddingHorizontal="8dp" android:paddingVertical="2dp" android:text="A+" android:textColor="#CCFFFFFF" android:textSize="12sp" />
+        <TextView android:id="@+id/btnClose" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_marginStart="6dp"
+            android:paddingHorizontal="6dp" android:text="✕" android:textColor="#CCFFFFFF" android:textSize="16sp" />
     </LinearLayout>
 
-    <!-- ====== 音量条 ====== -->
-    <ProgressBar
-        android:id="@+id/levelBar"
+    <!-- 音量条 -->
+    <ProgressBar android:id="@+id/levelBar"
         style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:layout_marginBottom="6dp"
-        android:max="100"
-        android:progress="0"
-        android:progressBackgroundTint="#33FFFFFF"
-        android:progressTint="#4CAF50" />
+        android:layout_width="match_parent" android:layout_height="4dp"
+        android:layout_marginBottom="6dp" android:max="100" android:progress="0"
+        android:progressBackgroundTint="#33FFFFFF" android:progressTint="#4CAF50" />
 
-    <!-- ====== 控制按钮（全用 TextView，避免主题不一致） ====== -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="6dp">
+    <!-- 暂停/继续 按钮（整段上传，不再切句） -->
+    <TextView android:id="@+id/btnPause"
+        android:layout_width="match_parent" android:layout_height="40dp"
+        android:layout_marginBottom="6dp" android:background="@drawable/bg_chip"
+        android:gravity="center" android:text="▶ 继续" android:textColor="#FFFFFF" android:textSize="15sp" />
 
-        <TextView
-            android:id="@+id/btnToggle"
-            android:layout_width="0dp"
-            android:layout_height="38dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_chip"
-            android:gravity="center"
-            android:text="开始听"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/btnSegment"
-            android:layout_width="0dp"
-            android:layout_height="38dp"
-            android:layout_marginStart="6dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_chip"
-            android:gravity="center"
-            android:text="这句完了"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-    </LinearLayout>
-
-    <!-- ====== 重新授权（默认隐藏） ====== -->
-    <TextView
-        android:id="@+id/btnReconsent"
-        android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:layout_marginBottom="6dp"
-        android:background="@drawable/bg_chip"
-        android:gravity="center"
-        android:text="重新授权"
-        android:textColor="#FF9800"
-        android:textSize="14sp"
+    <!-- 重新授权（默认隐藏） -->
+    <TextView android:id="@+id/btnReconsent"
+        android:layout_width="match_parent" android:layout_height="36dp"
+        android:layout_marginBottom="6dp" android:background="@drawable/bg_chip"
+        android:gravity="center" android:text="重新授权" android:textColor="#FF9800" android:textSize="14sp"
         android:visibility="gone" />
 
-    <!-- ====== 状态/错误信息 ====== -->
-    <TextView
-        android:id="@+id/tvMessage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="2"
-        android:textColor="#FF9800"
-        android:textSize="11sp"
+    <!-- 状态/错误信息 -->
+    <TextView android:id="@+id/tvMessage"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:maxLines="2" android:ellipsize="end" android:textColor="#FF9800" android:textSize="11sp"
         android:visibility="gone" />
 
-    <!-- ====== 回答列表 ====== -->
-    <com.rd.englishcoach.MaxHeightScrollView
-        android:id="@+id/scrollAnswers"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+    <!-- 轮次列表（原文 + 答案 + 按钮） -->
+    <com.rd.englishcoach.MaxHeightScrollView android:id="@+id/scrollTurns"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
         android:visibility="gone">
-
-        <LinearLayout
-            android:id="@+id/answerList"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+        <LinearLayout android:id="@+id/turnList"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" />
     </com.rd.englishcoach.MaxHeightScrollView>
 
