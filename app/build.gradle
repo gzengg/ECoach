@@ -6,6 +6,11 @@ android {
     namespace 'com.rd.englishcoach'
     compileSdk 35
 
+    sourceSets {
+        // 让单元测试能通过 classpath 读取 layout / drawable 源文件（布局契约测试用）
+        test.resources.srcDirs += 'src/main/res'
+    }
+
     defaultConfig {
         applicationId "com.rd.englishcoach"
         minSdk 29

@@ -63,10 +63,6 @@ public final class Prefs {
         return clamp(sp.getInt("width_dp", DEF_WIDTH_DP), MIN_WIDTH_DP, MAX_WIDTH_DP);
     }
 
-    public boolean showTranscript() {
-        return sp.getBoolean("show_transcript", false);
-    }
-
     // ── 写 ──────────────────────────────────
     public void putBaseUrl(String v)     { sp.edit().putString("base_url",  nullSafe(v, DEF_BASE_URL)).apply(); }
     public void putApiKey(String v)      { sp.edit().putString("api_key",    nullSafe(v, DEF_API_KEY)).apply(); }
@@ -77,7 +73,6 @@ public final class Prefs {
     public void putMaxSeconds(int v)     { sp.edit().putInt("max_seconds", clamp(v, MIN_MAX_SECONDS, MAX_MAX_SECONDS)).apply(); }
     public void putFontSp(int v)         { sp.edit().putInt("font_sp",     clamp(v, MIN_FONT_SP, MAX_FONT_SP)).apply(); }
     public void putWidthDp(int v)        { sp.edit().putInt("width_dp",    clamp(v, MIN_WIDTH_DP, MAX_WIDTH_DP)).apply(); }
-    public void putShowTranscript(boolean v) { sp.edit().putBoolean("show_transcript", v).apply(); }
 
     public void resetAll() { sp.edit().clear().apply(); }
 

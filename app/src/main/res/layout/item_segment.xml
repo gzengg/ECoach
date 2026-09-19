@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  单条句子卡片（功能1：原文优先；功能2：答案按需加载）。
+  布局顺序 = 显示优先级：tvTranscriptText 在最上（16sp 白色），
+  答案区（label + text）默认隐藏，"看参考回答"按钮默认可见。
+  颜色合约由 SegmentCardLayoutTest 守护。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_answer"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <!-- 英文原文（优先显示，始终可见） -->
+    <TextView
+        android:id="@+id/tvTranscriptText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFFFF"
+        android:textSize="16sp" />
+
+    <!-- 参考回答区（默认隐藏） -->
+    <TextView
+        android:id="@+id/tvAnswerLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="参考回答"
+        android:textColor="#FF8A93A6"
+        android:textSize="11sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvAnswerText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:textColor="#FFD6DCE8"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <!-- 看参考回答（功能2：用户点击后才请求 AI） -->
+    <TextView
+        android:id="@+id/btnAskAnswer"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_chip"
+        android:gravity="center"
+        android:paddingHorizontal="12dp"
+        android:text="💬 看参考回答"
+        android:textColor="#FF8A93A6"
+        android:textSize="12sp" />
+
+    <!-- 加载中 / 错误信息 -->
+    <TextView
+        android:id="@+id/tvAnswerStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="#FF8A93A6"
+        android:textSize="11sp"
+        android:visibility="gone" />
+
+</LinearLayout>

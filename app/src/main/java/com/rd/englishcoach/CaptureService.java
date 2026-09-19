@@ -51,6 +51,7 @@ public class CaptureService extends Service {
     private Handler bgHandler;
     private ExecutorService networkExec;
     private final ListenToggle listen = new ListenToggle();
+    private SegmentStore segments;
     private volatile boolean stopped = false;
 
     // ── 生命周期 ────────────────────────────
@@ -123,7 +124,8 @@ public class CaptureService extends Service {
 
     private void startCapture(int resultCode, Intent data) {
         Prefs prefs = new Prefs(this);
-        ring = new PcmRing(prefs.maxSeconds() * 16000 * 2); // 16kHz mono 16-bit
+        ring = new PcmRing(prefs.maxSeconds() * 16000 * 2);
+        segments = new SegmentStore(20);
 
         // 2) 获取 MediaProjection
         MediaProjectionManager mpm = getSystemService(MediaProjectionManager.class);
@@ -274,20 +276,16 @@ public class CaptureService extends Service {
                 Prefs prefs = new Prefs(CaptureService.this);
                 byte[] wav = WavUtil.toWav(trimmed, 16000);
 
-                // ASR
+                // ASR 出原文（立刻显示，不用等 AI）
                 String transcript = ApiClient.transcribe(wav,
                         prefs.baseUrl(), prefs.apiKey(), prefs.asrModel());
                 Log.i(TAG, "ASR: " + transcript);
 
-                // Chat
-                String answer = ApiClient.answer(transcript,
-                        prefs.baseUrl(), prefs.apiKey(), prefs.chatModel(), prefs.sysPrompt());
-                Log.i(TAG, "Answer: " + answer);
-
-                // 显示
+                // 原文入列表，显示在悬浮窗（参考答案不默认生成，见功能2）
+                SegmentStore.Segment seg = segments.addTranscript(transcript);
                 if (panel != null) {
-                    panel.addAnswer(answer, transcript, prefs.showTranscript());
-                    panel.setStatus("正在听…");
+                    panel.addSegment(seg);
+                    panel.setStatus(listen.statusLabel());
                 }
 
             } catch (Exception e) {
@@ -406,7 +404,33 @@ public class CaptureService extends Service {
 
         @Override
         public void onClose() {
+            if (segments != null) segments.clear();
             stopSelf();
+        }
+
+        @Override
+        public void onAskAnswer(long segmentId) {
+            if (segments == null) return;
+            SegmentStore.Segment seg = segments.findById(segmentId);
+            if (seg == null) return;
+
+            if (!segments.beginAnswerRequest(segmentId)) return; // 正在加载或已有答案
+            if (panel != null) panel.updateSegment(seg);
+
+            networkExec.execute(() -> {
+                try {
+                    Prefs p = new Prefs(CaptureService.this);
+                    String answer = ApiClient.answer(seg.transcript,
+                            p.baseUrl(), p.apiKey(), p.chatModel(), p.sysPrompt());
+                    Log.i(TAG, "Answer for #" + segmentId + ": " + answer);
+                    segments.completeAnswer(segmentId, answer);
+                    if (panel != null) panel.updateSegment(segments.findById(segmentId));
+                } catch (Exception e) {
+                    Log.e(TAG, "Answer failed for #" + segmentId, e);
+                    segments.failAnswer(segmentId, e.getMessage());
+                    if (panel != null) panel.updateSegment(segments.findById(segmentId));
+                }
+            });
         }
     }
 }

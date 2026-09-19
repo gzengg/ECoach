@@ -76,18 +76,6 @@
                 android:textSize="18sp" android:background="@drawable/bg_chip" />
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginTop="8dp"
-            android:gravity="center_vertical">
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:text="显示识别原文" android:textSize="14sp" />
-            <TextView android:id="@+id/btnShowTranscript" android:layout_width="60dp"
-                android:layout_height="36dp" android:gravity="center" android:text="切换"
-                android:textSize="13sp" android:background="@drawable/bg_chip" />
-            <TextView android:id="@+id/tvShowTranscriptValue" android:layout_width="40dp"
-                android:layout_height="wrap_content" android:gravity="center" android:text="关"
-                android:textSize="14sp" />
-        </LinearLayout>
 
         <!-- 按钮 -->
         <Button android:id="@+id/btnSave" android:layout_width="match_parent"

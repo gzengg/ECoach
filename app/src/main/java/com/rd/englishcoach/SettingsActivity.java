@@ -4,17 +4,16 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 /**
- * 设置页：Base URL / Key / 模型 / 字号 / 窗口宽度 / 显示原文 / 提示词。
+ * 设置页：Base URL / Key / 模型 / 字号 / 窗口宽度 / 提示词。
  * 改完即时生效（CaptureService 会在下次操作时读取最新值）。
  */
 public class SettingsActivity extends Activity {
 
     private EditText etBaseUrl, etApiKey, etAsrModel, etChatModel, etSysPrompt;
-    private TextView tvFontPreview, tvWidthPreview, tvShowTranscript;
+    private TextView tvFontPreview, tvWidthPreview;
     private Prefs prefs;
 
     @Override
@@ -36,14 +35,11 @@ public class SettingsActivity extends Activity {
         etChatModel.setText(prefs.chatModel());
         etSysPrompt.setText(prefs.sysPrompt());
 
-        // 字号 +/-（复用 activity_settings 的按钮）
-        tvFontPreview = findViewById(R.id.tvFontValue);
-        tvWidthPreview= findViewById(R.id.tvWidthValue);
-        tvShowTranscript = findViewById(R.id.tvShowTranscriptValue);
+        tvFontPreview  = findViewById(R.id.tvFontValue);
+        tvWidthPreview = findViewById(R.id.tvWidthValue);
 
         tvFontPreview.setText(prefs.fontSp() + "sp");
         tvWidthPreview.setText(prefs.widthDp() + "dp");
-        tvShowTranscript.setText(prefs.showTranscript() ? "开" : "关");
 
         findViewById(R.id.btnFontMinus).setOnClickListener(v -> {
             prefs.putFontSp(prefs.fontSp() - 1);
@@ -65,10 +61,6 @@ public class SettingsActivity extends Activity {
             tvWidthPreview.setText(prefs.widthDp() + "dp");
             applyToPanel();
         });
-        findViewById(R.id.btnShowTranscript).setOnClickListener(v -> {
-            prefs.putShowTranscript(!prefs.showTranscript());
-            tvShowTranscript.setText(prefs.showTranscript() ? "开" : "关");
-        });
 
         Button btnSave = findViewById(R.id.btnSave);
         btnSave.setOnClickListener(v -> save());
@@ -83,7 +75,6 @@ public class SettingsActivity extends Activity {
             etSysPrompt.setText(prefs.sysPrompt());
             tvFontPreview.setText(prefs.fontSp() + "sp");
             tvWidthPreview.setText(prefs.widthDp() + "dp");
-            tvShowTranscript.setText(prefs.showTranscript() ? "开" : "关");
         });
     }
 
