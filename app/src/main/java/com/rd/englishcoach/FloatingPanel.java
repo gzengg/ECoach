@@ -42,7 +42,6 @@ public final class FloatingPanel {
     private MaxHeightScrollView scrollAnswers;
     private android.widget.LinearLayout answerList;
 
-    private boolean listening = false;
     private int maxAnswers = 20;
     private final List<View> answerViews = new ArrayList<>();
 
@@ -129,11 +128,11 @@ public final class FloatingPanel {
     // ── 状态更新 ────────────────────────────
 
     public void setListening(boolean on) {
-        this.listening = on;
         mainHandler.post(() -> {
-            btnToggle.setText(on ? "暂停" : "开始听");
+            // 文字一律由 ListenToggle 派生，面板自己不再维护一份状态
+            btnToggle.setText(ListenToggle.labelFor(on));
             tvDot.setTextColor(on ? 0xFF4CAF50 : 0xFF888888); // green / gray
-            tvStatus.setText(on ? "正在听…" : "已暂停");
+            tvStatus.setText(ListenToggle.statusFor(on));
         });
     }
 

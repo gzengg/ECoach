@@ -50,7 +50,7 @@ public class CaptureService extends Service {
     private HandlerThread bgThread;
     private Handler bgHandler;
     private ExecutorService networkExec;
-    private volatile boolean listening = false;
+    private final ListenToggle listen = new ListenToggle();
     private volatile boolean stopped = false;
 
     // ── 生命周期 ────────────────────────────
@@ -97,7 +97,7 @@ public class CaptureService extends Service {
     @Override
     public void onDestroy() {
         stopped = true;
-        listening = false;
+        listen.onCaptureStopped();
         releaseCapture();
         if (panel != null) panel.hide();
         if (networkExec != null) networkExec.shutdownNow();
@@ -141,20 +141,20 @@ public class CaptureService extends Service {
             return;
         }
 
-        // 4) 创建悬浮窗
+        // 4) 创建悬浮窗（面板文字必须与真实采集状态一致，否则用户第一次点击会把采集关掉）
+        listen.onCaptureStarted();
         panel = new FloatingPanel(this, new PanelCallback());
         panel.show();
-        panel.setListening(false);
+        panel.setListening(listen.isListening());
 
         // 5) 开始读取
-        listening = true;
         bgHandler.post(this::readLoop);
 
-        Log.i(TAG, "Capture started");
+        Log.i(TAG, "Capture started, panel=" + listen.buttonLabel());
     }
 
     private void releaseCapture() {
-        listening = false;
+        listen.onCaptureStopped();
         if (audioRecord != null) {
             try { audioRecord.stop(); } catch (Exception ignored) {}
             try { audioRecord.release(); } catch (Exception ignored) {}
@@ -224,7 +224,7 @@ public class CaptureService extends Service {
             int n = audioRecord.read(buf, 0, buf.length);
             if (n <= 0) break;
 
-            if (listening) {
+            if (listen.isListening()) {
                 // short[] → byte[] (LE)
                 byte[] bytes = new byte[n * 2];
                 for (int i = 0; i < n; i++) {
@@ -248,8 +248,13 @@ public class CaptureService extends Service {
     // ── 切段 → ASR → AI ─────────────────────
 
     private void doSegment() {
-        if (ring == null || ring.size() == 0) {
-            if (panel != null) panel.showMessage("没录到声音（可能暂停了或音频为空）");
+        ListenToggle.SegmentCheck check = listen.checkSegment(ring == null ? 0 : ring.size());
+        if (check != ListenToggle.SegmentCheck.OK) {
+            if (panel != null) {
+                panel.showMessage(check == ListenToggle.SegmentCheck.PAUSED
+                        ? "现在是暂停状态，先点「开始听」"
+                        : "还没听到声音，先放一段听力");
+            }
             return;
         }
 
@@ -368,8 +373,8 @@ public class CaptureService extends Service {
         @Override
         public void onStop() {
             Log.i(TAG, "Projection stopped by system");
-            listening = false;
             releaseCapture();
+            if (panel != null) panel.setListening(listen.isListening());
             notifyReconsentNeeded("投屏被系统停止");
         }
     }
@@ -379,9 +384,10 @@ public class CaptureService extends Service {
     private class PanelCallback implements FloatingPanel.Callback {
         @Override
         public void onToggleListen() {
-            listening = !listening;
-            if (panel != null) panel.setListening(listening);
-            if (listening && ring != null) ring.clear(); // 恢复时清空缓冲
+            boolean now = listen.toggle();
+            if (panel != null) panel.setListening(now);
+            if (now && ring != null) ring.clear(); // 恢复时清空缓冲
+            Log.i(TAG, "toggle -> " + listen.buttonLabel());
         }
 
         @Override
