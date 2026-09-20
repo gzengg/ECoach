@@ -125,7 +125,7 @@ public final class FloatingPanel {
         wlp = new WindowManager.LayoutParams(
                 dpToPx(prefs.widthDp()), WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT);
         wlp.gravity = Gravity.TOP | Gravity.START;
         wlp.x = 20; wlp.y = 200;

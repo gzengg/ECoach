@@ -72,7 +72,9 @@ public class CaptureService extends Service {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
 
         if (intent == null || ACTION_STOP.equals(intent.getAction())) {
-            stopSelf();
+            // 不直接 stopSelf()：只移除前台通知；
+            // 由 MainActivity.onDestroy(isFinishing) 或悬浮窗关闭按钮决定何时真正结束服务。
+            stopForeground(STOP_FOREGROUND_REMOVE);
             return START_NOT_STICKY;
         }
 
@@ -94,9 +96,12 @@ public class CaptureService extends Service {
     @Override
     public void onDestroy() {
         stopped = true;
-        listen.onCaptureStopped();
-        releaseCapture();
-        if (panel != null) panel.hide();
+        stopForeground(STOP_FOREGROUND_REMOVE);
+        releaseCapture(); // 内部已调 listen.onCaptureStopped()
+        // 不调 panel.hide()：
+        //   - MainActivity.onDestroy 会调 stopService 触发这里，此时不应删窗口
+        //   - 悬浮窗关闭按钮触发 onClose → stopSelf，会在这里清理
+        //   - 真正要删窗口时由 PanelCallback.onClose 统一处理
         if (networkExec != null) networkExec.shutdownNow();
         if (bgThread != null) bgThread.quitSafely();
         current = null;
@@ -427,6 +432,8 @@ public class CaptureService extends Service {
         @Override
         public void onClose() {
             clearHistory();
+            // 先藏窗口，再停服务：保证悬浮窗不会在服务销毁后还残留在屏幕上
+            if (panel != null) panel.hide();
             stopSelf();
         }
     }

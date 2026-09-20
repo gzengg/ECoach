@@ -44,9 +44,7 @@ public class MainActivity extends Activity {
 
         btnStart.setOnClickListener(v -> checkAndStart());
         btnStop.setOnClickListener(v -> {
-            Intent i = new Intent(this, CaptureService.class)
-                    .setAction(CaptureService.ACTION_STOP);
-            startService(i);
+            stopService(new Intent(this, CaptureService.class));
             updateStatus();
         });
         btnSettings.setOnClickListener(v ->
@@ -285,5 +283,17 @@ public class MainActivity extends Activity {
         tvStatus.setText(CaptureService.current != null
                 ? getString(R.string.status_running)
                 : getString(R.string.status_stopped));
+    }
+
+    // ── 进程退出兜底 ──────────────────────
+
+    @Override
+    protected void onDestroy() {
+        // 只有 Activity 真正关闭（用户按返回、任务被清）时才停服务；
+        // 跳设置页 / 悬浮窗全屏弹 Activity 时 isFinishing()=false，服务照跑。
+        if (isFinishing() && CaptureService.current != null) {
+            stopService(new Intent(this, CaptureService.class));
+        }
+        super.onDestroy();
     }
 }

@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:clipToPadding="false">
+    android:fitsSystemWindows="true">
 
     <!--
       focusableInTouchMode=true：让根布局抢走初始焦点，输入框不会自动获得焦点，

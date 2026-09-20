@@ -65,6 +65,15 @@ public class SettingsLayoutTest {
                 "true", attr(root, "focusableInTouchMode"));
     }
 
+    /** Android 16 + targetSdk 35 强制 edge-to-edge，内容会画到状态栏后面。 */
+    @Test
+    public void scrollView_fitsSystemWindows() throws Exception {
+        Element sv = parseLayout().getDocumentElement();
+        assertEquals("ScrollView 必须 fitsSystemWindows=true，否则 Android 16 上 "
+                        + "Base URL / API Key 会被状态栏裁掉（用户报「显示不全」）",
+                "true", attr(sv, "fitsSystemWindows"));
+    }
+
     // ── 标签在左（不再各占一行） ───────────────
 
     @Test
