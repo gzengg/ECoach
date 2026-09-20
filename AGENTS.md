@@ -238,9 +238,14 @@ app/src/main/
   重试 / 复制 `adb shell appops set <pkg> SYSTEM_ALERT_WINDOW allow` / 关闭。
   ⚠️ ColorOS 这层限制是系统行为，应用侧无解（`TYPE_ACCESSIBILITY_OVERLAY` 也一样会被拦），只做了引导。
 
+- **v1.2（tag `v1.2`）**：修 Android 16 设置页 edge-to-edge 裁切（ScrollView 加 `fitsSystemWindows`），
+  修停止后进程退出（ACTION_STOP 改 `stopForeground`、`onDestroy` 去 `panel.hide()`、
+  `MainActivity.onDestroy` 加 `isFinishing` 守卫），清理冗余 `listen.onCaptureStopped()`。
+  新增 `ServiceLifecycleTest`（5 用例）守护服务生命周期；总测试 107 个。
+
 后续可做（按优先级）：
 1. 无障碍服务自动点投屏授权弹窗（方案 B，见第 4 节）。
-2. 应用内检查更新 / 版本号管理（当前 `versionCode 2` / `versionName 1.1`，每次发版需手动递增）。
+2. 应用内检查更新 / 版本号管理（当前 `versionCode 3` / `versionName 1.2`，每次发版需手动递增）。
 3. 第 4 节列出的其余未做项（发音打分、翻译讲解、导出历史等）。
 
 ## 10. 必须一直遵守的用户可见限制（不要"优化掉"）
