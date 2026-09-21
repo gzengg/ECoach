@@ -151,6 +151,16 @@ public class SettingsLayoutTest {
             for (Element c : childElements(e)) max = Math.max(max, extentDp(c, styles));
             return max;
         }
+        // v2.0：纵向 LinearLayout（卡片容器）→ 递归累加子元素高度 + 内边距
+        if ("LinearLayout".equals(e.getTagName())
+                && "vertical".equals(attr(e, styles, "orientation"))) {
+            double total = 0;
+            for (Element c : childElements(e)) {
+                total += marginTop(c, styles) + extentDp(c, styles);
+            }
+            total += padding(e, styles, "paddingTop") + padding(e, styles, "paddingBottom");
+            return total;
+        }
         String h = attr(e, styles, "layout_height");
         if (h.endsWith("dp")) return parseDp(h);
 

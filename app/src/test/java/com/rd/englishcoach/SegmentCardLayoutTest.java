@@ -54,7 +54,7 @@ public class SegmentCardLayoutTest {
 
     @Test
     public void transcript_contrast_meetsWcagAA() throws Exception {
-        String fgHex = elementById("tvTranscriptText").getAttribute("android:textColor");
+        String fgHex = resolveColorRef(elementById("tvTranscriptText").getAttribute("android:textColor"));
         double r = contrast(parseColor(fgHex), parseColor(bgColor()));
         assertTrue("原文对比度只有 " + String.format("%.1f", r) + ":1（需 >= " + MIN_CONTRAST + "）",
                 r >= MIN_CONTRAST);
@@ -62,7 +62,7 @@ public class SegmentCardLayoutTest {
 
     @Test
     public void answer_contrast_meetsWcagAA() throws Exception {
-        String fgHex = elementById("tvAnswerText").getAttribute("android:textColor");
+        String fgHex = resolveColorRef(elementById("tvAnswerText").getAttribute("android:textColor"));
         double r = contrast(parseColor(fgHex), parseColor(bgColor()));
         assertTrue("答案对比度只有 " + String.format("%.1f", r) + ":1", r >= MIN_CONTRAST);
     }
@@ -117,7 +117,24 @@ public class SegmentCardLayoutTest {
 
     private static String bgColor() throws Exception {
         Document d = parseResource("/drawable/bg_answer.xml");
-        return ((Element) d.getElementsByTagName("solid").item(0)).getAttribute("android:color");
+        String raw = ((Element) d.getElementsByTagName("solid").item(0)).getAttribute("android:color");
+        return resolveColorRef(raw);
+    }
+
+    /** 解析 @color/xxx 引用，返回实际的十六进制值。支持裸 #hex。 */
+    private static String resolveColorRef(String ref) {
+        if (!ref.startsWith("@color/")) return ref;
+        String name = ref.substring("@color/".length());
+        try {
+            Document d = parseResource("/values/colors.xml");
+            NodeList all = d.getElementsByTagName("color");
+            for (int i = 0; i < all.getLength(); i++) {
+                Element e = (Element) all.item(i);
+                if (name.equals(e.getAttribute("name"))) return e.getTextContent().trim();
+            }
+        } catch (Exception ignored) { }
+        fail("无法解析颜色引用: " + ref);
+        return null;
     }
 
     private static Document parseResource(String path) throws Exception {

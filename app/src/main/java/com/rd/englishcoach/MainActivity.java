@@ -17,6 +17,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.view.View;
 
 import java.util.List;
 
@@ -28,7 +29,9 @@ public class MainActivity extends Activity {
     private static final int REQ_PROJECTION = 103;
 
     private TextView tvStatus;
-    private Button btnStart, btnStop, btnSettings, btnNewChat, btnHistory;
+    private View dotStatus;
+    private Button btnStart;
+    private View btnStop, btnSettings, btnNewChat, btnHistory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +39,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         tvStatus   = findViewById(R.id.tvStatus);
+        dotStatus  = findViewById(R.id.dotStatus);
         btnStart   = findViewById(R.id.btnStart);
         btnStop    = findViewById(R.id.btnStop);
         btnSettings= findViewById(R.id.btnSettings);
@@ -171,8 +175,10 @@ public class MainActivity extends Activity {
                         .putExtra(CaptureService.EXTRA_RESULT_DATA, data);
                 startForegroundService(i);
                 tvStatus.setText(R.string.status_started);
+                if (dotStatus != null) dotStatus.setBackgroundResource(R.drawable.dot_active);
             } else {
                 tvStatus.setText(R.string.status_projection_denied);
+                if (dotStatus != null) dotStatus.setBackgroundResource(R.drawable.dot_idle);
             }
         }
     }
@@ -211,7 +217,7 @@ public class MainActivity extends Activity {
             }
             tv.setText(sb.toString());
             tv.setTextSize(14);
-            tv.setTextColor(0xFFFFFFFF);
+            tv.setTextColor(0xFFF2F5FA);
             tv.setTextIsSelectable(true);
             layout.addView(tv);
 
@@ -227,7 +233,7 @@ public class MainActivity extends Activity {
             TextView btnCopy = new TextView(this);
             btnCopy.setText(R.string.menu_copy);
             btnCopy.setTextSize(12);
-            btnCopy.setTextColor(0xFF4CAF50);
+            btnCopy.setTextColor(0xFF34D399);
             btnCopy.setPadding(0, 0, pad, 0);
             btnCopy.setOnClickListener(v -> {
                 copyToClipboard(e.transcript
@@ -239,7 +245,7 @@ public class MainActivity extends Activity {
             TextView btnDelete = new TextView(this);
             btnDelete.setText(R.string.menu_delete);
             btnDelete.setTextSize(12);
-            btnDelete.setTextColor(0xFFFF5252);
+            btnDelete.setTextColor(0xFFF87171);
             btnDelete.setPadding(0, 0, pad, 0);
             btnDelete.setOnClickListener(v -> {
                 store.deleteAt(idx);
@@ -280,9 +286,14 @@ public class MainActivity extends Activity {
     // ── 状态 ──────────────────────────────
 
     private void updateStatus() {
-        tvStatus.setText(CaptureService.current != null
+        boolean running = CaptureService.current != null;
+        tvStatus.setText(running
                 ? getString(R.string.status_running)
                 : getString(R.string.status_stopped));
+        if (dotStatus != null) {
+            dotStatus.setBackgroundResource(
+                    running ? R.drawable.dot_active : R.drawable.dot_idle);
+        }
     }
 
     // ── 进程退出兜底 ──────────────────────

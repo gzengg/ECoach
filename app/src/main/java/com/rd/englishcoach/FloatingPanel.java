@@ -9,9 +9,15 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import android.animation.ObjectAnimator;
+import android.animation.AnimatorSet;
+import android.animation.ValueAnimator;
+import android.view.animation.LinearInterpolator;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -40,7 +46,8 @@ public final class FloatingPanel {
 
     private View root;
     private WindowManager.LayoutParams wlp;
-    private TextView tvDot, tvStatus, tvMessage;
+    private View tvDot;
+    private TextView tvStatus, tvMessage;
     private TextView btnPause, btnReconsent, btnClose;
     private TextView btnFontMinus, btnFontPlus;
     private ProgressBar levelBar;
@@ -56,6 +63,9 @@ public final class FloatingPanel {
     private final Runnable hideInputRunnable = this::dismissInput;
     private int lastRootHeight = -1;
     private long inputShownAt = 0; // 输入框显示的时间戳，防止误判
+    // v2.0 动效：状态点呼吸动画 + 音量条平滑过渡
+    private ObjectAnimator dotBreathAnim;
+    private ObjectAnimator levelAnim;
 
     public FloatingPanel(Context ctx, Callback cb) {
         this.ctx = ctx.getApplicationContext();
@@ -174,15 +184,35 @@ public final class FloatingPanel {
     // ── 显示 / 隐藏 ────────────────────────
 
     public void show() { if (root.getParent() == null) wm.addView(root, wlp); }
-    public void hide() { if (root.getParent() != null) wm.removeView(root); }
+    public void hide() {
+        // v2.0：取消动画避免泄漏
+        if (dotBreathAnim != null) dotBreathAnim.cancel();
+        if (levelAnim != null) levelAnim.cancel();
+        if (root.getParent() != null) wm.removeView(root);
+    }
 
     // ── 状态 ──────────────────────────────
 
     public void setListening(boolean on) {
         mainHandler.post(() -> {
             btnPause.setText(ListenToggle.labelFor(on));
-            tvDot.setTextColor(on ? 0xFF4CAF50 : 0xFF888888);
             tvStatus.setText(ListenToggle.statusFor(on));
+            // v2.0：用 drawable 切换状态点，替代旧的 setTextColor
+            tvDot.setBackgroundResource(on ? R.drawable.dot_active : R.drawable.dot_idle);
+            // 呼吸动画：监听中时脉动，停止时取消
+            if (on) {
+                if (dotBreathAnim == null) {
+                    dotBreathAnim = ObjectAnimator.ofFloat(tvDot, "alpha", 1f, 0.45f);
+                    dotBreathAnim.setDuration(1600);
+                    dotBreathAnim.setRepeatCount(ValueAnimator.INFINITE);
+                    dotBreathAnim.setRepeatMode(ValueAnimator.REVERSE);
+                    dotBreathAnim.setInterpolator(new LinearInterpolator());
+                }
+                dotBreathAnim.start();
+            } else {
+                if (dotBreathAnim != null) dotBreathAnim.cancel();
+                tvDot.setAlpha(1f);
+            }
         });
     }
 
@@ -200,7 +230,15 @@ public final class FloatingPanel {
     }
 
     public void setLevel(int level) {
-        mainHandler.post(() -> levelBar.setProgress(Math.max(0, Math.min(100, level))));
+        mainHandler.post(() -> {
+            int target = Math.max(0, Math.min(100, level));
+            // v2.0：平滑过渡替代硬跳变
+            if (levelAnim != null) levelAnim.cancel();
+            levelAnim = ObjectAnimator.ofInt(levelBar, "progress", levelBar.getProgress(), target);
+            levelAnim.setDuration(120);
+            levelAnim.setInterpolator(new LinearInterpolator());
+            levelAnim.start();
+        });
     }
 
     // ── 轮次列表 ────────────────────────────
@@ -229,6 +267,13 @@ public final class FloatingPanel {
             applyTurnVisibility(item, turn);
 
             turnList.addView(item, 0);
+            // v2.0：卡片入场动画（180ms alpha + translationY）
+            item.setAlpha(0f);
+            item.setTranslationY(dpToPx(8));
+            item.animate().alpha(1f).translationY(0)
+                    .setDuration(180)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
             turnViews.put(turn.id, item);
             while (turnViews.size() > 20) {
                 Long oldest = turnViews.keySet().iterator().next();

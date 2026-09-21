@@ -1,62 +1,197 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  主界面：只保留「状态 + 5 个按钮」。
-  标题由 ActionBar（android:label="@string/app_name"）承担，不再重复放 TextView。
+  主界面 v2.0「深空玻璃」：
+  状态区 → 卡片（状态点 + 文字）
+  「开始监听」→ 渐变胶囊 CTA
+  其余 4 按钮 → 卡片内列表行（左文字 + 右箭头 ›）
+  所有 id 保持不变，Java 可直接 findViewById。
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:clipToPadding="false"
+    android:paddingTop="8dp"
+    android:paddingBottom="20dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingHorizontal="16dp">
 
-        <TextView
-            android:id="@+id/tvStatus"
+        <!-- ── 状态卡片 ── -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:drawable/editbox_background"
-            android:padding="12dp"
-            android:textSize="14sp" />
+            android:background="@drawable/card_surface"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="@dimen/space_lg"
+            android:paddingVertical="@dimen/space_md">
 
+            <!-- 状态点 -->
+            <View
+                android:id="@+id/dotStatus"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/dot_idle" />
+
+            <!-- 状态文字（tvStatus，id 不可改） -->
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_sm"
+                android:layout_weight="1"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:lineSpacingExtra="3dp" />
+        </LinearLayout>
+
+        <!-- ── 主 CTA：开始监听 ── -->
         <Button
             android:id="@+id/btnStart"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="@dimen/space_lg"
             android:text="@string/btn_start"
-            android:textSize="16sp" />
+            android:textColor="@color/accent_on"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/btnStop"
+        <!-- ── 操作卡片：4 个按钮 ── -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/btn_stop" />
+            android:layout_marginTop="@dimen/space_sm"
+            android:background="@drawable/card_surface"
+            android:orientation="vertical"
+            android:paddingVertical="@dimen/space_xs">
 
-        <Button
-            android:id="@+id/btnSettings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/btn_settings" />
+            <!-- 停止 -->
+            <FrameLayout
+                android:id="@+id/btnStop"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/height_row"
+                android:background="@drawable/card_row"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="@dimen/space_md"
+                    android:text="@string/btn_stop"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|end"
+                    android:layout_marginEnd="@dimen/space_md"
+                    android:text="›"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="20sp" />
+            </FrameLayout>
 
-        <Button
-            android:id="@+id/btnNewChat"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/btn_new_chat" />
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="@dimen/space_lg"
+                android:background="@color/stroke_soft" />
 
-        <Button
-            android:id="@+id/btnHistory"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/btn_history" />
+            <!-- 设置 -->
+            <FrameLayout
+                android:id="@+id/btnSettings"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/height_row"
+                android:background="@drawable/card_row"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="@dimen/space_md"
+                    android:text="@string/btn_settings"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|end"
+                    android:layout_marginEnd="@dimen/space_md"
+                    android:text="›"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="20sp" />
+            </FrameLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="@dimen/space_lg"
+                android:background="@color/stroke_soft" />
+
+            <!-- 清空上下文 -->
+            <FrameLayout
+                android:id="@+id/btnNewChat"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/height_row"
+                android:background="@drawable/card_row"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="@dimen/space_md"
+                    android:text="@string/btn_new_chat"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|end"
+                    android:layout_marginEnd="@dimen/space_md"
+                    android:text="›"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="20sp" />
+            </FrameLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="@dimen/space_lg"
+                android:background="@color/stroke_soft" />
+
+            <!-- 转录历史 -->
+            <FrameLayout
+                android:id="@+id/btnHistory"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/height_row"
+                android:background="@drawable/card_row"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="@dimen/space_md"
+                    android:text="@string/btn_history"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|end"
+                    android:layout_marginEnd="@dimen/space_md"
+                    android:text="›"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="20sp" />
+            </FrameLayout>
+
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>
