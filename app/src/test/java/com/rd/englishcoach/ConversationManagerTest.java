@@ -148,4 +148,40 @@ public class ConversationManagerTest {
         assertEquals(0, mgr.size());
         assertNull(mgr.newest());
     }
+
+    // ── addGrab (P7) ──────────────────────
+
+    @Test
+    public void addGrab_turnTypeIsGRAB() {
+        ConversationManager.Turn t = mgr.addGrab("hello", "你好");
+        assertEquals(ConversationManager.TurnType.GRAB, t.type);
+    }
+
+    @Test
+    public void addGrab_translatedStored() {
+        ConversationManager.Turn t = mgr.addGrab("hello", "你好");
+        assertEquals("你好", t.grabTranslated);
+    }
+
+    @Test
+    public void addGrab_includedInBuildMessages() {
+        mgr.addGrab("hello", "你好");
+        String[][] msgs = mgr.buildMessages("system");
+        // system + 1 user(grab)
+        assertEquals(2, msgs.length);
+        assertTrue(msgs[1][1].contains("hello"));
+        assertTrue(msgs[1][1].contains("你好"));
+    }
+
+    @Test
+    public void addGrab_canAskFollowUp() {
+        ConversationManager.Turn g = mgr.addGrab("hello", "你好");
+        ConversationManager.Turn q = mgr.addQuestion("What does this mean?");
+        assertTrue(mgr.beginAnswerRequest(q.id));
+        mgr.completeAnswer(q.id, "It means hello.");
+        // buildMessages should include grab + question + answer
+        String[][] msgs = mgr.buildMessages("system");
+        // system + grab(user) + question(user) + answer(assistant) = 4
+        assertEquals(4, msgs.length);
+    }
 }

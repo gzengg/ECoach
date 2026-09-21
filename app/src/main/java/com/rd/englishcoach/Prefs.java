@@ -9,7 +9,7 @@ import android.content.SharedPreferences;
 public final class Prefs {
     // ── 服务端 API ──
     public static final String DEF_BASE_URL   = "https://mimo.ezlook.top/v1";
-    public static final String DEF_API_KEY    = "sk-REDACTED";
+    public static final String DEF_API_KEY    = "";
     public static final String DEF_ASR_MODEL  = "mimo-v2.5-asr";
     public static final String DEF_CHAT_MODEL = "deepseek-flash";
 
@@ -29,6 +29,11 @@ public final class Prefs {
           + "- Keep track of question numbers (1-5) from the conversation history.\n"
           + "- If the student asks a custom question, answer based on all context so far.\n\n"
           + "Output: just the English answer, no numbering, no explanation, no Chinese.";
+
+    // ── 朗读 TTS ──
+    public static final String DEF_TTS_MODEL        = "mimo-v2.5-tts";
+    public static final String DEF_TTS_VOICE_EN     = "Mia";
+    public static final String DEF_TTS_VOICE_ZH     = "冰糖";
 
     // ── 悬浮窗外观 ──
     public static final int DEF_FONT_SP   = 15;
@@ -53,6 +58,9 @@ public final class Prefs {
     public String asrModel()  { return sp.getString("asr_model",  DEF_ASR_MODEL); }
     public String chatModel() { return sp.getString("chat_model", DEF_CHAT_MODEL); }
     public String sysPrompt() { return sp.getString("sys_prompt", DEF_SYS_PROMPT); }
+    public String ttsModel()        { return sp.getString("tts_model",      DEF_TTS_MODEL); }
+    public String ttsVoiceEnglish() { return sp.getString("tts_voice_en",   DEF_TTS_VOICE_EN); }
+    public String ttsVoiceChinese() { return sp.getString("tts_voice_zh",   DEF_TTS_VOICE_ZH); }
 
     public int fontSp() {
         return clamp(sp.getInt("font_sp", DEF_FONT_SP), MIN_FONT_SP, MAX_FONT_SP);
@@ -68,6 +76,9 @@ public final class Prefs {
     public void putAsrModel(String v)    { sp.edit().putString("asr_model",  nullSafe(v, DEF_ASR_MODEL)).apply(); }
     public void putChatModel(String v)   { sp.edit().putString("chat_model", nullSafe(v, DEF_CHAT_MODEL)).apply(); }
     public void putSysPrompt(String v)   { sp.edit().putString("sys_prompt", nullSafe(v, DEF_SYS_PROMPT)).apply(); }
+    public void putTtsModel(String v)        { sp.edit().putString("tts_model",    nullSafe(v, DEF_TTS_MODEL)).apply(); }
+    public void putTtsVoiceEnglish(String v) { sp.edit().putString("tts_voice_en", nullSafe(v, DEF_TTS_VOICE_EN)).apply(); }
+    public void putTtsVoiceChinese(String v) { sp.edit().putString("tts_voice_zh", nullSafe(v, DEF_TTS_VOICE_ZH)).apply(); }
 
     public void putFontSp(int v)         { sp.edit().putInt("font_sp",     clamp(v, MIN_FONT_SP, MAX_FONT_SP)).apply(); }
     public void putWidthDp(int v)        { sp.edit().putInt("width_dp",    clamp(v, MIN_WIDTH_DP, MAX_WIDTH_DP)).apply(); }

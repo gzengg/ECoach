@@ -16,6 +16,11 @@ import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.TextView;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -41,17 +46,23 @@ public class CaptureService extends Service {
     public static CaptureService current;
 
     private MediaProjection projection;
+    private boolean stoppedFromNotification = false;
     private AudioRecord audioRecord;
     private PcmBuffer buffer;
     private ConversationManager conversation;
     FloatingPanel panel;
     private HandlerThread bgThread;
     private Handler bgHandler;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private ExecutorService networkExec;
     private final ListenToggle listen = new ListenToggle();
     private volatile boolean stopped = false;
     private int sampleRate = 16000;
     private HistoryStore history;
+    // v3.0 取词
+    private ScreenTextCapture screenCapture;
+    private GrabManager grabManager;
+    private GrabOverlay grabOverlay;
 
     // ── 生命周期 ────────────────────────────
 
@@ -72,9 +83,11 @@ public class CaptureService extends Service {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
 
         if (intent == null || ACTION_STOP.equals(intent.getAction())) {
-            // 不直接 stopSelf()：只移除前台通知；
-            // 由 MainActivity.onDestroy(isFinishing) 或悬浮窗关闭按钮决定何时真正结束服务。
-            stopForeground(STOP_FOREGROUND_REMOVE);
+            // 通知栏「停止」= 真停止：藏窗口 → 停服务。与「Activity 关闭时 stopService」区分开。
+            stoppedFromNotification = true;
+            if (panel != null) panel.hide();
+            broadcastState(false, ServiceEvents.REASON_NOTIFICATION_STOP);
+            stopSelf();
             return START_NOT_STICKY;
         }
 
@@ -98,12 +111,11 @@ public class CaptureService extends Service {
         stopped = true;
         stopForeground(STOP_FOREGROUND_REMOVE);
         releaseCapture(); // 内部已调 listen.onCaptureStopped()
-        // 不调 panel.hide()：
-        //   - MainActivity.onDestroy 会调 stopService 触发这里，此时不应删窗口
-        //   - 悬浮窗关闭按钮触发 onClose → stopSelf，会在这里清理
-        //   - 真正要删窗口时由 PanelCallback.onClose 统一处理
+        // 通知栏停止：panel.hide() 已在 ACTION_STOP 里处理，此处不重复。
+        // Activity 关闭时 stopService：Activity 本身管自己的生命周期，此处也不动 panel。
         if (networkExec != null) networkExec.shutdownNow();
         if (bgThread != null) bgThread.quitSafely();
+        broadcastState(false, ServiceEvents.REASON_STOPPED);
         current = null;
         super.onDestroy();
     }
@@ -140,8 +152,25 @@ public class CaptureService extends Service {
         panel.show();
         panel.setListening(listen.isListening());
 
+        // 初始化取词：常驻 VirtualDisplay + ImageReader
+        screenCapture = new ScreenTextCapture(getSystemService(WindowManager.class));
+        if (!screenCapture.init(projection)) {
+            Log.w(TAG, "ScreenTextCapture init failed (non-fatal)");
+        }
+        grabManager = new GrabManager();
+        grabOverlay = new GrabOverlay(this, new GrabOverlay.Callback() {
+            @Override public void onRegionSelected(int l, int t, int r, int b) {
+                grabManager.onRegionSelected(l, t, r, b, screenCapture);
+            }
+            @Override public void onCancelled() {
+                grabManager.onCancelled();
+                mainHandler.post(() -> panel.showRestore());
+            }
+        });
+
         bgHandler.post(this::readLoop);
         Log.i(TAG, "Capture started");
+        broadcastState(true, ServiceEvents.REASON_STARTED);
     }
 
     private void releaseCapture() {
@@ -154,6 +183,15 @@ public class CaptureService extends Service {
         if (projection != null) {
             try { projection.stop(); } catch (Exception ignored) {}
             projection = null;
+        }
+        // 释放常驻 VirtualDisplay（会话结束）
+        if (screenCapture != null) {
+            screenCapture.release();
+            screenCapture = null;
+        }
+        if (grabOverlay != null) {
+            grabOverlay.dismiss();
+            grabOverlay = null;
         }
     }
 
@@ -330,7 +368,71 @@ public class CaptureService extends Service {
         Log.i(TAG, "Conversation cleared");
     }
 
+    // ── 取词流程 ─────────────────────────
+
+    private void startGrab() {
+        if (screenCapture == null || !screenCapture.isReady()) {
+            if (panel != null) panel.showMessage("截屏未就绪，请重新授权");
+            return;
+        }
+        if (panel != null) panel.hide();
+        grabManager.setCallback(new GrabManager.Callback() {
+            @Override public void onStateChanged(GrabManager.State s) {
+                if (s == GrabManager.State.IDLE) {
+                    mainHandler.post(() -> panel.showRestore());
+                }
+            }
+            @Override public void onCaptureFailed(String r) {
+                mainHandler.post(() -> panel.showMessage(r));
+            }
+            @Override public void onOcrResult(String t) {
+                mainHandler.post(() -> panel.setGrabStatus("识别到 " + t.length() + " 字符，翻译中…"));
+            }
+            @Override public void onTranslationResult(String src, String dst) {
+                mainHandler.post(() -> {
+                    panel.setGrabStatus(null);
+                    panel.showRestore();
+                    panel.switchToTabExternal(1); // 切到取词页
+                    addGrabCard(src, dst);
+                });
+            }
+            @Override public void onOcrFailed(String r) {
+                mainHandler.post(() -> { panel.showMessage(r); panel.showRestore(); });
+            }
+            @Override public void onTranslationFailed(String src, String r) {
+                mainHandler.post(() -> {
+                    panel.showMessage("翻译失败: " + r + "，已保留原文");
+                    panel.showRestore();
+                    panel.switchToTabExternal(1);
+                    addGrabCard(src, "(翻译失败)");
+                });
+            }
+            @Override public void onAborted(String r) {
+                mainHandler.post(() -> { panel.showMessage(r); panel.showRestore(); });
+            }
+        });
+        grabManager.startGrab(screenCapture, grabOverlay);
+    }
+
+    private void addGrabCard(String source, String translated) {
+        // P7: 接入对话上下文
+        if (conversation != null) {
+            ConversationManager.Turn turn = conversation.addGrab(source, translated);
+            if (history != null) history.appendTranscript("[取词] " + source + " → " + translated);
+        }
+        // 在取词页签显示卡片
+        View item = android.view.LayoutInflater.from(this)
+                .inflate(R.layout.item_grab, null);
+        ((TextView) item.findViewById(R.id.tvGrabSource)).setText(source);
+        ((TextView) item.findViewById(R.id.tvGrabTranslated)).setText(translated);
+        panel.addGrabCard(item);
+    }
+
     // ── 工具 ──────────────────────────────
+
+    private void broadcastState(boolean running, String reason) {
+        sendBroadcast(ServiceEvents.buildStateBroadcast(this, running, reason));
+    }
 
     private void postMessage(String msg) { if (panel != null) panel.showMessage(msg); }
 
@@ -393,6 +495,7 @@ public class CaptureService extends Service {
         public void onStop() {
             Log.i(TAG, "Projection stopped");
             releaseCapture();
+            broadcastState(false, ServiceEvents.REASON_PROJECTION_KILLED);
             if (panel != null) panel.setListening(listen.isListening());
             notifyReconsentNeeded(getString(R.string.msg_projection_killed));
         }
@@ -435,6 +538,12 @@ public class CaptureService extends Service {
             // 先藏窗口，再停服务：保证悬浮窗不会在服务销毁后还残留在屏幕上
             if (panel != null) panel.hide();
             stopSelf();
+        }
+
+        @Override
+        public void onSpeak(long turnId, String text, String langHint) {
+            // P5: 朗读功能 — 由 P2 的 SpeechPlayer 实现处理
+            // TODO: P5 完成后接入 SpeechPlayer
         }
     }
 }

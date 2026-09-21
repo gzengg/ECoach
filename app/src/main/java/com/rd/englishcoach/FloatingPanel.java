@@ -36,6 +36,7 @@ public final class FloatingPanel {
         void onDeleteTurn(long turnId);
         void onReconsent();
         void onClose();
+        void onSpeak(long turnId, String text, String langHint);
     }
 
     private final Context ctx;
@@ -57,6 +58,13 @@ public final class FloatingPanel {
     private View inputRow;
     private EditText etQuestion;
     private TextView btnSendQuestion;
+    // v3.0 Tab
+    private TextView btnTabListen, btnTabGrab;
+    private View tabListening, tabGrab;
+    private TextView tvGrabStatus, btnGrabStart;
+    private static final int TAB_LISTEN = 0;
+    private static final int TAB_GRAB = 1;
+    private int currentTab = TAB_LISTEN;
 
     private final Map<Long, View> turnViews = new LinkedHashMap<>();
     private long pendingQuestionTurnId = -1;
@@ -92,8 +100,17 @@ public final class FloatingPanel {
         inputRow       = root.findViewById(R.id.inputRow);
         etQuestion     = root.findViewById(R.id.etQuestion);
         btnSendQuestion = root.findViewById(R.id.btnSendQuestion);
+        btnTabListen    = root.findViewById(R.id.btnTabListen);
+        btnTabGrab      = root.findViewById(R.id.btnTabGrab);
+        tabListening    = root.findViewById(R.id.tabListening);
+        tabGrab         = root.findViewById(R.id.tabGrab);
+        tvGrabStatus    = root.findViewById(R.id.tvGrabStatus);
+        btnGrabStart    = root.findViewById(R.id.btnGrabStart);
 
         root.findViewById(R.id.dragBar).setOnTouchListener(new DragTouchListener());
+
+        btnTabListen.setOnClickListener(v -> switchToTab(TAB_LISTEN));
+        btnTabGrab.setOnClickListener(v -> switchToTab(TAB_GRAB));
 
         btnPause.setOnClickListener(v -> cb.onTogglePause());
         btnReconsent.setOnClickListener(v -> cb.onReconsent());
@@ -143,6 +160,60 @@ public final class FloatingPanel {
         applyFontSize(prefs.fontSp());
     }
 
+    // ── Tab 切换 ──────────────────────────
+
+    private void switchToTab(int tab) {
+        currentTab = tab;
+        boolean listen = (tab == TAB_LISTEN);
+        tabListening.setVisibility(listen ? View.VISIBLE : View.GONE);
+        tabGrab.setVisibility(listen ? View.GONE : View.VISIBLE);
+        btnTabListen.setTextColor(ctx.getColor(listen ? R.color.accent_solid : R.color.text_secondary));
+        btnTabGrab.setTextColor(ctx.getColor(listen ? R.color.text_secondary : R.color.accent_solid));
+        // 切到听力页时，如果有输入框打开就收起
+        if (listen && inputRow.getVisibility() == View.VISIBLE) {
+            dismissInput();
+        }
+    }
+
+    /** 外部获取当前 Tab（用于 hide/show 恢复）。 */
+    public int getCurrentTab() { return currentTab; }
+
+    /** 外部强制切 Tab（用于取词完成后自动切回）。 */
+    public void switchToTabExternal(int tab) {
+        mainHandler.post(() -> switchToTab(tab));
+    }
+
+    // ── 取词页公共方法（P4 使用） ──────────
+
+    public void setGrabStatus(String text) {
+        mainHandler.post(() -> {
+            tvGrabStatus.setText(text);
+            tvGrabStatus.setVisibility(text != null && !text.isEmpty() ? View.VISIBLE : View.GONE);
+        });
+    }
+
+    private android.widget.LinearLayout grabList;
+    private MaxHeightScrollView scrollGrabs;
+
+    /** 添加取词卡片到取词页签。 */
+    public void addGrabCard(View item) {
+        mainHandler.post(() -> {
+            if (grabList == null) grabList = root.findViewById(R.id.grabList);
+            if (scrollGrabs == null) scrollGrabs = root.findViewById(R.id.scrollGrabs);
+            grabList.addView(item, 0);
+            scrollGrabs.setVisibility(View.VISIBLE);
+            scrollGrabs.setMaxHeight(dpToPx(260));
+        });
+    }
+
+    /** 清空取词卡片。 */
+    public void clearGrabCards() {
+        mainHandler.post(() -> {
+            if (grabList != null) grabList.removeAllViews();
+            if (scrollGrabs != null) scrollGrabs.setVisibility(View.GONE);
+        });
+    }
+
     // ── 内嵌提问 ──────────────────────────
 
     private void submitQuestion() {
@@ -189,6 +260,12 @@ public final class FloatingPanel {
         if (dotBreathAnim != null) dotBreathAnim.cancel();
         if (levelAnim != null) levelAnim.cancel();
         if (root.getParent() != null) wm.removeView(root);
+    }
+
+    /** hide 时保存 Tab 状态，show 时恢复。 */
+    public void showRestore() {
+        show();
+        switchToTab(currentTab); // 恢复到之前的 Tab
     }
 
     // ── 状态 ──────────────────────────────
@@ -263,6 +340,12 @@ public final class FloatingPanel {
 
             // 「询问AI」按钮 → 展开内嵌输入框
             item.findViewById(R.id.btnAskQuestion).setOnClickListener(v -> showQuestionInput(turn.id));
+
+            // 朗读按钮
+            item.findViewById(R.id.btnSpeakTranscript).setOnClickListener(
+                    v -> cb.onSpeak(turn.id, turn.content, "en"));
+            item.findViewById(R.id.btnSpeakAnswer).setOnClickListener(
+                    v -> cb.onSpeak(turn.id, turn.aiAnswer, "en"));
 
             applyTurnVisibility(item, turn);
 
@@ -349,6 +432,7 @@ public final class FloatingPanel {
                 btnAnswer.setVisibility(View.VISIBLE);
                 btnAsk.setVisibility(View.VISIBLE);
                 tvAnswerStatus.setVisibility(View.GONE);
+                item.findViewById(R.id.btnSpeakAnswer).setVisibility(View.GONE);
                 break;
             case LOADING:
                 tvAnswerLabel.setVisibility(View.GONE);
@@ -357,6 +441,7 @@ public final class FloatingPanel {
                 btnAsk.setVisibility(View.GONE);
                 tvAnswerStatus.setText(R.string.msg_ai_thinking);
                 tvAnswerStatus.setVisibility(View.VISIBLE);
+                item.findViewById(R.id.btnSpeakAnswer).setVisibility(View.GONE);
                 break;
             case READY:
                 tvAnswerLabel.setVisibility(View.VISIBLE);
@@ -365,6 +450,7 @@ public final class FloatingPanel {
                 btnAnswer.setVisibility(View.GONE);
                 btnAsk.setVisibility(View.VISIBLE); // 仍可追问
                 tvAnswerStatus.setVisibility(View.GONE);
+                item.findViewById(R.id.btnSpeakAnswer).setVisibility(View.VISIBLE);
                 break;
             case ERROR:
                 tvAnswerLabel.setVisibility(View.GONE);
@@ -373,6 +459,7 @@ public final class FloatingPanel {
                 btnAsk.setVisibility(View.VISIBLE);
                 tvAnswerStatus.setText(ctx.getString(R.string.msg_error_retry, turn.error));
                 tvAnswerStatus.setVisibility(View.VISIBLE);
+                item.findViewById(R.id.btnSpeakAnswer).setVisibility(View.GONE);
                 break;
         }
     }

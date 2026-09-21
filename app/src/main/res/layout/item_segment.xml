@@ -71,6 +71,29 @@
             android:text="❓ 询问AI"
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
+        <TextView
+            android:id="@+id/btnSpeakTranscript"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_chip"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="读"
+            android:textColor="@color/accent_solid"
+            android:textSize="12sp" />
+        <TextView
+            android:id="@+id/btnSpeakAnswer"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_chip"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="读"
+            android:textColor="@color/accent_solid"
+            android:textSize="12sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- 加载中 / 错误 -->

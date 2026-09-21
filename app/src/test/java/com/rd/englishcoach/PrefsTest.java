@@ -56,4 +56,33 @@ public class PrefsTest {
         // 空字符串也应回退到默认值（TextUtils.isEmpty 认为 "" 是 empty）
         assertEquals("fallback", Prefs.nullSafe("", "fallback"));
     }
+
+    // ── 默认值检查 ──────────────────────────
+
+    @Test
+    public void defApiKey_isEmpty() {
+        // v3.0：默认 API Key 留空
+        assertEquals("", Prefs.DEF_API_KEY);
+    }
+
+    @Test
+    public void defTtsModel_correct() {
+        assertEquals("mimo-v2.5-tts", Prefs.DEF_TTS_MODEL);
+    }
+
+    @Test
+    public void defTtsVoiceEn_correct() {
+        assertEquals("Mia", Prefs.DEF_TTS_VOICE_EN);
+    }
+
+    @Test
+    public void defTtsVoiceZh_correct() {
+        assertEquals("冰糖", Prefs.DEF_TTS_VOICE_ZH);
+    }
+
+    @Test
+    public void nullSafe_emptyApiKey_staysEmpty() {
+        // DEF_API_KEY = ""，nullSafe("", "") = ""（空回退到空）
+        assertEquals("", Prefs.nullSafe("", Prefs.DEF_API_KEY));
+    }
 }

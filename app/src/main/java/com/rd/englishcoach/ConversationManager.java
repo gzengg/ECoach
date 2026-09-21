@@ -20,17 +20,18 @@ import java.util.List;
 public final class ConversationManager {
 
     /** 条目类型 */
-    public enum TurnType { TRANSCRIPT, QUESTION }
+    public enum TurnType { TRANSCRIPT, QUESTION, GRAB }
 
     /** AI 回答的生命周期 */
     public enum AnswerState { NONE, LOADING, READY, ERROR }
 
-    /** 一个对话轮次（一段录音转录 或 一个自定义问题） */
+    /** 一个对话轮次（一段录音转录 / 一个自定义问题 / 取词结果） */
     public static final class Turn {
         public final long id;
         public final TurnType type;
-        public final String content;        // ASR 转录文本 或 用户提问
+        public final String content;        // ASR 转录文本 / 用户提问 / 取词原文
         public String aiAnswer;             // AI 回答（null = 还没生成）
+        public String grabTranslated;       // 取词译文（仅 GRAB 类型）
         public AnswerState state = AnswerState.NONE;
         public String error;
         public final List<QAPair> qaPairs = new ArrayList<>(); // 该条目下的自定义问答
@@ -78,6 +79,16 @@ public final class ConversationManager {
     public synchronized Turn addQuestion(String question) {
         String q = question == null ? "" : question.trim();
         Turn turn = new Turn(nextId++, TurnType.QUESTION, q);
+        turns.add(0, turn);
+        while (turns.size() > maxTurns) turns.remove(turns.size() - 1);
+        return turn;
+    }
+
+    /** 取词结果（P7）。 */
+    public synchronized Turn addGrab(String source, String translated) {
+        String s = source == null ? "" : source.trim();
+        Turn turn = new Turn(nextId++, TurnType.GRAB, s);
+        turn.grabTranslated = translated;
         turns.add(0, turn);
         while (turns.size() > maxTurns) turns.remove(turns.size() - 1);
         return turn;
@@ -182,7 +193,13 @@ public final class ConversationManager {
         msgs[0] = new String[]{"system", systemPrompt};
         int i = 1;
         for (Turn t : ordered) {
-            msgs[i++] = new String[]{"user", t.content};
+            // GRAB 类型：原文 + 译文作为上下文
+            if (t.type == TurnType.GRAB && t.grabTranslated != null) {
+                msgs[i++] = new String[]{"user",
+                        "[屏幕取词] 原文: " + t.content + "\n译文: " + t.grabTranslated};
+            } else {
+                msgs[i++] = new String[]{"user", t.content};
+            }
             if (t.hasAnswer()) {
                 msgs[i++] = new String[]{"assistant", t.aiAnswer};
             }

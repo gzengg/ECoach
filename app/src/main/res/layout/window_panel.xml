@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  悬浮窗面板 v2.0「深空玻璃」：
+  悬浮窗面板 v3.0「深空玻璃」双 Tab 版：
   外层半透明玻璃 + 圆角 + 描边（bg_panel）
-  拖动栏：状态点（drawable）+ 状态文字 + 字号按钮 + 关闭
-  音量条：level_bar 渐变进度
-  暂停/继续：主胶囊 或 次按钮
-  轮次列表：surface_1 卡片
-  输入框：bg_chip 描边
-  所有 id 保持不变。
+  dragBar 留在 Tab 外面（拖动栏在哪个页签都要能拖）
+  听力页 = 现有内容（levelBar / btnPause / scrollTurns / inputRow）
+  取词页 = 新增（btnGrabStart / tvGrabStatus / scrollGrabs）
+  所有 id 保持不变，新增 id 以 btnTab*/tab* 为前缀。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
@@ -17,7 +15,7 @@
     android:orientation="vertical"
     android:padding="@dimen/space_sm">
 
-    <!-- 拖动栏 -->
+    <!-- 拖动栏（始终可见，留在 Tab 外面） -->
     <LinearLayout
         android:id="@+id/dragBar"
         android:layout_width="match_parent"
@@ -26,7 +24,6 @@
         android:orientation="horizontal"
         android:paddingBottom="6dp">
 
-        <!-- 状态点：初始 dot_idle，ListeningToggle 切换 dot_active/dot_idle -->
         <View
             android:id="@+id/tvDot"
             android:layout_width="10dp"
@@ -79,100 +76,179 @@
             android:textSize="16sp" />
     </LinearLayout>
 
-    <!-- 音量条 -->
-    <ProgressBar
-        android:id="@+id/levelBar"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:layout_marginBottom="6dp"
-        android:max="100"
-        android:progress="0"
-        android:progressDrawable="@drawable/level_bar" />
-
-    <!-- 暂停/继续 按钮 -->
-    <TextView
-        android:id="@+id/btnPause"
+    <!-- Tab 栏：听力 / 取词 -->
+    <LinearLayout
+        android:id="@+id/tabBar"
         android:layout_width="match_parent"
         android:layout_height="@dimen/height_chip"
         android:layout_marginBottom="6dp"
-        android:background="@drawable/bg_chip"
-        android:gravity="center"
-        android:text="继续"
-        android:textColor="@color/text_primary"
-        android:textSize="15sp"
-        android:fontFamily="sans-serif-medium" />
+        android:orientation="horizontal">
 
-    <!-- 重新授权（默认隐藏） -->
-    <TextView
-        android:id="@+id/btnReconsent"
-        android:layout_width="match_parent"
-        android:layout_height="36dp"
-        android:layout_marginBottom="6dp"
-        android:background="@drawable/bg_chip"
-        android:gravity="center"
-        android:text="重新授权"
-        android:textColor="@color/warn"
-        android:textSize="14sp"
-        android:visibility="gone" />
-
-    <!-- 状态/错误信息 -->
-    <TextView
-        android:id="@+id/tvMessage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:textColor="@color/warn"
-        android:textSize="11sp"
-        android:visibility="gone" />
-
-    <!-- 轮次列表 -->
-    <com.rd.englishcoach.MaxHeightScrollView
-        android:id="@+id/scrollTurns"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone">
-        <LinearLayout
-            android:id="@+id/turnList"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-    </com.rd.englishcoach.MaxHeightScrollView>
-
-    <!-- 内嵌提问输入框（默认隐藏） -->
-    <LinearLayout
-        android:id="@+id/inputRow"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:visibility="gone">
-        <EditText
-            android:id="@+id/etQuestion"
+        <TextView
+            android:id="@+id/btnTabListen"
             android:layout_width="0dp"
-            android:layout_height="36dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@drawable/bg_chip"
-            android:hint="输入问题…"
-            android:inputType="text"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_tertiary"
+            android:gravity="center"
+            android:text="听力"
+            android:textColor="@color/accent_solid"
             android:textSize="13sp"
-            android:singleLine="true"
-            android:paddingHorizontal="10dp" />
+            android:fontFamily="sans-serif-medium" />
+
         <TextView
-            android:id="@+id/btnSendQuestion"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
+            android:id="@+id/btnTabGrab"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
             android:layout_marginStart="6dp"
             android:background="@drawable/bg_chip"
             android:gravity="center"
-            android:paddingHorizontal="10dp"
-            android:text="发送"
-            android:textColor="@color/accent_solid"
-            android:textSize="13sp" />
+            android:text="取词"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+
+    <!-- ═══ 听力页（现有内容） ═══ -->
+    <LinearLayout
+        android:id="@+id/tabListening"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <ProgressBar
+            android:id="@+id/levelBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginBottom="6dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/level_bar" />
+
+        <TextView
+            android:id="@+id/btnPause"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/height_chip"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_chip"
+            android:gravity="center"
+            android:text="继续"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/btnReconsent"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_chip"
+            android:gravity="center"
+            android:text="重新授权"
+            android:textColor="@color/warn"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="@color/warn"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <com.rd.englishcoach.MaxHeightScrollView
+            android:id="@+id/scrollTurns"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone">
+            <LinearLayout
+                android:id="@+id/turnList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </com.rd.englishcoach.MaxHeightScrollView>
+
+        <LinearLayout
+            android:id="@+id/inputRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+            <EditText
+                android:id="@+id/etQuestion"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip"
+                android:hint="输入问题…"
+                android:inputType="text"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_tertiary"
+                android:textSize="13sp"
+                android:singleLine="true"
+                android:paddingHorizontal="10dp" />
+            <TextView
+                android:id="@+id/btnSendQuestion"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_chip"
+                android:gravity="center"
+                android:paddingHorizontal="10dp"
+                android:text="发送"
+                android:textColor="@color/accent_solid"
+                android:textSize="13sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ═══ 取词页（新增，默认隐藏） ═══ -->
+    <LinearLayout
+        android:id="@+id/tabGrab"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/btnGrabStart"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/height_cta"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/pill_primary"
+            android:gravity="center"
+            android:text="取词"
+            android:textColor="@color/accent_on"
+            android:textSize="15sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/tvGrabStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <com.rd.englishcoach.MaxHeightScrollView
+            android:id="@+id/scrollGrabs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone">
+            <LinearLayout
+                android:id="@+id/grabList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </com.rd.englishcoach.MaxHeightScrollView>
     </LinearLayout>
 
 </LinearLayout>

@@ -19,8 +19,8 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:focusable="true"
         android:focusableInTouchMode="true">
 
@@ -31,9 +31,9 @@
             android:background="@drawable/card_surface"
             android:orientation="vertical"
             android:paddingHorizontal="@dimen/space_lg"
-            android:paddingTop="8dp"
-            android:paddingBottom="6dp"
-            android:layout_marginBottom="8dp">
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginBottom="4dp">
 
             <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
                 <TextView style="@style/SettingLabel"
@@ -73,6 +73,23 @@
                     android:labelFor="@id/etChatModel" />
                 <EditText android:id="@+id/etChatModel" style="@style/SettingInput" />
             </LinearLayout>
+
+            <!-- 朗读 TTS 配置 -->
+            <LinearLayout style="@style/SettingRow">
+                <TextView style="@style/SettingLabel"
+                    android:text="TTS 模型"
+                    android:labelFor="@id/etTtsModel" />
+                <EditText android:id="@+id/etTtsModel" style="@style/SettingInput"
+                    android:hint="mimo-v2.5-tts" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/SettingRow">
+                <TextView style="@style/SettingLabel"
+                    android:text="声音"
+                    android:labelFor="@id/etTtsVoice" />
+                <EditText android:id="@+id/etTtsVoice" style="@style/SettingInput"
+                    android:hint="Mia" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- ══════ 卡片 2：系统提示词 ══════ -->
@@ -82,15 +99,15 @@
             android:background="@drawable/card_surface"
             android:orientation="vertical"
             android:paddingHorizontal="@dimen/space_lg"
-            android:paddingTop="8dp"
-            android:paddingBottom="6dp"
-            android:layout_marginBottom="8dp">
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginBottom="4dp">
 
             <TextView android:id="@+id/etSysPromptLabel" style="@style/SettingHeader"
                 android:text="@string/set_sys_prompt"
                 android:labelFor="@id/etSysPrompt" />
             <EditText android:id="@+id/etSysPrompt" style="@style/SettingField"
-                android:layout_height="88dp"
+                android:layout_height="72dp"
                 android:gravity="top|start"
                 android:inputType="textMultiLine|textNoSuggestions"
                 android:scrollbars="vertical" />
@@ -103,9 +120,9 @@
             android:background="@drawable/card_surface"
             android:orientation="vertical"
             android:paddingHorizontal="@dimen/space_lg"
-            android:paddingTop="8dp"
-            android:paddingBottom="6dp"
-            android:layout_marginBottom="8dp">
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginBottom="4dp">
 
             <TextView style="@style/SettingHeader"
                 android:text="@string/set_appearance" />
@@ -139,7 +156,7 @@
         <Button android:id="@+id/btnSave"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
+            android:layout_marginTop="4dp"
             android:textSize="15sp"
             android:text="@string/set_save" />
 
@@ -147,7 +164,7 @@
             style="@style/AppBtnSecondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="4dp"
             android:textSize="14sp"
             android:text="@string/set_reset" />
 

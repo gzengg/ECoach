@@ -5,8 +5,10 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
@@ -32,6 +34,7 @@ public class MainActivity extends Activity {
     private View dotStatus;
     private Button btnStart;
     private View btnStop, btnSettings, btnNewChat, btnHistory;
+    private BroadcastReceiver serviceReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,12 +71,38 @@ public class MainActivity extends Activity {
             getIntent().removeExtra("reconsent");
             requestProjection();
         }
+
+        // 实时监听服务状态广播
+        serviceReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context ctx, Intent intent) {
+                if (ServiceEvents.ACTION_STATE_CHANGED.equals(intent.getAction())) {
+                    boolean running = intent.getBooleanExtra(ServiceEvents.EXTRA_RUNNING, false);
+                    updateStatus(running);
+                }
+            }
+        };
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        updateStatus();
+        // 注册广播接收器
+        IntentFilter filter = new IntentFilter(ServiceEvents.ACTION_STATE_CHANGED);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(serviceReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(serviceReceiver, filter);
+        }
+        updateStatus(CaptureService.current != null); // 兜底：防止广播丢失
+    }
+
+    @Override
+    protected void onPause() {
+        if (serviceReceiver != null) {
+            try { unregisterReceiver(serviceReceiver); } catch (Exception ignored) {}
+        }
+        super.onPause();
     }
 
     // ── 权限检查 → 启动流程 ──────────────────
@@ -285,8 +314,7 @@ public class MainActivity extends Activity {
 
     // ── 状态 ──────────────────────────────
 
-    private void updateStatus() {
-        boolean running = CaptureService.current != null;
+    private void updateStatus(boolean running) {
         tvStatus.setText(running
                 ? getString(R.string.status_running)
                 : getString(R.string.status_stopped));
@@ -294,6 +322,11 @@ public class MainActivity extends Activity {
             dotStatus.setBackgroundResource(
                     running ? R.drawable.dot_active : R.drawable.dot_idle);
         }
+    }
+
+    /** 兼容旧调用点（无参）。 */
+    private void updateStatus() {
+        updateStatus(CaptureService.current != null);
     }
 
     // ── 进程退出兜底 ──────────────────────

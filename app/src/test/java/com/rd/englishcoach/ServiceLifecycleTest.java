@@ -45,26 +45,29 @@ public class ServiceLifecycleTest {
                 stripped.contains("panel.hide"));
     }
 
-    // ── CaptureService：ACTION_STOP 路径不调 stopSelf ────
+    // ── CaptureService：ACTION_STOP 路径先藏窗口再 stopSelf ────
+    //
+    // v3.0 行为：通知栏「停止」= 真停止。
+    // 先 panel.hide()（此时服务还活着，安全），再 broadcastState → stopSelf()。
+    // onDestroy 不再调 panel.hide()（区分「通知栏停止」与「Activity 销毁」）。
 
     @Test
-    public void captureService_actionStop_doesNotCallStopSelf() throws Exception {
+    public void captureService_actionStop_hidesPanelAndStopsSelf() throws Exception {
         String src = readFile("src/main/java/com/rd/englishcoach/CaptureService.java");
-        // 找 onStartCommand 方法
         int methodStart = src.indexOf("public int onStartCommand");
         assertTrue("CaptureService 必须有 onStartCommand", methodStart > 0);
         int braceStart = src.indexOf('{', methodStart);
         String body = extractMethodBody(src, braceStart);
-        // 在 ACTION_STOP 分支内检查（从 ACTION_STOP 到下一个 return）
         int stopIdx = body.indexOf("ACTION_STOP");
         assertTrue("onStartCommand 必须处理 ACTION_STOP", stopIdx > 0);
-        String stopBranch = body.substring(stopIdx, Math.min(stopIdx + 400, body.length()));
+        String stopBranch = body.substring(stopIdx, Math.min(stopIdx + 600, body.length()));
         String stripped = stripComments(stopBranch);
-        assertFalse("ACTION_STOP 分支不应直接调 stopSelf()（会让前台服务销毁时进程一起死），"
-                        + "应改为 stopForeground 移除通知即可",
+        assertTrue("ACTION_STOP 分支应调 panel.hide() 藏窗口",
+                stripped.contains("panel.hide"));
+        assertTrue("ACTION_STOP 分支应调 stopSelf() 真正停止服务",
                 stripped.contains("stopSelf()"));
-        assertTrue("ACTION_STOP 分支应调 stopForeground 移除前台通知",
-                stripped.contains("stopForeground"));
+        assertTrue("ACTION_STOP 分支应发广播通知主界面",
+                stripped.contains("broadcastState") || stripped.contains("ServiceEvents"));
     }
 
     // ── MainActivity：停止按钮用 stopService ────

@@ -13,7 +13,7 @@ import android.widget.TextView;
  */
 public class SettingsActivity extends Activity {
 
-    private EditText etBaseUrl, etApiKey, etAsrModel, etChatModel, etSysPrompt;
+    private EditText etBaseUrl, etApiKey, etAsrModel, etChatModel, etSysPrompt, etTtsModel, etTtsVoice;
     private TextView tvFontPreview, tvWidthPreview, btnToggleKey;
     private Prefs prefs;
 
@@ -29,6 +29,8 @@ public class SettingsActivity extends Activity {
         etAsrModel  = findViewById(R.id.etAsrModel);
         etChatModel = findViewById(R.id.etChatModel);
         etSysPrompt = findViewById(R.id.etSysPrompt);
+        etTtsModel = findViewById(R.id.etTtsModel);
+        etTtsVoice = findViewById(R.id.etTtsVoice);
 
         tvFontPreview  = findViewById(R.id.tvFontValue);
         tvWidthPreview = findViewById(R.id.tvWidthValue);
@@ -75,6 +77,8 @@ public class SettingsActivity extends Activity {
         etAsrModel.setText(prefs.asrModel());
         etChatModel.setText(prefs.chatModel());
         etSysPrompt.setText(prefs.sysPrompt());
+        etTtsModel.setText(prefs.ttsModel());
+        etTtsVoice.setText(prefs.ttsVoiceEnglish());
         tvFontPreview.setText(prefs.fontSp() + "sp");
         tvWidthPreview.setText(prefs.widthDp() + "dp");
     }
@@ -93,6 +97,8 @@ public class SettingsActivity extends Activity {
         prefs.putAsrModel(etAsrModel.getText().toString().trim());
         prefs.putChatModel(etChatModel.getText().toString().trim());
         prefs.putSysPrompt(etSysPrompt.getText().toString().trim());
+        prefs.putTtsModel(etTtsModel.getText().toString().trim());
+        prefs.putTtsVoiceEnglish(etTtsVoice.getText().toString().trim());
         finish();
     }
 
