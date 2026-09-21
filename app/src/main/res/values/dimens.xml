@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 间距（4dp 网格） -->
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">12dp</dimen>
+    <dimen name="space_lg">16dp</dimen>
+    <dimen name="space_xl">24dp</dimen>
+
+    <!-- 圆角 -->
+    <dimen name="radius_sm">8dp</dimen>
+    <dimen name="radius_md">12dp</dimen>
+    <dimen name="radius_lg">16dp</dimen>
+    <dimen name="radius_pill">999dp</dimen>
+
+    <!-- 控件 -->
+    <dimen name="height_row">48dp</dimen>
+    <dimen name="height_input">40dp</dimen>
+    <dimen name="height_chip">32dp</dimen>
+    <dimen name="height_cta">52dp</dimen>
+    <dimen name="stroke_w">1dp</dimen>
+</resources>

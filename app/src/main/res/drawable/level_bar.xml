@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 音量条：半透明轨道 + 渐变进度 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 轨道（背景） -->
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <solid android:color="#1AFFFFFF" />
+            <corners android:radius="2dp" />
+        </shape>
+    </item>
+    <!-- 进度 -->
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="rectangle">
+                <gradient
+                    android:type="linear"
+                    android:angle="0"
+                    android:startColor="@color/accent_start"
+                    android:endColor="@color/accent_end" />
+                <corners android:radius="2dp" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>

@@ -1,5 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      v2.0 AppTheme — 基于 AOSP 框架自带的 Theme.Material（不是 Material Components 库）。
+      深色 + 自定义 colorAccent/colorPrimary，让光标、ProgressBar、PopupMenu 自动跟随配色。
+    -->
+    <style name="AppTheme" parent="@android:style/Theme.Material">
+        <!-- 背景 -->
+        <item name="android:windowBackground">@drawable/bg_app</item>
+        <item name="android:statusBarColor">@color/bg_base</item>
+        <item name="android:navigationBarColor">@color/bg_base</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- 主题色 -->
+        <item name="android:colorPrimary">@color/bg_base</item>
+        <item name="android:colorPrimaryDark">@color/bg_base</item>
+        <item name="android:colorAccent">@color/accent_solid</item>
+        <!-- 文字 -->
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_tertiary</item>
+        <!-- 按钮：用 @color/accent_on 直接引用，避免 theme 循环 -->
+        <item name="android:buttonStyle">@style/AppBtnPrimary</item>
+        <item name="android:editTextStyle">@style/AppInput</item>
+    </style>
+
+    <!-- 主 CTA 胶囊：渐变 + 深色文字（见 AGENTS.md §11.2 对比度说明） -->
+    <style name="AppBtnPrimary" parent="@android:style/Widget.Material.Button">
+        <item name="android:background">@drawable/pill_primary</item>
+        <item name="android:textColor">@color/accent_on</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:paddingLeft">28dp</item>
+        <item name="android:paddingRight">28dp</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">@dimen/height_cta</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- 次按钮：透明 + 白描边 + 白文字 -->
+    <style name="AppBtnSecondary" parent="@android:style/Widget.Material.Button">
+        <item name="android:background">@drawable/btn_secondary</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:paddingLeft">24dp</item>
+        <item name="android:paddingRight">24dp</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">@dimen/height_row</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- 文字按钮：纯透明 -->
+    <style name="AppBtnText" parent="@android:style/Widget.Material.Button">
+        <item name="android:background">@drawable/btn_text</item>
+        <item name="android:textColor">@color/accent_solid</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- 输入框 -->
+    <style name="AppInput" parent="@android:style/Widget.Material.EditText">
+        <item name="android:background">@drawable/bg_input</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColorHint">@color/text_tertiary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:minHeight">@dimen/height_input</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
+    </style>
 
     <!--
       设置页统一样式。
@@ -22,6 +97,7 @@
         <item name="android:layout_width">76dp</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
     </style>
 
     <!-- 单行输入框：跟随右侧剩余宽度 -->
@@ -48,6 +124,9 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">12sp</item>
         <item name="android:layout_marginTop">14dp</item>
+        <item name="android:textColor">@color/text_tertiary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.08</item>
     </style>
 
     <!-- 加减按钮 -->
@@ -57,6 +136,7 @@
         <item name="android:gravity">center</item>
         <item name="android:textSize">18sp</item>
         <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <!-- 加减按钮中间显示的当前值 -->
@@ -65,6 +145,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:gravity">center</item>
         <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
 </resources>

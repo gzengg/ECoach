@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 纯文字按钮：透明底，只显示涟漪 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/ripple_light">
+    <item android:drawable="@android:color/transparent" />
+</ripple>

@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 芯片 / 次级操作：透明底 + 描边 + 圆角 + 涟漪 -->
+<!-- 次按钮：透明底 + 1dp 白描边 -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="@color/ripple_light">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#00000000" />
             <stroke android:width="1dp" android:color="@color/stroke_soft" />
-            <corners android:radius="@dimen/radius_sm" />
+            <corners android:radius="@dimen/radius_pill" />
         </shape>
     </item>
 </ripple>

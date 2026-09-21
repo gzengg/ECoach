@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 监听中状态点：success 绿 + 外圈发光 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 外圈发光 -->
+    <item
+        android:left="-3dp" android:top="-3dp"
+        android:right="-3dp" android:bottom="-3dp">
+        <shape android:shape="oval">
+            <solid android:color="#3334D399" />
+        </shape>
+    </item>
+    <!-- 内圈实心 -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/success" />
+        </shape>
+    </item>
+</layer-list>

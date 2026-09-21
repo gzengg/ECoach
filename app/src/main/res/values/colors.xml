@@ -1,5 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 自适应图标的背景色：取自 icon.png 徽标底色的中间调，与前景边缘自然衔接 -->
+    <!-- 2026-09-20 v2.0「深空玻璃 Aurora Glass」
+         设计原则：
+         - 底色深空蓝黑，卡片表面微光
+         - 强调色青→靛渐变（只用于主 CTA 与进度条）
+         - 白色描边半透明分层
+         - 全应用统一，不在 XML 里散落裸十六进制
+    -->
+
+    <!-- ── 启动器图标背景色（取自 icon.png 徽标底色的中间调） ── -->
     <color name="ic_launcher_background">#FF06A9F8</color>
+
+    <!-- ── 底色 ── -->
+    <color name="bg_base">#FF0B0F17</color>         <!-- 根底色 -->
+    <color name="bg_base_glow">#FF101826</color>     <!-- 渐变光源最亮端 -->
+
+    <!-- ── 表面 ── -->
+    <color name="surface_1">#FF131926</color>        <!-- 一级卡片 / 轮次卡片底板 -->
+    <color name="surface_2">#FF1A2130</color>        <!-- 二级容器 / 输入框 -->
+    <color name="surface_3">#FF232C3D</color>        <!-- 按下态 / 悬浮态 -->
+
+    <!-- ── 面板（悬浮窗） ── -->
+    <color name="panel_glass">#E6161A21</color>      <!-- 90% 不透明度，不能降到 70% 以下 -->
+
+    <!-- ── 描边 ── -->
+    <color name="stroke_soft">#1AFFFFFF</color>      <!-- 10% 白，卡片描边 -->
+    <color name="stroke_strong">#26FFFFFF</color>    <!-- 15% 白，聚焦描边 -->
+
+    <!-- ── 文字 ── -->
+    <color name="text_primary">#FFF2F5FA</color>     <!-- 主文字，16.08:1 on surface_1 -->
+    <color name="text_secondary">#FF9BA6B8</color>   <!-- 次级文字，7.15:1 -->
+    <color name="text_tertiary">#FF7C8798</color>    <!-- 占位符/说明，4.83:1 -->
+
+    <!-- ── 强调 ── -->
+    <color name="accent_start">#FF22D3EE</color>     <!-- 渐变起点（青） -->
+    <color name="accent_end">#FF6D8CF5</color>       <!-- 渐变终点（靛紫），非 #6366F1 -->
+    <color name="accent_solid">#FF3DD9E8</color>     <!-- colorAccent，光标/进度条 tint -->
+    <color name="accent_on">#FF06121A</color>        <!-- 胶囊文字色（深色），见 §11.2 -->
+
+    <!-- ── 语义 ── -->
+    <color name="success">#FF34D399</color>          <!-- 监听中状态点 -->
+    <color name="warn">#FFFBBF24</color>              <!-- 提示信息 -->
+    <color name="danger">#FFF87171</color>           <!-- 错误 / 删除 -->
+
+    <!-- ── 涟漪 ── -->
+    <color name="ripple_light">#33FFFFFF</color>     <!-- 涟漪基色 -->
 </resources>

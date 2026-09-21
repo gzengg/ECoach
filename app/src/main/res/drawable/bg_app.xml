@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 根背景：深空蓝黑 + 径向渐变光源感 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/bg_base" />
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="480"
+                android:centerX="0.5"
+                android:centerY="0.15"
+                android:startColor="@color/bg_base_glow"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>
