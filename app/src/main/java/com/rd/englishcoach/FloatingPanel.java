@@ -272,7 +272,31 @@ public final class FloatingPanel {
     /** hide 时保存 Tab 状态，show 时恢复。 */
     public void showRestore() {
         show();
+        setCaptureInvisible(false); // 取词结束后确保面板恢复可见/可点
         switchToTab(currentTab); // 恢复到之前的 Tab
+    }
+
+    /**
+     * 取词截图期间的面板可见性（v3.1）：
+     * <b>不 hide 面板</b>，只把窗口设为全透明——用户视觉上「面板没消失」（不会以为 App 退出了），
+     * 而截图里也不会带上面板文字（取词前必须先藏自己的文字，见 AGENTS §2.3）。
+     * 同时加 FLAG_NOT_TOUCHABLE，避免用户点到看不见的按钮。
+     */
+    public void setCaptureInvisible(boolean invisible) {
+        mainHandler.post(() -> {
+            if (root == null || root.getParent() == null) return;
+            wlp.alpha = invisible ? 0f : 1f;
+            if (invisible) {
+                wlp.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            } else {
+                wlp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            }
+            try {
+                wm.updateViewLayout(root, wlp);
+            } catch (Exception ignored) {
+                // 面板可能刚好被移除，忽略
+            }
+        });
     }
 
     // ── 状态 ──────────────────────────────

@@ -419,10 +419,20 @@ public class CaptureService extends Service {
             Log.e(TAG, "startGrab aborted, ready=false, why=" + why);
             return;
         }
-        if (panel != null) panel.hide();
+        // v3.1：不再 hide 面板——只把它变透明，用户不会以为 App 退出了；
+        // 截图里也不会带上面板文字（取词前必须先藏自己的文字，AGENTS §2.3）
+        if (panel != null) panel.setCaptureInvisible(true);
         grabManager.setCallback(new GrabManager.Callback() {
             @Override public void onStateChanged(GrabManager.State s) {
-                if (s == GrabManager.State.IDLE) {
+                if (s == GrabManager.State.OCR) {
+                    // B：框选完成就立即恢复面板 + 显示「取词识别中…」，
+                    // 消掉 OCR/翻译期间 1~3 秒的完全空白期（用户会以为退出的那段）
+                    mainHandler.post(() -> {
+                        panel.setGrabStatus(getString(R.string.msg_grab_recognizing));
+                        panel.switchToTabExternal(1);
+                        panel.showRestore(); // 内部会恢复透明度
+                    });
+                } else if (s == GrabManager.State.IDLE) {
                     mainHandler.post(() -> panel.showRestore());
                 }
             }

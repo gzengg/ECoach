@@ -61,6 +61,7 @@
     <string name="msg_record_start_failed">录音启动失败: %1$s</string>
     <string name="msg_no_audio">还没录到声音</string>
     <string name="msg_recognizing">识别中…</string>
+    <string name="msg_grab_recognizing">取词识别中…</string>
     <string name="msg_too_short">录音太短，请多录一点再暂停</string>
     <string name="msg_asr_failed">识别出错: %1$s</string>
     <string name="msg_reconsent_suffix">%1$s，请重新授权</string>
