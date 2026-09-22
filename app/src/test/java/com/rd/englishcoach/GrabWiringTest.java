@@ -58,14 +58,15 @@ public class GrabWiringTest {
     // ── 截图不在主线程 + 首帧重试 ─────────────────────
 
     @Test
-    public void grabManager_captureOnBackgroundThread() throws Exception {
+    public void grabManager_captureOnBackgroundThread_freshFrame() throws Exception {
         String src = readFile("src/main/java/com/rd/englishcoach/GrabManager.java");
         assertTrue("截图必须在后台线程执行",
                 src.contains("new Thread("));
-        assertTrue("必须有首帧重试（ImageReader 首帧可能晚于面板隐藏延迟）",
-                src.contains("captureWithRetry"));
-        assertTrue("重试次数必须 ≥ 3",
-                src.matches("(?s).*FRAME_RETRIES\\s*=\\s*([4-9]|[1-9][0-9]+).*"));
+        assertTrue("必须走 grabFrame()（丢弃滞留帧 + 强制重绘取当下屏幕的新帧，"
+                + "旧机制第二次取词等不到新帧、拿到的是陈旧画面）",
+                src.contains("capture.grabFrame()"));
+        assertFalse("取词流程不得直接轮询 acquireLatestImage（拿不到新帧/拿到旧帧）",
+                src.contains("acquireLatestImage"));
     }
 
     // ── 不再二次截屏：框选直接裁剪展示帧 ──────────────

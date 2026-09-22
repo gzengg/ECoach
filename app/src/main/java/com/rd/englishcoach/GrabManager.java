@@ -20,12 +20,9 @@ public final class GrabManager {
     private static final String TAG = "GrabManager";
 
     /** 等悬浮窗隐藏的延迟（面板先 hide，再截图，避免截到自己的文字）。 */
-    private static final long PANEL_HIDE_DELAY_MS = 150;
-    /** 首帧重试：次数 × 间隔。ImageReader 首帧可能晚于 VirtualDisplay 建立。 */
-    private static final int FRAME_RETRIES = 8;
-    private static final long FRAME_RETRY_INTERVAL_MS = 150;
+    private static final long PANEL_HIDE_DELAY_MS = 200;
     /** 看门狗：非交互阶段卡住时强制收尾，保证面板一定会回来。 */
-    private static final long WATCHDOG_CAPTURE_MS = 8_000;
+    private static final long WATCHDOG_CAPTURE_MS = 12_000;
     private static final long WATCHDOG_PIPELINE_MS = 25_000;
 
     enum State { IDLE, CAPTURING, SELECTING, OCR, TRANSLATING, DONE }
@@ -61,11 +58,13 @@ public final class GrabManager {
         setState(State.CAPTURING);
         armWatchdog(WATCHDOG_CAPTURE_MS);
 
-        // 延迟 150ms 等面板隐藏后再截图；截图本身放后台线程（取帧非主线程操作）
+        // 延迟等面板隐藏后再截图；截图本身放后台线程（取帧是阻塞操作）
         mainHandler.postDelayed(() -> new Thread(() -> {
             Bitmap frame;
             try {
-                frame = captureWithRetry(capture);
+                // v3.1：强制重绘取「当下屏幕」的新帧，丢弃滞留旧帧
+                // （旧机制拿到的可能是几分钟前的画面，或等不到新帧 → 第二次取词必败）
+                frame = capture.grabFrame();
             } catch (Throwable t) {
                 Log.e(TAG, "capture thread crashed", t);
                 frame = null;
@@ -77,37 +76,23 @@ public final class GrabManager {
             final Bitmap f = frame;
             mainHandler.post(() -> {
                 if (state != State.CAPTURING) { // 已被取消/中断
-                    f.recycle();
-                    return;
+                    return; // 不 recycle：交给 GC（避免与渲染层竞态）
                 }
                 setState(State.SELECTING);
                 try {
                     overlay.show(f);
                 } catch (Throwable t) {
                     Log.e(TAG, "overlay.show failed", t);
-                    f.recycle();
                     failOnMain("无法显示框选层: " + t.getMessage());
                 }
             });
         }, "grab-capture").start(), PANEL_HIDE_DELAY_MS);
     }
 
-    /** 把截帧失败原因带上，方便用户/日志定位（例如「截屏通道未初始化」）。 */
+    /** 把截帧失败原因带上，方便用户/日志定位（例如「屏幕没有产出新帧」）。 */
     private String reasonSuffix(ScreenTextCapture capture) {
         String why = capture == null ? null : capture.lastError();
         return why == null || why.isEmpty() ? "" : "：" + why;
-    }
-
-    /** 后台线程取帧：首帧未到时按间隔重试。 */
-    private Bitmap captureWithRetry(ScreenTextCapture capture) {
-        for (int i = 0; i < FRAME_RETRIES; i++) {
-            Bitmap frame = capture.captureFrame();
-            if (frame != null) return frame;
-            Log.w(TAG, "frame not ready, retry " + (i + 1) + "/" + FRAME_RETRIES);
-            try { Thread.sleep(FRAME_RETRY_INTERVAL_MS); }
-            catch (InterruptedException e) { Thread.currentThread().interrupt(); return null; }
-        }
-        return null;
     }
 
     /**
