@@ -18,5 +18,7 @@
     <dimen name="height_input">40dp</dimen>
     <dimen name="height_chip">32dp</dimen>
     <dimen name="height_cta">52dp</dimen>
+    <!-- 悬浮窗主按钮：比主界面 CTA 小一号（用户反馈“有点大”） -->
+    <dimen name="height_cta_sm">44dp</dimen>
     <dimen name="stroke_w">1dp</dimen>
 </resources>

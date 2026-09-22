@@ -173,6 +173,9 @@ public final class FloatingPanel {
         boolean listen = (tab == TAB_LISTEN);
         tabListening.setVisibility(listen ? View.VISIBLE : View.GONE);
         tabGrab.setVisibility(listen ? View.GONE : View.VISIBLE);
+        // 两个主按钮共用同一位置（primaryBar）：只切可见性，保证位置/尺寸完全一致
+        btnPause.setVisibility(listen ? View.VISIBLE : View.GONE);
+        btnGrabStart.setVisibility(listen ? View.GONE : View.VISIBLE);
         btnTabListen.setTextColor(ctx.getColor(listen ? R.color.accent_solid : R.color.text_secondary));
         btnTabGrab.setTextColor(ctx.getColor(listen ? R.color.text_secondary : R.color.accent_solid));
         // 切到听力页时，如果有输入框打开就收起
@@ -551,8 +554,8 @@ public final class FloatingPanel {
         if (tvStatus == null) return;
         tvStatus.setTextSize(sp);
         // 两个 Tab 的主按钮（继续 / 取词）字号保持一致，风格才统一；
-        // 上限 20sp，避免大字号把 52dp 胶囊擑破
-        int ctaSp = Math.min(sp, 20);
+        // 上限 16sp，避免大字号把 44dp 胶囊擑破
+        int ctaSp = Math.min(sp, 16);
         btnPause.setTextSize(ctaSp);
         if (btnGrabStart != null) btnGrabStart.setTextSize(ctaSp);
         for (View v : turnViews.values()) {

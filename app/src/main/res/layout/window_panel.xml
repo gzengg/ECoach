@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  悬浮窗面板 v3.0「深空玻璃」双 Tab 版：
+  悬浮窗面板 v3.1「深空玻璃」双 Tab 版：
   外层半透明玻璃 + 圆角 + 描边（bg_panel）
   dragBar 留在 Tab 外面（拖动栏在哪个页签都要能拖）
-  听力页 = 现有内容（levelBar / btnPause / scrollTurns / inputRow）
-  取词页 = 新增（btnGrabStart / tvGrabStatus / scrollGrabs）
-  所有 id 保持不变，新增 id 以 btnTab*/tab* 为前缀。
+  公共区（两个 Tab 共享，保证主按钮 Y 位置一致）：
+    levelBar（音量条）/ btnReconsent / tvMessage / primaryBar（继续 | 取词）
+  听力页 = scrollTurns / inputRow
+  取词页 = tvGrabStatus / scrollGrabs
+  所有 id 保持不变，新增 id 以 btnTab*/tab*/primaryBar 为前缀。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
@@ -110,6 +112,17 @@
             android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 
+    <!-- 音量指示条：放在公共区（两个 Tab 都有）→ 保证两个 Tab 的主按钮 Y 位置一致 -->
+    <ProgressBar
+        android:id="@+id/levelBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginBottom="6dp"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/level_bar" />
+
     <!-- ═══ 公共提示区（两个 Tab 都要能看到） ═══
          此前 tvMessage / btnReconsent 放在 tabListening 内部，切到「取词」页后
          任何失败提示都不可见 → 用户看到的是「点取词完全没反应」。 -->
@@ -136,34 +149,45 @@
         android:textSize="11sp"
         android:visibility="gone" />
 
+    <!-- ═══ 公共主按钮区 ═══
+         两个 Tab 的主按钮（继续 / 取词）放在同一个容器里，只切可见性，
+         结构上保证位置与尺寸完全一致（此前「继续」被 levelBar 往下顶了）。 -->
+    <FrameLayout
+        android:id="@+id/primaryBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp">
+
+        <TextView
+            android:id="@+id/btnPause"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/height_cta_sm"
+            android:background="@drawable/pill_glass"
+            android:gravity="center"
+            android:text="继续"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/btnGrabStart"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/height_cta_sm"
+            android:background="@drawable/pill_glass"
+            android:gravity="center"
+            android:text="取词"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-medium"
+            android:visibility="gone" />
+    </FrameLayout>
+
     <!-- ═══ 听力页（现有内容） ═══ -->
     <LinearLayout
         android:id="@+id/tabListening"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
-
-        <ProgressBar
-            android:id="@+id/levelBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="4dp"
-            android:layout_marginBottom="6dp"
-            android:max="100"
-            android:progress="0"
-            android:progressDrawable="@drawable/level_bar" />
-
-        <TextView
-            android:id="@+id/btnPause"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/height_cta"
-            android:layout_marginBottom="6dp"
-            android:background="@drawable/pill_primary"
-            android:gravity="center"
-            android:text="继续"
-            android:textColor="@color/accent_on"
-            android:textSize="15sp"
-            android:fontFamily="sans-serif-medium" />
 
         <com.rd.englishcoach.MaxHeightScrollView
             android:id="@+id/scrollTurns"
@@ -219,18 +243,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:visibility="gone">
-
-        <TextView
-            android:id="@+id/btnGrabStart"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/height_cta"
-            android:layout_marginBottom="6dp"
-            android:background="@drawable/pill_primary"
-            android:gravity="center"
-            android:text="取词"
-            android:textColor="@color/accent_on"
-            android:textSize="15sp"
-            android:fontFamily="sans-serif-medium" />
 
         <TextView
             android:id="@+id/tvGrabStatus"

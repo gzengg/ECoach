@@ -88,6 +88,28 @@ public class FloatingPanelTabTest {
         assertTrue("两个主按钮必须用同一个字号变量", body.contains("ctaSp"));
     }
 
+    @Test
+    public void switchToTab_togglesPrimaryButtons() throws Exception {
+        String src = readFile("src/main/java/com/rd/englishcoach/FloatingPanel.java");
+        int start = src.indexOf("private void switchToTab(int tab)");
+        assertTrue("必须有 switchToTab", start > 0);
+        int brace = src.indexOf('{', start);
+        int depth = 0;
+        int end = brace;
+        for (int i = brace; i < src.length(); i++) {
+            if (src.charAt(i) == '{') depth++;
+            else if (src.charAt(i) == '}') {
+                depth--;
+                if (depth == 0) { end = i; break; }
+            }
+        }
+        String body = src.substring(brace, end);
+        assertTrue("切 Tab 必须切「继续」按钮的可见性（与取词按钮共用同一位置）",
+                body.contains("btnPause.setVisibility"));
+        assertTrue("切 Tab 必须切「取词」按钮的可见性",
+                body.contains("btnGrabStart.setVisibility"));
+    }
+
     // ── 工具 ──────────────────────────────
 
     private static String readFile(String path) throws Exception {

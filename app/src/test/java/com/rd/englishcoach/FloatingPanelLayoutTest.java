@@ -103,18 +103,68 @@ public class FloatingPanelLayoutTest {
     }
 
     @Test
-    public void bothTabs_primaryButtons_useCtaPill() throws Exception {
-        // AGENTS §10/§11.2：主 CTA = 渐变胶囊 + 深色文字（accent_on）
+    public void bothTabs_primaryButtons_useGlassPill() throws Exception {
+        // v3.1：两个 Tab 主按钮统一为「半透明流光胶囊」（44dp + 白字）
         Element pause = elementById("btnPause");
         Element grab = elementById("btnGrabStart");
-        assertEquals("听力页主按钮必须是主 CTA 渐变胶囊",
-                "@drawable/pill_primary", pause.getAttribute("android:background"));
-        assertEquals("听力页主按钮必须是 CTA 高度",
-                "@dimen/height_cta", pause.getAttribute("android:layout_height"));
-        assertEquals("渐变胶囊上的文字必须用深色 accent_on（对比度）",
-                "@color/accent_on", pause.getAttribute("android:textColor"));
-        assertEquals("取词页主按钮保持同一套 token",
-                "@drawable/pill_primary", grab.getAttribute("android:background"));
+        assertEquals("听力页主按钮必须是半透明流光胶囊",
+                "@drawable/pill_glass", pause.getAttribute("android:background"));
+        assertEquals("取词页主按钮必须同一套样式",
+                "@drawable/pill_glass", grab.getAttribute("android:background"));
+        assertEquals("半透明底上文字用白色（对比度）",
+                "@color/text_primary", pause.getAttribute("android:textColor"));
+        assertEquals("两个主按钮必须同一高度 token",
+                "@dimen/height_cta_sm", pause.getAttribute("android:layout_height"));
+        assertEquals("取词页主按钮必须同一高度 token",
+                "@dimen/height_cta_sm", grab.getAttribute("android:layout_height"));
+    }
+
+    @Test
+    public void bothTabs_primaryButtons_shareOneContainer() throws Exception {
+        // 必须用同一份 DOM（每次 parseLayout 都会新建树，节点对象不同）
+        Document doc = parseLayout();
+        Element pause = elementById(doc, "btnPause");
+        Element grab = elementById(doc, "btnGrabStart");
+        assertNotNull(pause);
+        assertNotNull(grab);
+        org.w3c.dom.Node pParent = pause.getParentNode();
+        org.w3c.dom.Node gParent = grab.getParentNode();
+        assertNotNull(pParent);
+        assertSame("两个 Tab 的主按钮必须在同一容器里（结构上保证位置一致，"
+                        + "此前「继续」被 levelBar 顶到了不同 Y）",
+                pParent, gParent);
+        assertEquals("共用容器必须是 primaryBar",
+                "@+id/primaryBar", ((Element) pParent).getAttribute("android:id"));
+        assertEquals("默认显示「继续」，取词按钮默认隐藏",
+                "gone", grab.getAttribute("android:visibility"));
+        assertFalse("默认不能隐藏「继续」",
+                "gone".equals(pause.getAttribute("android:visibility")));
+    }
+
+    @Test
+    public void levelBar_isShared_notInsideTabPages() throws Exception {
+        // levelBar 之前在听力页内部 → 把「继续」往下顶，两个 Tab 主按钮位置不一致
+        assertNotInsideTabPage("levelBar");
+    }
+
+    @Test
+    public void panelCta_isCompact() throws Exception {
+        String dimens = readResourceText("/values/dimens.xml");
+        assertTrue("必须新增悬浮窗专用的小一号 CTA 高度 token",
+                dimens.contains("name=\"height_cta_sm\""));
+        assertTrue("主按钮要比主界面 CTA（52dp）小：44dp",
+                dimens.contains("<dimen name=\"height_cta_sm\">44dp</dimen>"));
+    }
+
+    private static String readResourceText(String path) throws Exception {
+        InputStream is = FloatingPanelLayoutTest.class.getResourceAsStream(path);
+        assertNotNull("classpath 上找不到资源: " + path, is);
+        java.util.Scanner s = new java.util.Scanner(is, "UTF-8");
+        s.useDelimiter("\\A");
+        String text = s.hasNext() ? s.next() : "";
+        s.close();
+        is.close();
+        return text;
     }
 
     /**
@@ -143,23 +193,14 @@ public class FloatingPanelLayoutTest {
     }
 
     private static Element elementById(String id) throws Exception {
-        Document doc = parseLayout();
-        NodeList all = doc.getElementsByTagName("LinearLayout");
+        return elementById(parseLayout(), id);
+    }
+
+    /** 按 id 找元素（搜索所有标签，含 ProgressBar / FrameLayout 等）。 */
+    private static Element elementById(Document doc, String id) {
+        NodeList all = doc.getElementsByTagName("*");
         for (int i = 0; i < all.getLength(); i++) {
             Element e = (Element) all.item(i);
-            String attr = e.getAttribute("android:id");
-            if (attr.equals(id) || attr.equals("@+id/" + id) || attr.equals("@id/" + id)) return e;
-        }
-        // Also check other element types
-        NodeList texts = doc.getElementsByTagName("TextView");
-        for (int i = 0; i < texts.getLength(); i++) {
-            Element e = (Element) texts.item(i);
-            String attr = e.getAttribute("android:id");
-            if (attr.equals(id) || attr.equals("@+id/" + id) || attr.equals("@id/" + id)) return e;
-        }
-        NodeList edits = doc.getElementsByTagName("EditText");
-        for (int i = 0; i < edits.getLength(); i++) {
-            Element e = (Element) edits.item(i);
             String attr = e.getAttribute("android:id");
             if (attr.equals(id) || attr.equals("@+id/" + id) || attr.equals("@id/" + id)) return e;
         }
