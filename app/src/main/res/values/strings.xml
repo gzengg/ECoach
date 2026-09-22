@@ -49,6 +49,7 @@
     <string name="menu_copy">复制</string>
     <string name="menu_delete">删除</string>
     <string name="msg_copied">已复制到剪贴板</string>
+    <string name="msg_speak_no_api_key">请先到设置页填 API Key</string>
     <string name="msg_ai_thinking">AI 思考中…</string>
     <string name="msg_error_retry">出错: %1$s（点击重试）</string>
     <string name="msg_projection_failed">投屏授权失败</string>

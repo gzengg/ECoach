@@ -40,6 +40,19 @@ public final class Translator {
         return "zh-CN"; // 默认 → 中文
     }
 
+    /**
+     * 朗读语言提示：文本含 CJK → "zh-CN"（中文声），否则 → "en"（英文声）。
+     * 与 {@link #detectTarget} 方向相反——这里标的是文本本身是什么语言。
+     */
+    public static String speakLang(String text) {
+        if (text == null || text.isEmpty()) return "en";
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c >= 0x4E00 && c <= 0x9FFF) return "zh-CN";
+        }
+        return "en";
+    }
+
     /** 翻译文本，返回译文。失败抛 IOException。 */
     public static String translate(String text) throws IOException {
         if (text == null || text.trim().isEmpty()) {

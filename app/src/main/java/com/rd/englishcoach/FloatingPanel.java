@@ -36,7 +36,8 @@ public final class FloatingPanel {
         void onDeleteTurn(long turnId);
         void onReconsent();
         void onClose();
-        void onSpeak(long turnId, String text, String langHint);
+        /** 用户点了某个喇叭按钮。field ∈ transcript/answer/grabSrc/grabDst，用于拼 key。 */
+        void onSpeak(long turnId, String field, String text, String langHint);
         /** 用户点「取词」按钮。 */
         void onGrab();
     }
@@ -216,6 +217,7 @@ public final class FloatingPanel {
         mainHandler.post(() -> {
             if (grabList != null) grabList.removeAllViews();
             if (scrollGrabs != null) scrollGrabs.setVisibility(View.GONE);
+            speakButtons.keySet().removeIf(k -> k.startsWith("grab:"));
         });
     }
 
@@ -346,11 +348,19 @@ public final class FloatingPanel {
             // 「询问AI」按钮 → 展开内嵌输入框
             item.findViewById(R.id.btnAskQuestion).setOnClickListener(v -> showQuestionInput(turn.id));
 
-            // 朗读按钮
-            item.findViewById(R.id.btnSpeakTranscript).setOnClickListener(
-                    v -> cb.onSpeak(turn.id, turn.content, "en"));
-            item.findViewById(R.id.btnSpeakAnswer).setOnClickListener(
-                    v -> cb.onSpeak(turn.id, turn.aiAnswer, "en"));
+            // 朗读按钮（key 参与喇叭状态反馈）
+            String transcriptKey = speakKey(turn.id, "transcript");
+            String answerKey = speakKey(turn.id, "answer");
+            TextView btnSpeakTranscript = item.findViewById(R.id.btnSpeakTranscript);
+            TextView btnSpeakAnswer = item.findViewById(R.id.btnSpeakAnswer);
+            btnSpeakTranscript.setOnClickListener(
+                    v -> cb.onSpeak(turn.id, "transcript", turn.content,
+                            Translator.speakLang(turn.content)));
+            btnSpeakAnswer.setOnClickListener(
+                    v -> cb.onSpeak(turn.id, "answer", turn.aiAnswer,
+                            Translator.speakLang(turn.aiAnswer)));
+            registerSpeakButton(transcriptKey, btnSpeakTranscript);
+            registerSpeakButton(answerKey, btnSpeakAnswer);
 
             applyTurnVisibility(item, turn);
 
@@ -366,11 +376,51 @@ public final class FloatingPanel {
             while (turnViews.size() > 20) {
                 Long oldest = turnViews.keySet().iterator().next();
                 turnViews.remove(oldest);
+                unregisterSpeakButtons(oldest);
                 turnList.removeViewAt(turnList.getChildCount() - 1);
             }
             scrollTurns.setVisibility(View.VISIBLE);
             scrollTurns.setMaxHeight(dpToPx(260));
         });
+    }
+
+    // 喇叭按钮状态反馈：key → 按钮，随轮次/卡片生命周期清理
+    private final Map<String, TextView> speakButtons = new LinkedHashMap<>();
+
+    /** 拼喇叭状态 key（FloatingPanel 与 CaptureService 共用同一套 key）。 */
+    public static String speakKey(long turnId, String field) {
+        return turnId + ":" + field;
+    }
+
+    /** 注册喇叭按钮，后续 {@link #setSpeakState} 按 key 改色。 */
+    public void registerSpeakButton(String key, TextView btn) {
+        mainHandler.post(() -> speakButtons.put(key, btn));
+    }
+
+    /**
+     * 喇叭状态反馈（AGENTS §11.2）：
+     * IDLE→accent_solid，LOADING→warn，PLAYING→success，ERROR→danger。
+     * 只改色不动画（§10.4：状态切换只做进入动画，这里纯色切换最稳）。
+     */
+    public void setSpeakState(String key, SpeechPlayer.State state) {
+        mainHandler.post(() -> {
+            TextView btn = speakButtons.get(key);
+            if (btn == null) return;
+            int color;
+            switch (state) {
+                case LOADING:  color = ctx.getColor(R.color.warn); break;
+                case PLAYING:  color = ctx.getColor(R.color.success); break;
+                case ERROR:    color = ctx.getColor(R.color.danger); break;
+                default:       color = ctx.getColor(R.color.accent_solid); break;
+            }
+            btn.setTextColor(color);
+        });
+    }
+
+    /** 移除某轮次注册的喇叭 key（含 transcript/answer）。 */
+    private void unregisterSpeakButtons(long turnId) {
+        String prefix = turnId + ":";
+        speakButtons.keySet().removeIf(k -> k.startsWith(prefix));
     }
 
     public void updateTurn(ConversationManager.Turn turn) {
@@ -383,6 +433,7 @@ public final class FloatingPanel {
     public void clearTurns() {
         mainHandler.post(() -> {
             turnList.removeAllViews();
+            for (Long id : turnViews.keySet()) unregisterSpeakButtons(id);
             turnViews.clear();
             scrollTurns.setVisibility(View.GONE);
         });
@@ -392,6 +443,7 @@ public final class FloatingPanel {
     public void removeTurn(long turnId) {
         mainHandler.post(() -> {
             View item = turnViews.remove(turnId);
+            unregisterSpeakButtons(turnId);
             if (item != null) turnList.removeView(item);
             if (turnViews.isEmpty()) scrollTurns.setVisibility(View.GONE);
         });

@@ -23,6 +23,8 @@ public final class MimoTtsEngine implements SpeechPlayer {
     private final ExecutorService exec = Executors.newSingleThreadExecutor();
     private Listener listener;
     private String currentKey;
+    /** 代数计数：stop()/新 speak 时递增，在途的网络合成结果据此作废。 */
+    private int generation;
 
     public MimoTtsEngine(Context ctx) {
         this.ctx = ctx.getApplicationContext();
@@ -46,6 +48,8 @@ public final class MimoTtsEngine implements SpeechPlayer {
             return;
         }
 
+        generation++; // 作废在途的合成结果
+        final int gen = generation;
         currentKey = key;
 
         // 检查缓存
@@ -69,6 +73,9 @@ public final class MimoTtsEngine implements SpeechPlayer {
                         prefs.baseUrl(), prefs.apiKey(), model, voice, text, "wav");
 
                 mainHandler.post(() -> {
+                    if (gen != generation || !key.equals(currentKey)) {
+                        return; // 已 stop() 或已切到新 key：丢弃过期结果
+                    }
                     audioPlayer.play(key, wav, new AudioPlayer.Listener() {
                         @Override public void onComplete(String k) { notifyState(k, SpeechPlayer.State.IDLE, null); }
                         @Override public void onError(String k, String err) { notifyState(k, SpeechPlayer.State.ERROR, err); }
@@ -77,15 +84,24 @@ public final class MimoTtsEngine implements SpeechPlayer {
                 });
             } catch (Exception e) {
                 Log.e(TAG, "synthesize failed: " + e.getMessage());
-                mainHandler.post(() -> notifyState(key, SpeechPlayer.State.ERROR, e.getMessage()));
+                mainHandler.post(() -> {
+                    if (gen != generation || !key.equals(currentKey)) return; // 过期错误不报
+                    notifyState(key, SpeechPlayer.State.ERROR, e.getMessage());
+                });
             }
         });
     }
 
     @Override
     public void stop() {
+        generation++; // 取消在途合成
+        boolean wasPlaying = audioPlayer.isPlaying();
+        String key = currentKey;
         audioPlayer.stop();
         currentKey = null;
+        if (wasPlaying && key != null) {
+            notifyState(key, SpeechPlayer.State.IDLE, null); // 让按钮颜色复位
+        }
     }
 
     @Override

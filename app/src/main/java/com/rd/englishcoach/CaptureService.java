@@ -63,6 +63,8 @@ public class CaptureService extends Service {
     private ScreenTextCapture screenCapture;
     private GrabManager grabManager;
     private GrabOverlay grabOverlay;
+    // 朗读链：mimo TTS 优先，系统 TTS 兜底（AGENTS §11.2）
+    private SpeechPlayer speechPlayer;
 
     // ── 生命周期 ────────────────────────────
 
@@ -75,6 +77,23 @@ public class CaptureService extends Service {
         bgThread.start();
         bgHandler = new Handler(bgThread.getLooper());
         networkExec = Executors.newSingleThreadExecutor();
+
+        // 朗读链：mimo TTS 优先，报错自动降级系统 TTS
+        speechPlayer = new FallbackSpeechPlayer(
+                new MimoTtsEngine(this), new SystemTtsEngine(this));
+        speechPlayer.setListener(this::onSpeechState);
+    }
+
+    /** 朗读状态反馈：改喇叭按钮颜色；ERROR = 两者都失败，面板提示，不崩（§11.2）。 */
+    private void onSpeechState(String key, SpeechPlayer.State state, String error) {
+        mainHandler.post(() -> {
+            if (panel != null) {
+                panel.setSpeakState(key, state);
+                if (state == SpeechPlayer.State.ERROR) {
+                    panel.showMessage("朗读失败: " + (error != null ? error : "未知错误"));
+                }
+            }
+        });
     }
 
     @Override
@@ -115,6 +134,11 @@ public class CaptureService extends Service {
         // Activity 关闭时 stopService：Activity 本身管自己的生命周期，此处也不动 panel。
         if (networkExec != null) networkExec.shutdownNow();
         if (bgThread != null) bgThread.quitSafely();
+        if (speechPlayer != null) {
+            speechPlayer.stop();
+            speechPlayer.release();
+            speechPlayer = null;
+        }
         broadcastState(false, ServiceEvents.REASON_STOPPED);
         current = null;
         super.onDestroy();
@@ -416,8 +440,10 @@ public class CaptureService extends Service {
 
     private void addGrabCard(String source, String translated) {
         // P7: 接入对话上下文
+        long grabTurnId = -1;
         if (conversation != null) {
             ConversationManager.Turn turn = conversation.addGrab(source, translated);
+            grabTurnId = turn.id;
             if (history != null) history.appendTranscript("[取词] " + source + " → " + translated);
         }
         // 在取词页签显示卡片
@@ -426,6 +452,28 @@ public class CaptureService extends Service {
         ((TextView) item.findViewById(R.id.tvGrabSource)).setText(source);
         ((TextView) item.findViewById(R.id.tvGrabTranslated)).setText(translated);
         panel.addGrabCard(item);
+
+        // 读原文 / 读译文（AGENTS §11.2：各自独立小喇叭，key 参与状态反馈）
+        TextView btnSrc = item.findViewById(R.id.btnSpeakSrc);
+        TextView btnDst = item.findViewById(R.id.btnSpeakDst);
+        final String srcKey = FloatingPanel.speakKey(grabTurnId, "grabSrc");
+        final String dstKey = FloatingPanel.speakKey(grabTurnId, "grabDst");
+        panel.registerSpeakButton(srcKey, btnSrc);
+        panel.registerSpeakButton(dstKey, btnDst);
+        btnSrc.setOnClickListener(v -> speak(srcKey, source,
+                Translator.speakLang(source)));
+        btnDst.setOnClickListener(v -> speak(dstKey, translated,
+                Translator.speakLang(translated)));
+    }
+
+    /** 朗读入口：未填 API Key → 明确提示，不发请求（AGENTS §9）。 */
+    private void speak(String key, String text, String langHint) {
+        if (text == null || text.trim().isEmpty()) return;
+        if (new Prefs(this).apiKey().isEmpty()) {
+            postMessage(getString(R.string.msg_speak_no_api_key));
+            return;
+        }
+        if (speechPlayer != null) speechPlayer.speak(key, text, langHint);
     }
 
     // ── 工具 ──────────────────────────────
@@ -541,9 +589,9 @@ public class CaptureService extends Service {
         }
 
         @Override
-        public void onSpeak(long turnId, String text, String langHint) {
-            // P5: 朗读功能 — 由 P2 的 SpeechPlayer 实现处理
-            // TODO: P5 完成后接入 SpeechPlayer
+        public void onSpeak(long turnId, String field, String text, String langHint) {
+            // P5 朗读接入：走 FallbackSpeechPlayer（mimo TTS → 系统 TTS）
+            speak(FloatingPanel.speakKey(turnId, field), text, langHint);
         }
 
         @Override
