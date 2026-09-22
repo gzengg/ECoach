@@ -11,7 +11,7 @@ import org.junit.Test;
 /**
  * 问题1（听力报 Invalid token）的源码契约测试：
  * <ul>
- *   <li>听力/AI 链路必须统一做「未填 API Key」守卫（AGENTS §9）；</li>
+ *   <li>听力/AI 链路必须统一做「未填 API Key」守卫；</li>
  *   <li>守卫必须发生在动作之前（暂停采集/发起回答/发问题）；</li>
  *   <li>取词翻译不受 key 影响（免费接口），不能被守卫波及；</li>
  *   <li>服务端错误必须转成可读文案（不再整段吐 JSON）。</li>
@@ -73,7 +73,7 @@ public class ListeningKeyGuardTest {
         String body = methodBody(captureService(), "private boolean requireApiKey()");
         assertNotNull("CaptureService 必须有 requireApiKey() 守卫", body);
         assertTrue("守卫必须检查 apiKey()", body.contains("apiKey()"));
-        assertTrue("守卫必须用 msg_no_api_key 提示（AGENTS §9）",
+        assertTrue("守卫必须用 msg_no_api_key 提示",
                 body.contains("msg_no_api_key"));
         assertTrue("未填 key 必须返回 false 以中止流程", body.contains("return false"));
     }
@@ -130,7 +130,7 @@ public class ListeningKeyGuardTest {
 
     @Test
     public void grabTranslation_doesNotRequireApiKey() throws Exception {
-        // AGENTS §9：未填 Key 时取词翻译仍可用 → 翻译链路不得引用 apiKey
+        // 未填 Key 时取词翻译仍可用 → 翻译链路不得引用 apiKey
         String translator = stripComments(readFile("src/main/java/com/rd/englishcoach/Translator.java"));
         assertFalse("取词翻译（免费接口）不能依赖 API Key", translator.contains("apiKey"));
         // 取词入口也不应被 key 守卫拦截

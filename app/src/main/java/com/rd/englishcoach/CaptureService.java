@@ -63,7 +63,7 @@ public class CaptureService extends Service {
     private ScreenTextCapture screenCapture;
     private GrabManager grabManager;
     private GrabOverlay grabOverlay;
-    // 朗读链：mimo TTS 优先，系统 TTS 兜底（AGENTS §11.2）
+    // 朗读链：mimo TTS 优先，系统 TTS 兜底
     private SpeechPlayer speechPlayer;
 
     // ── 生命周期 ────────────────────────────
@@ -297,7 +297,7 @@ public class CaptureService extends Service {
     // ── 暂停 → 上传整段 → ASR → 显示原文 ────
 
     private void doPause() {
-        // 未填 API Key：直接提示并中止，不切暂停状态（AGENTS §9）
+        // 未填 API Key：直接提示并中止，不切暂停状态
         if (!requireApiKey()) return;
         // 暂停采集
         listen.toggle();
@@ -343,7 +343,7 @@ public class CaptureService extends Service {
 
     private void doAnswer(long turnId) {
         if (conversation == null) return;
-        if (!requireApiKey()) return; // AGENTS §9
+        if (!requireApiKey()) return;
         ConversationManager.Turn turn = conversation.findById(turnId);
         if (turn == null) return;
         if (!conversation.beginAnswerRequest(turnId)) return;
@@ -372,7 +372,7 @@ public class CaptureService extends Service {
 
     private void doAskQuestion(long turnId, String question) {
         if (conversation == null || question == null || question.trim().isEmpty()) return;
-        if (!requireApiKey()) return; // AGENTS §9
+        if (!requireApiKey()) return;
         ConversationManager.Turn qt = conversation.addQuestion(question.trim());
         if (panel != null) panel.addTurn(qt);
 
@@ -429,7 +429,7 @@ public class CaptureService extends Service {
             return;
         }
         // v3.1：不再 hide 面板——只把它变透明，用户不会以为 App 退出了；
-        // 截图里也不会带上面板文字（取词前必须先藏自己的文字，AGENTS §2.3）
+        // 截图里也不会带上面板文字（取词前必须先藏自己的文字）
         if (panel != null) panel.setCaptureInvisible(true);
         grabManager.setCallback(new GrabManager.Callback() {
             @Override public void onStateChanged(GrabManager.State s) {
@@ -497,7 +497,7 @@ public class CaptureService extends Service {
         ((TextView) item.findViewById(R.id.tvGrabTranslated)).setText(translated);
         panel.addGrabCard(item);
 
-        // 读原文 / 读译文（AGENTS §11.2：各自独立小喇叭，key 参与状态反馈）
+        // 读原文 / 读译文（各自独立小喇叭，key 参与状态反馈）
         TextView btnSrc = item.findViewById(R.id.btnSpeakSrc);
         TextView btnDst = item.findViewById(R.id.btnSpeakDst);
         final String srcKey = FloatingPanel.speakKey(grabTurnId, "grabSrc");
@@ -511,7 +511,7 @@ public class CaptureService extends Service {
     }
 
     /**
-     * 听力/AI 链路统一守卫：未填 API Key → 面板一句明确提示并中止（AGENTS §9）。
+     * 听力/AI 链路统一守卫：未填 API Key → 面板一句明确提示并中止。
      * 取词翻译不经过这里（用免费接口，不依赖 key）。
      */
     private boolean requireApiKey() {
@@ -522,7 +522,7 @@ public class CaptureService extends Service {
         return true;
     }
 
-    /** 朗读入口：未填 API Key → 明确提示，不发请求（AGENTS §9）。 */
+    /** 朗读入口：未填 API Key → 明确提示，不发请求。 */
     private void speak(String key, String text, String langHint) {
         if (text == null || text.trim().isEmpty()) return;
         if (new Prefs(this).apiKey().trim().isEmpty()) {

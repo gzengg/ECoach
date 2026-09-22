@@ -9,7 +9,7 @@ import android.speech.tts.UtteranceProgressListener;
 import java.util.Locale;
 
 /**
- * 系统 TTS 兜底实现（AGENTS §4.3/§11.2）：
+ * 系统 TTS 兜底实现（接口契约）：
  * mimo TTS 链路出问题时降级到安卓框架自带的 {@link TextToSpeech}。
  * 零依赖、离线、免费，能读英文。所有状态回调统一抛到主线程。
  */

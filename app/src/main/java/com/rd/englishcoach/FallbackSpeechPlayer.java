@@ -1,7 +1,7 @@
 package com.rd.englishcoach;
 
 /**
- * 朗读兜底链（AGENTS §11.2）：优先走 primary（mimo TTS），
+ * 朗读兜底链：优先走 primary（mimo TTS），
  * primary 报 ERROR 时自动降级 fallback（系统 TTS）重试同一段文本；
  * 两者都失败才对外抛 ERROR。纯 Java，可用假 player 做单测。
  *

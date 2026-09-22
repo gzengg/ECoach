@@ -9,7 +9,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 
 /**
- * mimo-v2.5-tts 请求封装。按 AGENTS.md §4.3 契约：
+ * mimo-v2.5-tts 请求封装。接口契约：
  * <ul>
  *   <li>文本必须放 {@code assistant} 角色（放 user 报 "must contain an assistant role"）。</li>
  *   <li>必须带 {@code modalities:["text","audio"]}。</li>

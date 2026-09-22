@@ -14,7 +14,7 @@ import java.io.IOException;
  */
 public final class ApiClient {
 
-    /** 未填 API Key 时的提示（AGENTS §9；需与 strings.xml 的 msg_no_api_key 一致）。 */
+    /** 未填 API Key 时的提示（需与 strings.xml 的 msg_no_api_key 一致）。 */
     public static final String MSG_NO_API_KEY = "请先到设置页填 API Key";
     /** 服务端拒绝鉴权时的提示（需与 strings.xml 的 msg_api_key_invalid 一致）。 */
     public static final String MSG_API_KEY_INVALID = "API Key 无效或已过期，请到设置页更新";
@@ -40,7 +40,7 @@ public final class ApiClient {
             throws IOException, ApiException {
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new ApiException(0, MSG_NO_API_KEY); // 未填 key 不发请求（AGENTS §9）
+            throw new ApiException(0, MSG_NO_API_KEY); // 未填 key 不发请求
         }
         String body = buildAsrBody(wav, model);
         String url = baseUrl + "/chat/completions";
@@ -55,7 +55,7 @@ public final class ApiClient {
                                            String apiKey, String model)
             throws IOException, ApiException {
         if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new ApiException(0, MSG_NO_API_KEY); // 未填 key 不发请求（AGENTS §9）
+            throw new ApiException(0, MSG_NO_API_KEY); // 未填 key 不发请求
         }
         String body = buildHistoryBody(messages, model);
         String url = baseUrl + "/chat/completions";
@@ -112,7 +112,7 @@ public final class ApiClient {
     // ── 错误文案 ──────────────────────────
 
     /**
-     * 服务端错误体 → 一句可读提示（AGENTS §9：面板要给明确提示，不吐原始 JSON）。
+     * 服务端错误体 → 一句可读提示（面板要给明确提示，不吐原始 JSON）。
      * 支持 OpenAI 风格 {@code {"error":{"message":"…"}}} 与纯字符串 error。
      */
     static String friendlyError(int httpCode, String resp) {

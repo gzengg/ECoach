@@ -23,7 +23,7 @@
         <item name="android:editTextStyle">@style/AppInput</item>
     </style>
 
-    <!-- 主 CTA 胶囊：渐变 + 深色文字（见 AGENTS.md §11.2 对比度说明） -->
+    <!-- 主 CTA 胶囊：渐变 + 深色文字（深色文字保证对比度） -->
     <style name="AppBtnPrimary" parent="@android:style/Widget.Material.Button">
         <item name="android:background">@drawable/pill_primary</item>
         <item name="android:textColor">@color/accent_on</item>

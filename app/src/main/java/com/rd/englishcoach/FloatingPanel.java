@@ -282,7 +282,7 @@ public final class FloatingPanel {
     /**
      * 取词截图期间的面板可见性（v3.1）：
      * <b>不 hide 面板</b>，只把窗口设为全透明——用户视觉上「面板没消失」（不会以为 App 退出了），
-     * 而截图里也不会带上面板文字（取词前必须先藏自己的文字，见 AGENTS §2.3）。
+     * 而截图里也不会带上面板文字（取词前必须先藏自己的文字）。
      * 同时加 FLAG_NOT_TOUCHABLE，避免用户点到看不见的按钮。
      */
     public void setCaptureInvisible(boolean invisible) {
@@ -425,7 +425,7 @@ public final class FloatingPanel {
     }
 
     /**
-     * 喇叭状态反馈（AGENTS §11.2）：
+     * 喇叭状态反馈：
      * IDLE→accent_solid，LOADING→warn，PLAYING→success，ERROR→danger。
      * 只改色不动画（§10.4：状态切换只做进入动画，这里纯色切换最稳）。
      */

@@ -19,7 +19,7 @@ import org.junit.Test;
  *   <li>取词卡 btnSpeakSrc/btnSpeakDst 必须有点击接线；</li>
  *   <li>onDestroy 必须释放 speechPlayer；</li>
  *   <li>SystemTtsEngine / FallbackSpeechPlayer 必须实现 SpeechPlayer；</li>
- *   <li>未填 API Key 要有明确提示（AGENTS §9）；</li>
+ *   <li>未填 API Key 要有明确提示；</li>
  *   <li>喇叭状态反馈 setSpeakState 必须接到 ERROR 提示。</li>
  * </ul>
  */
@@ -129,7 +129,7 @@ public class SpeakWiringTest {
         String src = stripComments(readFile("src/main/java/com/rd/englishcoach/CaptureService.java"));
         String body = methodBody(src, "private void speak(String key, String text, String langHint)");
         assertNotNull("必须有统一 speak() 入口", body);
-        assertTrue("未填 API Key 必须拦下并提示（AGENTS §9）",
+        assertTrue("未填 API Key 必须拦下并提示",
                 body.contains("apiKey()") && body.contains("isEmpty()"));
         assertTrue("必须用 msg_no_api_key 提示",
                 body.contains("msg_no_api_key"));
@@ -178,7 +178,7 @@ public class SpeakWiringTest {
                 src.contains("public void setSpeakState("));
         String body = methodBody(src, "public void setSpeakState(String key, SpeechPlayer.State state)");
         assertNotNull(body);
-        assertTrue("PLAYING 应为 success 色（AGENTS §11.2）", body.contains("case PLAYING") && body.contains("success"));
+        assertTrue("PLAYING 应为 success 色", body.contains("case PLAYING") && body.contains("success"));
         assertTrue("LOADING 应为 warn 色", body.contains("case LOADING") && body.contains("warn"));
         assertTrue("ERROR 应为 danger 色", body.contains("case ERROR") && body.contains("danger"));
         assertTrue("IDLE/默认复位 accent_solid", body.contains("accent_solid"));

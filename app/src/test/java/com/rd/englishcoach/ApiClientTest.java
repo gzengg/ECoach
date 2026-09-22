@@ -185,7 +185,7 @@ public class ApiClientTest {
         }
     }
 
-    // ── 问题1：未填 Key 不发请求（AGENTS §9） ──
+    // ── 问题1：未填 Key 不发请求 ──
 
     @Test
     public void transcribe_emptyKey_throwsBeforeNetwork() {

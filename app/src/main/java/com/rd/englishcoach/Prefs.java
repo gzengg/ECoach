@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 /**
  * 所有配置项集中管理，读写 SharedPreferences。
- * 默认值与 AGENTS.md §5 保持一致，不要单独改这里。
+ * 默认值集中在这里定义，其他模块不要各自再写一份。
  */
 public final class Prefs {
     // ── 服务端 API ──

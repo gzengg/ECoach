@@ -7,7 +7,7 @@
       + 面板描边 token（stroke_strong，与 bg_chip 的 stroke_soft 同一族）
       + 胶囊圆角 + 涟漪（与 bg_chip 一致）
   文字用 accent_solid（与面板里的「读 / 发送」等动作芯片一致）。
-  ⚠️ 主界面主 CTA 仍用 pill_primary（亮渐变 + accent_on 深字，AGENTS §11.2）。
+  ⚠️ 主界面主 CTA 仍用 pill_primary（亮渐变 + accent_on 深字）。
 -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="@color/ripple_light">
