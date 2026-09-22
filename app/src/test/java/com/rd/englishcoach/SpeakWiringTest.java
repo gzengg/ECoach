@@ -130,9 +130,9 @@ public class SpeakWiringTest {
         String body = methodBody(src, "private void speak(String key, String text, String langHint)");
         assertNotNull("必须有统一 speak() 入口", body);
         assertTrue("未填 API Key 必须拦下并提示（AGENTS §9）",
-                body.contains("apiKey().isEmpty()"));
-        assertTrue("必须用 msg_speak_no_api_key 提示",
-                body.contains("msg_speak_no_api_key"));
+                body.contains("apiKey()") && body.contains("isEmpty()"));
+        assertTrue("必须用 msg_no_api_key 提示",
+                body.contains("msg_no_api_key"));
         assertTrue("有 key 时必须真的调 speechPlayer.speak",
                 body.contains("speechPlayer.speak("));
     }

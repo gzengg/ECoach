@@ -21,6 +21,11 @@ import java.nio.charset.StandardCharsets;
  */
 public final class ApiClient {
 
+    /** 未填 API Key 时的提示（AGENTS §9；需与 strings.xml 的 msg_no_api_key 一致）。 */
+    public static final String MSG_NO_API_KEY = "请先到设置页填 API Key";
+    /** 服务端拒绝鉴权时的提示（需与 strings.xml 的 msg_api_key_invalid 一致）。 */
+    public static final String MSG_API_KEY_INVALID = "API Key 无效或已过期，请到设置页更新";
+
     private ApiClient() {}
 
     // ── 自定义异常 ──────────────────────────
@@ -41,6 +46,9 @@ public final class ApiClient {
     public static String transcribe(byte[] wav, String baseUrl, String apiKey, String model)
             throws IOException, ApiException {
 
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            throw new ApiException(0, MSG_NO_API_KEY); // 未填 key 不发请求（AGENTS §9）
+        }
         String body = buildAsrBody(wav, model);
         String url = baseUrl + "/chat/completions";
         String resp = post(url, apiKey, body, 120_000);
@@ -53,6 +61,9 @@ public final class ApiClient {
     public static String answerWithHistory(String[][] messages, String baseUrl,
                                            String apiKey, String model)
             throws IOException, ApiException {
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            throw new ApiException(0, MSG_NO_API_KEY); // 未填 key 不发请求（AGENTS §9）
+        }
         String body = buildHistoryBody(messages, model);
         String url = baseUrl + "/chat/completions";
         String resp = post(url, apiKey, body, 60_000);
@@ -133,15 +144,55 @@ public final class ApiClient {
             String resp = readStream(in);
 
             if (code >= 400) {
-                // 截断错误体，避免把整个 HTML 展示给用户
-                String msg = resp.length() > 500 ? resp.substring(0, 500) + "…" : resp;
-                throw new ApiException(code, msg);
+                // 转成一句可读提示（不把原始 JSON / HTML 整段丢给用户）
+                throw new ApiException(code, friendlyError(code, resp));
             }
 
             return resp;
         } finally {
             if (conn != null) conn.disconnect();
         }
+    }
+
+    // ── 错误文案 ──────────────────────────
+
+    /**
+     * 服务端错误体 → 一句可读提示（AGENTS §9：面板要给明确提示，不吐原始 JSON）。
+     * 支持 OpenAI 风格 {@code {"error":{"message":"…"}}} 与纯字符串 error。
+     */
+    static String friendlyError(int httpCode, String resp) {
+        String raw = resp == null ? "" : resp.trim();
+        String msg = null;
+        try {
+            JSONObject o = new JSONObject(raw);
+            JSONObject err = o.optJSONObject("error");
+            if (err != null) {
+                msg = err.optString("message", null);
+            } else {
+                String plain = o.optString("error", null);
+                msg = (plain != null && !plain.isEmpty()) ? plain : o.optString("message", null);
+            }
+        } catch (JSONException ignored) {
+            // 非 JSON（网关 HTML 等）→ 走下面兜底
+        }
+        if (msg == null || msg.trim().isEmpty()) {
+            if (raw.isEmpty()) return "HTTP " + httpCode;
+            return raw.length() > 200 ? raw.substring(0, 200) + "…" : raw;
+        }
+        return cleanMessage(httpCode, msg);
+    }
+
+    /** 去掉 request id 噪音；鉴权类错误换成可执行提示。 */
+    static String cleanMessage(int httpCode, String msg) {
+        String m = msg == null ? "" : msg.trim();
+        m = m.replaceAll("\\s*\\(request id:[^)]*\\)", "").trim();
+        String lower = m.toLowerCase();
+        if (httpCode == 401 || httpCode == 403
+                || lower.contains("invalid token") || lower.contains("unauthorized")
+                || lower.contains("invalid api key")) {
+            return MSG_API_KEY_INVALID;
+        }
+        return m.isEmpty() ? "unknown error" : m;
     }
 
     // ── 响应解析 ──────────────────────────
@@ -159,7 +210,7 @@ public final class ApiClient {
                 String errMsg = resp.optJSONObject("error") != null
                         ? resp.optJSONObject("error").optString("message", "unknown error")
                         : resp.optString("error", "unknown error");
-                throw new ApiException(0, errMsg);
+                throw new ApiException(0, cleanMessage(0, errMsg));
             }
 
             JSONArray choices = resp.getJSONArray("choices");

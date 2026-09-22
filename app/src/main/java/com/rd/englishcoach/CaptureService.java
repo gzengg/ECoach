@@ -289,6 +289,8 @@ public class CaptureService extends Service {
     // ── 暂停 → 上传整段 → ASR → 显示原文 ────
 
     private void doPause() {
+        // 未填 API Key：直接提示并中止，不切暂停状态（AGENTS §9）
+        if (!requireApiKey()) return;
         // 暂停采集
         listen.toggle();
         if (panel != null) panel.setListening(listen.isListening());
@@ -333,6 +335,7 @@ public class CaptureService extends Service {
 
     private void doAnswer(long turnId) {
         if (conversation == null) return;
+        if (!requireApiKey()) return; // AGENTS §9
         ConversationManager.Turn turn = conversation.findById(turnId);
         if (turn == null) return;
         if (!conversation.beginAnswerRequest(turnId)) return;
@@ -360,6 +363,7 @@ public class CaptureService extends Service {
 
     private void doAskQuestion(long turnId, String question) {
         if (conversation == null || question == null || question.trim().isEmpty()) return;
+        if (!requireApiKey()) return; // AGENTS §9
         ConversationManager.Turn qt = conversation.addQuestion(question.trim());
         if (panel != null) panel.addTurn(qt);
 
@@ -466,11 +470,23 @@ public class CaptureService extends Service {
                 Translator.speakLang(translated)));
     }
 
+    /**
+     * 听力/AI 链路统一守卫：未填 API Key → 面板一句明确提示并中止（AGENTS §9）。
+     * 取词翻译不经过这里（用免费接口，不依赖 key）。
+     */
+    private boolean requireApiKey() {
+        if (new Prefs(this).apiKey().trim().isEmpty()) {
+            postMessage(getString(R.string.msg_no_api_key));
+            return false;
+        }
+        return true;
+    }
+
     /** 朗读入口：未填 API Key → 明确提示，不发请求（AGENTS §9）。 */
     private void speak(String key, String text, String langHint) {
         if (text == null || text.trim().isEmpty()) return;
-        if (new Prefs(this).apiKey().isEmpty()) {
-            postMessage(getString(R.string.msg_speak_no_api_key));
+        if (new Prefs(this).apiKey().trim().isEmpty()) {
+            postMessage(getString(R.string.msg_no_api_key));
             return;
         }
         if (speechPlayer != null) speechPlayer.speak(key, text, langHint);
