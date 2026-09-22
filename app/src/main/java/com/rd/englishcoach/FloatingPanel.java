@@ -37,6 +37,8 @@ public final class FloatingPanel {
         void onReconsent();
         void onClose();
         void onSpeak(long turnId, String text, String langHint);
+        /** 用户点「取词」按钮。 */
+        void onGrab();
     }
 
     private final Context ctx;
@@ -117,6 +119,9 @@ public final class FloatingPanel {
         btnClose.setOnClickListener(v -> cb.onClose());
         btnFontMinus.setOnClickListener(v -> { prefs.putFontSp(prefs.fontSp() - 1); applyFontSize(prefs.fontSp()); });
         btnFontPlus.setOnClickListener(v -> { prefs.putFontSp(prefs.fontSp() + 1); applyFontSize(prefs.fontSp()); });
+
+        // v3.0 取词：按钮接线（缺失则点「取词」无任何反应）
+        btnGrabStart.setOnClickListener(v -> cb.onGrab());
 
         // 内嵌发送按钮
         btnSendQuestion.setOnClickListener(v -> submitQuestion());

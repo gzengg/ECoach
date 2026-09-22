@@ -159,8 +159,8 @@ public class CaptureService extends Service {
         }
         grabManager = new GrabManager();
         grabOverlay = new GrabOverlay(this, new GrabOverlay.Callback() {
-            @Override public void onRegionSelected(int l, int t, int r, int b) {
-                grabManager.onRegionSelected(l, t, r, b, screenCapture);
+            @Override public void onRegionSelected(android.graphics.Bitmap region) {
+                grabManager.onRegionSelected(region);
             }
             @Override public void onCancelled() {
                 grabManager.onCancelled();
@@ -544,6 +544,12 @@ public class CaptureService extends Service {
         public void onSpeak(long turnId, String text, String langHint) {
             // P5: 朗读功能 — 由 P2 的 SpeechPlayer 实现处理
             // TODO: P5 完成后接入 SpeechPlayer
+        }
+
+        @Override
+        public void onGrab() {
+            // 「取词」按钮入口（此前缺失导致点击无反应）
+            startGrab();
         }
     }
 }

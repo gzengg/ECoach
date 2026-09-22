@@ -114,30 +114,6 @@ public final class ScreenTextCapture {
         }
     }
 
-    /**
-     * 截取一帧并裁剪到指定区域。必须在后台线程调用。
-     *
-     * @param left, top, right, bottom 像素坐标
-     * @return 裁剪后的 Bitmap，失败返回 null
-     */
-    public Bitmap captureRegion(int left, int top, int right, int bottom) {
-        Bitmap full = captureFrame();
-        if (full == null) return null;
-        try {
-            int l = Math.max(0, left);
-            int t = Math.max(0, top);
-            int r = Math.min(full.getWidth(), right);
-            int b = Math.min(full.getHeight(), bottom);
-            if (r <= l || b <= t) return full;
-            Bitmap cropped = Bitmap.createBitmap(full, l, t, r - l, b - t);
-            if (cropped != full) full.recycle();
-            return cropped;
-        } catch (Exception e) {
-            Log.e(TAG, "captureRegion failed: " + e.getMessage());
-            return full;
-        }
-    }
-
     /** 是否已初始化。 */
     public boolean isReady() {
         return virtualDisplay != null && imageReader != null;

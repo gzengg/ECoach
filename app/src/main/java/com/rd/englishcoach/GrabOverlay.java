@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.RectF;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -22,8 +23,11 @@ import android.widget.ImageView;
  */
 public final class GrabOverlay {
 
+    private static final String TAG = "GrabOverlay";
+
     public interface Callback {
-        void onRegionSelected(int left, int top, int right, int bottom);
+        /** 框选完成：region 已从展示帧裁好（回调方负责 recycle）。 */
+        void onRegionSelected(Bitmap region);
         void onCancelled();
     }
 
@@ -136,7 +140,8 @@ public final class GrabOverlay {
     }
 
     private void onSelectionComplete() {
-        if (selectionRect == null) {
+        if (selectionRect == null || screenshot == null) {
+            dismiss();
             callback.onCancelled();
             return;
         }
@@ -153,8 +158,26 @@ public final class GrabOverlay {
             invalidateOverlay();
             return;
         }
-        dismiss();
-        callback.onRegionSelected(left, top, right, bottom);
+
+        // 裁剪「展示帧」（与用户看到的画面严格一致），再销毁层
+        Bitmap region = null;
+        try {
+            int l = Math.max(0, left);
+            int t = Math.max(0, top);
+            int r = Math.min(screenshot.getWidth(), right);
+            int b = Math.min(screenshot.getHeight(), bottom);
+            if (r > l && b > t) {
+                region = Bitmap.createBitmap(screenshot, l, t, r - l, b - t);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "crop failed: " + e.getMessage());
+        }
+        dismiss(); // 内部会 recycle 展示帧，必须在裁剪之后
+        if (region == null) {
+            callback.onCancelled();
+            return;
+        }
+        callback.onRegionSelected(region);
     }
 
     private void invalidateOverlay() {

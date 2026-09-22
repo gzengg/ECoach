@@ -9,11 +9,21 @@ import android.util.Log;
  * 取词状态机：协调截图 → 框选 → OCR → 翻译 → 显示结果。
  *
  * <p>状态流转：IDLE → CAPTURING → SELECTING → OCR → TRANSLATING → DONE</p>
- * <p>任何步骤失败 → abort → 回到 IDLE。</p>
+ * <p>任何步骤失败 → abort → 回 IDLE。</p>
+ *
+ * <p>v3.x 修复：截图在后台线程执行（ImageReader 取帧不允许在主线程），
+ * 首帧未到时短重试；框选完成后直接裁剪<b>展示的那张帧</b>，不再二次截屏
+ * （二次截屏既可能取到 null，又会与用户框选的画面不一致）。</p>
  */
 public final class GrabManager {
 
     private static final String TAG = "GrabManager";
+
+    /** 等悬浮窗隐藏的延迟（面板先 hide，再截图，避免截到自己的文字）。 */
+    private static final long PANEL_HIDE_DELAY_MS = 150;
+    /** 首帧重试：次数 × 间隔。ImageReader 首帧可能晚于 VirtualDisplay 建立。 */
+    private static final int FRAME_RETRIES = 5;
+    private static final long FRAME_RETRY_INTERVAL_MS = 100;
 
     enum State { IDLE, CAPTURING, SELECTING, OCR, TRANSLATING, DONE }
 
@@ -45,78 +55,104 @@ public final class GrabManager {
         }
         setState(State.CAPTURING);
 
-        // 延迟 150ms 等面板隐藏后再截图
-        mainHandler.postDelayed(() -> {
-            Bitmap frame = capture.captureFrame();
+        // 延迟 150ms 等面板隐藏后再截图；截图本身放后台线程（取帧非主线程操作）
+        mainHandler.postDelayed(() -> new Thread(() -> {
+            Bitmap frame = captureWithRetry(capture);
             if (frame == null) {
-                abort("截屏失败");
+                failOnMain("截屏失败");
                 return;
             }
-            setState(State.SELECTING);
-            overlay.show(frame);
-        }, 150);
-    }
-
-    /** 用户框选完成，启动 OCR + 翻译。 */
-    public void onRegionSelected(int left, int top, int right, int bottom,
-                                  ScreenTextCapture capture) {
-        if (state != State.SELECTING) return;
-
-        setState(State.OCR);
-
-        // 后台线程：裁剪 → OCR → 翻译
-        new Thread(() -> {
-            try {
-                Bitmap cropped = capture.captureRegion(left, top, right, bottom);
-                if (cropped == null) {
-                    failOnMain("裁剪失败");
+            final Bitmap f = frame;
+            mainHandler.post(() -> {
+                if (state != State.CAPTURING) { // 已被取消/中断
+                    f.recycle();
                     return;
                 }
+                setState(State.SELECTING);
+                overlay.show(f);
+            });
+        }, "grab-capture").start(), PANEL_HIDE_DELAY_MS);
+    }
 
-                // OCR
+    /** 后台线程取帧：首帧未到时按间隔重试。 */
+    private Bitmap captureWithRetry(ScreenTextCapture capture) {
+        for (int i = 0; i < FRAME_RETRIES; i++) {
+            Bitmap frame = capture.captureFrame();
+            if (frame != null) return frame;
+            Log.w(TAG, "frame not ready, retry " + (i + 1) + "/" + FRAME_RETRIES);
+            try { Thread.sleep(FRAME_RETRY_INTERVAL_MS); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); return null; }
+        }
+        return null;
+    }
+
+    /**
+     * 用户框选完成，对**展示帧裁剪**后的区域跑 OCR + 翻译。
+     *
+     * @param region 框选区域已从展示帧裁好的 Bitmap（本方法负责回收）
+     */
+    public void onRegionSelected(Bitmap region) {
+        if (state != State.SELECTING) {
+            if (region != null) region.recycle();
+            return;
+        }
+        if (region == null) {
+            failOnMain("裁剪失败");
+            return;
+        }
+        setState(State.OCR);
+
+        // 后台线程：OCR → 翻译
+        new Thread(() -> {
+            try {
                 final String[] sourceText = {null};
                 final boolean[] ocrDone = {false};
-                OcrEngine.recognize(cropped, new OcrEngine.Callback() {
+                OcrEngine.recognize(region, new OcrEngine.Callback() {
                     @Override public void onResult(String text) {
                         sourceText[0] = text;
                         ocrDone[0] = true;
                         synchronized (ocrDone) { ocrDone.notifyAll(); }
                     }
                     @Override public void onError(String error) {
-                        sourceText[0] = error;
+                        sourceText[0] = null;
+                        ocrError[0] = error;
                         ocrDone[0] = true;
                         synchronized (ocrDone) { ocrDone.notifyAll(); }
                     }
                 });
+                region.recycle();
 
                 // 等 OCR 完成
                 synchronized (ocrDone) {
                     while (!ocrDone[0]) ocrDone.wait(10000);
                 }
 
+                if (ocrError[0] != null) {
+                    failOnMain(ocrError[0]);
+                    return;
+                }
                 if (sourceText[0] == null || sourceText[0].isEmpty()) {
                     failOnMain("没认到文字，把框拉大一点");
                     return;
                 }
-                if (sourceText[0].startsWith("OCR")) {
-                    // OCR 错误
-                    failOnMain(sourceText[0]);
-                    return;
-                }
 
-                mainHandler.post(() -> callback.onOcrResult(sourceText[0]));
+                final String src = sourceText[0];
+                mainHandler.post(() -> {
+                    if (callback != null) callback.onOcrResult(src);
+                });
 
                 // 翻译
                 setState(State.TRANSLATING);
                 try {
-                    String translated = Translator.translate(sourceText[0]);
-                    final String src = sourceText[0];
-                    final String dst = translated;
-                    mainHandler.post(() -> callback.onTranslationResult(src, dst));
+                    String translated = Translator.translate(src);
+                    mainHandler.post(() -> {
+                        if (callback != null) callback.onTranslationResult(src, translated);
+                    });
                 } catch (Exception e) {
-                    final String src = sourceText[0];
-                    final String err = e.getMessage();
-                    mainHandler.post(() -> callback.onTranslationFailed(src, err));
+                    final String err = e.getMessage() != null ? e.getMessage() : "未知错误";
+                    mainHandler.post(() -> {
+                        if (callback != null) callback.onTranslationFailed(src, err);
+                    });
                 }
 
                 setState(State.DONE);
@@ -126,8 +162,11 @@ public final class GrabManager {
             } catch (InterruptedException e) {
                 failOnMain("被中断");
             }
-        }).start();
+        }, "grab-ocr").start();
     }
+
+    /** OCR 错误信息（null = 无错误）。 */
+    private final String[] ocrError = {null};
 
     /** 用户取消框选。 */
     public void onCancelled() {
@@ -137,24 +176,15 @@ public final class GrabManager {
         }
     }
 
-    /** 统一失败处理：回 IDLE + 通知。 */
-    private void abort(String reason) {
-        setState(State.IDLE);
-        if (callback != null) mainHandler.post(() -> callback.onAborted(reason));
-    }
-
     private void failOnMain(String reason) {
         setState(State.IDLE);
-        if (callback != null) mainHandler.post(() -> {
-            if (state == State.IDLE) { // 已回 IDLE
-                callback.onAborted(reason);
-            }
-        });
+        if (callback != null) mainHandler.post(() -> callback.onAborted(reason));
     }
 
     private void setState(State newState) {
         state = newState;
         Log.i(TAG, "state → " + newState);
-        if (callback != null) mainHandler.post(() -> callback.onStateChanged(newState));
+        final State s = newState;
+        if (callback != null) mainHandler.post(() -> callback.onStateChanged(s));
     }
 }
