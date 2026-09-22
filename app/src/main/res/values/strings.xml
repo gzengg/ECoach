@@ -42,6 +42,8 @@
     <string name="history_title_count">转录历史（%1$d 条）</string>
     <string name="history_empty">暂无记录</string>
     <string name="history_clear_all">清空全部</string>
+    <string name="history_tab_transcript">转录（%1$d）</string>
+    <string name="history_tab_grab">取词（%1$d）</string>
     <string name="history_answer_prefix">答: </string>
     <string name="dialog_ok">确定</string>
 

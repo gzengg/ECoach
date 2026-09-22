@@ -226,29 +226,125 @@ public class MainActivity extends Activity {
             return;
         }
 
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
-        layout.setPadding(pad, pad, pad, 0);
+        final boolean[] showGrab = {false};
+        final AlertDialog[] dialogRef = new AlertDialog[1];
+        final Runnable[] render = new Runnable[1];
 
-        for (int i = entries.size() - 1; i >= 0; i--) {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        root.setPadding(pad, pad, pad, 0);
+
+        // 顶部两个 Tab：转录 / 取词（分开，不再混在一起）
+        LinearLayout tabRow = new LinearLayout(this);
+        tabRow.setOrientation(LinearLayout.HORIZONTAL);
+        TextView tabTranscript = buildHistoryTab();
+        TextView tabGrab = buildHistoryTab();
+        LinearLayout.LayoutParams lp1 = new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        lp2.leftMargin = pad / 2;
+        tabTranscript.setLayoutParams(lp1);
+        tabGrab.setLayoutParams(lp2);
+        tabRow.addView(tabTranscript);
+        tabRow.addView(tabGrab);
+        root.addView(tabRow);
+
+        ScrollView scroll = new ScrollView(this);
+        final LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(list);
+        root.addView(scroll);
+
+        render[0] = () -> {
+            List<HistoryStore.Entry> all = store.getAll();
+            styleHistoryTab(tabTranscript, getString(R.string.history_tab_transcript,
+                    HistoryStore.countByType(all, HistoryStore.TYPE_TRANSCRIPT)), !showGrab[0]);
+            styleHistoryTab(tabGrab, getString(R.string.history_tab_grab,
+                    HistoryStore.countByType(all, HistoryStore.TYPE_GRAB)), showGrab[0]);
+            if (dialogRef[0] != null) {
+                dialogRef[0].setTitle(getString(R.string.history_title_count, all.size()));
+            }
+            renderHistoryList(list, store, all, showGrab[0], render[0]);
+        };
+        tabTranscript.setOnClickListener(v -> { showGrab[0] = false; render[0].run(); });
+        tabGrab.setOnClickListener(v -> { showGrab[0] = true; render[0].run(); });
+        render[0].run();
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.history_title_count, entries.size()))
+                .setView(root)
+                .setPositiveButton(R.string.dialog_ok, null)
+                .setNeutralButton(R.string.history_clear_all, (d, w) -> {
+                    store.clear();
+                    tvStatus.setText(R.string.status_history_cleared);
+                })
+                .create();
+        dialogRef[0] = dialog;
+        dialog.show();
+        // 底部按钮文字统一白色（主题默认是 accent 青色）
+        TextView okBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        if (okBtn != null) okBtn.setTextColor(android.graphics.Color.WHITE);
+        TextView clearBtn = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+        if (clearBtn != null) clearBtn.setTextColor(android.graphics.Color.WHITE);
+    }
+
+    /** 历史对话框的 Tab 按钮。 */
+    private TextView buildHistoryTab() {
+        TextView tv = new TextView(this);
+        tv.setBackgroundResource(R.drawable.bg_chip);
+        tv.setGravity(android.view.Gravity.CENTER);
+        tv.setTextSize(13);
+        tv.setPadding(0, dp(8), 0, dp(8));
+        tv.setClickable(true);
+        return tv;
+    }
+
+    private void styleHistoryTab(TextView tab, String text, boolean active) {
+        tab.setText(text);
+        tab.setTextColor(active ? getColor(R.color.accent_solid) : getColor(R.color.text_secondary));
+    }
+
+    /**
+     * 渲染历史列表，只显示指定类型。
+     * 删除用「原数组索引」({@code deleteAt(idx)})，所以分 Tab 后删掉的仍是那一条。
+     */
+    private void renderHistoryList(LinearLayout list, HistoryStore store,
+                                   List<HistoryStore.Entry> all,
+                                   boolean showGrab, Runnable onChanged) {
+        list.removeAllViews();
+        int pad = dp(16);
+        boolean any = false;
+
+        for (int i = all.size() - 1; i >= 0; i--) {
             final int idx = i;
-            HistoryStore.Entry e = entries.get(i);
+            HistoryStore.Entry e = all.get(i);
+            if (e.isGrab() != showGrab) continue;
+            any = true;
 
-            // 转录文字
-            TextView tv = new TextView(this);
             String time = new java.text.SimpleDateFormat("MM-dd HH:mm",
                     java.util.Locale.getDefault()).format(new java.util.Date(e.timestamp));
             StringBuilder sb = new StringBuilder();
-            sb.append("[ ").append(time).append(" ] ").append(e.transcript);
-            if (e.answer != null) {
-                sb.append("\n").append(getString(R.string.history_answer_prefix)).append(e.answer);
+            sb.append("[ ").append(time).append(" ] ");
+            if (e.isGrab()) {
+                // 取词：原文 → 译文
+                sb.append(e.transcript);
+                if (e.answer != null && !e.answer.isEmpty()) sb.append(" → ").append(e.answer);
+            } else {
+                sb.append(e.transcript);
+                if (e.answer != null) {
+                    sb.append("\n").append(getString(R.string.history_answer_prefix)).append(e.answer);
+                }
             }
-            tv.setText(sb.toString());
+            final String body = sb.toString();
+
+            TextView tv = new TextView(this);
+            tv.setText(body);
             tv.setTextSize(14);
             tv.setTextColor(0xFFF2F5FA);
             tv.setTextIsSelectable(true);
-            layout.addView(tv);
+            list.addView(tv);
 
             // 操作按钮行：复制 + 删除
             LinearLayout btnRow = new LinearLayout(this);
@@ -265,8 +361,7 @@ public class MainActivity extends Activity {
             btnCopy.setTextColor(0xFF34D399);
             btnCopy.setPadding(0, 0, pad, 0);
             btnCopy.setOnClickListener(v -> {
-                copyToClipboard(e.transcript
-                        + (e.answer != null ? "\n" + getString(R.string.history_answer_prefix) + e.answer : ""));
+                copyToClipboard(body);
                 tvStatus.setText(R.string.status_copied);
             });
             btnRow.addView(btnCopy);
@@ -279,11 +374,10 @@ public class MainActivity extends Activity {
             btnDelete.setOnClickListener(v -> {
                 store.deleteAt(idx);
                 tvStatus.setText(R.string.status_deleted);
-                showTranscriptHistory(); // 刷新列表
+                if (onChanged != null) onChanged.run(); // 原地刷新，保留当前 Tab
             });
             btnRow.addView(btnDelete);
-
-            layout.addView(btnRow, btnRowLp);
+            list.addView(btnRow, btnRowLp);
 
             if (i > 0) {
                 TextView sep = new TextView(this);
@@ -294,22 +388,21 @@ public class MainActivity extends Activity {
                         LinearLayout.LayoutParams.MATCH_PARENT, 1);
                 lp.topMargin = pad / 4;
                 lp.bottomMargin = pad / 4;
-                layout.addView(sep, lp);
+                list.addView(sep, lp);
             }
         }
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(layout);
+        if (!any) {
+            TextView empty = new TextView(this);
+            empty.setText(R.string.history_empty);
+            empty.setTextSize(14);
+            empty.setTextColor(getColor(R.color.text_tertiary));
+            list.addView(empty);
+        }
+    }
 
-        new AlertDialog.Builder(this)
-                .setTitle(getString(R.string.history_title_count, entries.size()))
-                .setView(scroll)
-                .setPositiveButton(R.string.dialog_ok, null)
-                .setNeutralButton(R.string.history_clear_all, (d, w) -> {
-                    store.clear();
-                    tvStatus.setText(R.string.status_history_cleared);
-                })
-                .show();
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
     // ── 状态 ──────────────────────────────

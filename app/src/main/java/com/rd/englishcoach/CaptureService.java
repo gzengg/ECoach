@@ -469,7 +469,7 @@ public class CaptureService extends Service {
         if (conversation != null) {
             ConversationManager.Turn turn = conversation.addGrab(source, translated);
             grabTurnId = turn.id;
-            if (history != null) history.appendTranscript("[取词] " + source + " → " + translated);
+            if (history != null) history.appendGrab(source, translated);
         }
         // 在取词页签显示卡片
         View item = android.view.LayoutInflater.from(this)
