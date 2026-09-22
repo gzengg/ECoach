@@ -149,6 +149,65 @@ public class ConversationManagerTest {
         assertNull(mgr.newest());
     }
 
+    // ── clear：真正清掉「发给 AI 的上下文」（验证清空上下文有没有用） ──
+
+    @Test
+    public void clear_removesEverythingFromAiContext() {
+        // 构造一份完整上下文：转录 + 回答 + 取词 + 提问
+        ConversationManager.Turn t = mgr.addTranscript("Where is Tom's hometown?");
+        mgr.beginAnswerRequest(t.id);
+        mgr.completeAnswer(t.id, "Inner Mongolia.");
+        mgr.addGrab("hello", "你好");
+        mgr.addQuestion("what does that mean?");
+
+        String[][] before = mgr.buildMessages("sys");
+        assertTrue("清空前上下文里应有内容，实际 " + before.length, before.length > 1);
+
+        mgr.clear();
+
+        String[][] after = mgr.buildMessages("sys");
+        assertEquals("清空后只剩 system 提示词（上下文真的清了）", 1, after.length);
+        assertEquals("system", after[0][0]);
+        assertEquals(0, mgr.size());
+    }
+
+    @Test
+    public void clear_thenNewTranscript_contextStartsFresh() {
+        mgr.addTranscript("old sentence");
+        mgr.clear();
+        mgr.addTranscript("new sentence");
+
+        String[][] msgs = mgr.buildMessages("sys");
+        assertEquals(2, msgs.length);
+        assertEquals("new sentence", msgs[1][1]);
+    }
+
+    @Test
+    public void clear_makesOldTurnsUnreachable() {
+        ConversationManager.Turn t = mgr.addTranscript("x");
+        long id = t.id;
+        mgr.clear();
+        assertNull("清空后旧轮次不能再被找到", mgr.findById(id));
+        assertFalse("清空后不能再对旧轮次发起回答请求", mgr.beginAnswerRequest(id));
+    }
+
+    @Test
+    public void completeAnswer_returnsTrueWhileTurnExists() {
+        ConversationManager.Turn t = mgr.addTranscript("x");
+        mgr.beginAnswerRequest(t.id);
+        assertTrue("轮次还在 → 回答写入成功", mgr.completeAnswer(t.id, "OK"));
+    }
+
+    @Test
+    public void completeAnswer_afterClear_isRejected() {
+        // 清空上下文时若有请求在途，迟到的回答必须被拒（否则会被写进持久化历史里别的记录）
+        ConversationManager.Turn t = mgr.addTranscript("x");
+        mgr.beginAnswerRequest(t.id);
+        mgr.clear();
+        assertFalse("清空后迟到的回答必须返回 false", mgr.completeAnswer(t.id, "late"));
+        assertEquals("不得把已清空的轮次复活", 0, mgr.size());
+    }
+
     // ── addGrab (P7) ──────────────────────
 
     @Test

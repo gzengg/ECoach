@@ -356,8 +356,9 @@ public class CaptureService extends Service {
                 String answer = ApiClient.answerWithHistory(msgs,
                         p.baseUrl(), p.apiKey(), p.chatModel());
                 Log.i(TAG, "Answer #" + turnId + ": " + answer);
-                conversation.completeAnswer(turnId, answer);
-                if (history != null) history.updateLastAnswer(answer);
+                // 清空上下文后迟到的回答不能再写进持久化历史（会挂到别的记录上）
+                boolean applied = conversation.completeAnswer(turnId, answer);
+                if (applied && history != null) history.updateLastAnswer(answer);
                 if (panel != null) panel.updateTurn(conversation.findById(turnId));
             } catch (Exception e) {
                 Log.e(TAG, "Answer failed #" + turnId, e);
@@ -385,7 +386,10 @@ public class CaptureService extends Service {
                 String answer = ApiClient.answerWithHistory(msgs,
                         p.baseUrl(), p.apiKey(), p.chatModel());
                 conversation.completeAnswer(qt.id, answer);
-                if (history != null) history.updateLastAnswer(answer);
+                // 同上：清空上下文后迟到的回答不写持久化历史
+                if (conversation.findById(qt.id) != null && history != null) {
+                    history.updateLastAnswer(answer);
+                }
                 if (panel != null) panel.updateTurn(conversation.findById(qt.id));
             } catch (Exception e) {
                 Log.e(TAG, "AskQuestion failed", e);
@@ -399,7 +403,12 @@ public class CaptureService extends Service {
 
     public void clearHistory() {
         if (conversation != null) conversation.clear();
-        if (panel != null) panel.clearTurns();
+        if (panel != null) {
+            panel.clearTurns();
+            // 取词卡片也是上下文的一部分（buildMessages 里会作为 [屏幕取词] 发给 AI），
+            // 必须一起清，否则面板还显示旧卡片、AI 已经不知道了（UI 与上下文不一致）
+            panel.clearGrabCards();
+        }
         // 注意：不清空持久化的转录历史文件，让用户随时可查看历史
         Log.i(TAG, "Conversation cleared");
     }

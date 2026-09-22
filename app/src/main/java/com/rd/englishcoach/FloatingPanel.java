@@ -220,6 +220,7 @@ public final class FloatingPanel {
         mainHandler.post(() -> {
             if (grabList != null) grabList.removeAllViews();
             if (scrollGrabs != null) scrollGrabs.setVisibility(View.GONE);
+            if (tvGrabStatus != null) tvGrabStatus.setVisibility(View.GONE);
             speakButtons.keySet().removeIf(k -> k.startsWith("grab:"));
         });
     }

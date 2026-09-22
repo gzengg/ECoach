@@ -110,12 +110,18 @@ public final class ConversationManager {
         return true;
     }
 
-    public synchronized void completeAnswer(long turnId, String answer) {
+    /**
+     * 完成一次 AI 回答。
+     *
+     * @return true = 该轮次仍存在并已写入；false = 已被清空/删除（调用方不得再动持久化历史）
+     */
+    public synchronized boolean completeAnswer(long turnId, String answer) {
         Turn t = findById(turnId);
-        if (t == null) return;
+        if (t == null) return false;
         t.aiAnswer = answer == null ? "" : answer.trim();
         t.state = AnswerState.READY;
         t.error = null;
+        return true;
     }
 
     public synchronized void failAnswer(long turnId, String error) {
