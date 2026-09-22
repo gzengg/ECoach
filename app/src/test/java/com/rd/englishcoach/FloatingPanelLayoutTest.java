@@ -83,6 +83,40 @@ public class FloatingPanelLayoutTest {
                 "gone".equals(elementById("tvGrabStatus").getAttribute("android:visibility")));
     }
 
+    // ── 两个 Tab 的主按钮风格必须一致（用户反馈 UI 不统一） ──
+
+    @Test
+    public void bothTabs_primaryButtons_shareSameStyle() throws Exception {
+        Element pause = elementById("btnPause");
+        Element grab = elementById("btnGrabStart");
+        assertNotNull("btnPause 必须存在", pause);
+        assertNotNull("btnGrabStart 必须存在", grab);
+
+        assertEquals("两个 Tab 的主按钮背景必须一致",
+                grab.getAttribute("android:background"), pause.getAttribute("android:background"));
+        assertEquals("两个 Tab 的主按钮高度必须一致",
+                grab.getAttribute("android:layout_height"), pause.getAttribute("android:layout_height"));
+        assertEquals("两个 Tab 的主按钮文字色必须一致",
+                grab.getAttribute("android:textColor"), pause.getAttribute("android:textColor"));
+        assertEquals("两个 Tab 的主按钮字号必须一致",
+                grab.getAttribute("android:textSize"), pause.getAttribute("android:textSize"));
+    }
+
+    @Test
+    public void bothTabs_primaryButtons_useCtaPill() throws Exception {
+        // AGENTS §10/§11.2：主 CTA = 渐变胶囊 + 深色文字（accent_on）
+        Element pause = elementById("btnPause");
+        Element grab = elementById("btnGrabStart");
+        assertEquals("听力页主按钮必须是主 CTA 渐变胶囊",
+                "@drawable/pill_primary", pause.getAttribute("android:background"));
+        assertEquals("听力页主按钮必须是 CTA 高度",
+                "@dimen/height_cta", pause.getAttribute("android:layout_height"));
+        assertEquals("渐变胶囊上的文字必须用深色 accent_on（对比度）",
+                "@color/accent_on", pause.getAttribute("android:textColor"));
+        assertEquals("取词页主按钮保持同一套 token",
+                "@drawable/pill_primary", grab.getAttribute("android:background"));
+    }
+
     /**
      * 断言元素不在 tabListening / tabGrab 内部：
      * 之前 tvMessage / btnReconsent 放在听力页里，切到取词页后任何失败提示都看不到，

@@ -64,6 +64,30 @@ public class FloatingPanelTabTest {
                 src.contains("getCurrentTab"));
     }
 
+    // ── 两个 Tab 的主按钮风格统一（用户反馈 UI 不一致） ──
+
+    @Test
+    public void applyFontSize_scalesBothTabCtas() throws Exception {
+        String src = readFile("src/main/java/com/rd/englishcoach/FloatingPanel.java");
+        int start = src.indexOf("public void applyFontSize(int sp)");
+        assertTrue("必须有 applyFontSize", start > 0);
+        int brace = src.indexOf('{', start);
+        int depth = 0;
+        int end = brace;
+        for (int i = brace; i < src.length(); i++) {
+            if (src.charAt(i) == '{') depth++;
+            else if (src.charAt(i) == '}') {
+                depth--;
+                if (depth == 0) { end = i; break; }
+            }
+        }
+        String body = src.substring(brace, end);
+        assertTrue("听力页主按钮（继续）字号要跟随设置", body.contains("btnPause.setTextSize"));
+        assertTrue("取词页主按钮（取词）字号必须与它一致，否则两个 Tab 风格仍不统一",
+                body.contains("btnGrabStart.setTextSize"));
+        assertTrue("两个主按钮必须用同一个字号变量", body.contains("ctaSp"));
+    }
+
     // ── 工具 ──────────────────────────────
 
     private static String readFile(String path) throws Exception {

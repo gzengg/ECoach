@@ -156,12 +156,12 @@
         <TextView
             android:id="@+id/btnPause"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/height_chip"
+            android:layout_height="@dimen/height_cta"
             android:layout_marginBottom="6dp"
-            android:background="@drawable/bg_chip"
+            android:background="@drawable/pill_primary"
             android:gravity="center"
             android:text="继续"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/accent_on"
             android:textSize="15sp"
             android:fontFamily="sans-serif-medium" />
 

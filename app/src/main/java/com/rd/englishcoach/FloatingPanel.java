@@ -550,7 +550,11 @@ public final class FloatingPanel {
     public void applyFontSize(int sp) {
         if (tvStatus == null) return;
         tvStatus.setTextSize(sp);
-        btnPause.setTextSize(sp);
+        // 两个 Tab 的主按钮（继续 / 取词）字号保持一致，风格才统一；
+        // 上限 20sp，避免大字号把 52dp 胶囊擑破
+        int ctaSp = Math.min(sp, 20);
+        btnPause.setTextSize(ctaSp);
+        if (btnGrabStart != null) btnGrabStart.setTextSize(ctaSp);
         for (View v : turnViews.values()) {
             TextView t = v.findViewById(R.id.tvTranscriptText);
             if (t != null) t.setTextSize(sp);
