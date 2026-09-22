@@ -48,6 +48,17 @@ public class FloatingPanelLayoutTest {
     // ── btnSendQuestion 存在 ────────────────
 
     @Test
+    public void grabButton_label_differsFromTabLabel() throws Exception {
+        // 同类问题排查：同一屏上 tab「取词」与按钮「取词」同名会分不清（一个是切页、一个是动作）
+        Element btn = elementById("btnGrabStart");
+        Element tab = elementById("btnTabGrab");
+        assertNotNull(btn);
+        assertNotNull(tab);
+        assertFalse("取词页的按钮不能与 tab 同名（用户分不清哪个是切页、哪个是动作）",
+                btn.getAttribute("android:text").equals(tab.getAttribute("android:text")));
+    }
+
+    @Test
     public void btnSendQuestion_exists() throws Exception {
         Element el = elementById("btnSendQuestion");
         assertNotNull("btnSendQuestion 必须存在", el);

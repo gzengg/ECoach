@@ -105,6 +105,43 @@ public class SegmentCardLayoutTest {
         return null;
     }
 
+    // ── 喇叭按钮必须能区分（用户反馈「两个读分不清」） ──
+
+    @Test
+    public void segmentCard_speakButtons_haveDistinctLabels() throws Exception {
+        String transcript = elementById("btnSpeakTranscript").getAttribute("android:text");
+        String answer = elementById("btnSpeakAnswer").getAttribute("android:text");
+        assertFalse("两个喇叭按钮不能同名（用户分不清哪个读原文、哪个读回答）",
+                transcript.equals(answer));
+        assertTrue("原文喇叭要写明读的是原文，实际=" + transcript, transcript.contains("原文"));
+        assertTrue("回答喇叭要写明读的是回答，实际=" + answer, answer.contains("回答"));
+    }
+
+    @Test
+    public void grabCard_speakButtons_haveDistinctLabels() throws Exception {
+        // 同类问题排查：取词卡片的两个喇叭
+        Document doc = parseResource("/layout/item_grab.xml");
+        String src = byId(doc, "btnSpeakSrc");
+        String dst = byId(doc, "btnSpeakDst");
+        assertFalse("取词卡两个喇叭不能同名，实际=" + src + "/" + dst, src.equals(dst));
+        assertTrue("读原文按钮要写明原文，实际=" + src, src.contains("原文"));
+        assertTrue("读译文按钮要写明译文，实际=" + dst, dst.contains("译文"));
+    }
+
+    /** 在指定布局文档里按 id 取 android:text（找不到则 fail）。 */
+    private static String byId(Document doc, String id) {
+        NodeList all = doc.getElementsByTagName("TextView");
+        for (int i = 0; i < all.getLength(); i++) {
+            Element e = (Element) all.item(i);
+            String attr = e.getAttribute("android:id");
+            if (attr.equals(id) || attr.equals("@+id/" + id) || attr.equals("@id/" + id)) {
+                return e.getAttribute("android:text");
+            }
+        }
+        fail("找不到 id=" + id);
+        return null;
+    }
+
     private static int indexOfId(String id) throws Exception {
         Document doc = parseLayout();
         NodeList all = doc.getElementsByTagName("TextView");

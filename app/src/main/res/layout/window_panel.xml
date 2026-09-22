@@ -175,7 +175,7 @@
             android:layout_height="@dimen/height_cta_sm"
             android:background="@drawable/pill_glass"
             android:gravity="center"
-            android:text="取词"
+            android:text="开始取词"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
             android:fontFamily="sans-serif-medium"
