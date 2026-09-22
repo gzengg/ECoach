@@ -75,6 +75,54 @@ public class GrabOverlaySelectionTest {
         assertTrue("必须保证非空矩形（right>left, bottom>top）", m[2] > m[0] && m[3] > m[1]);
     }
 
+    // ── snapToEdges：贴边吸附（修「框选内容受限」） ──────
+
+    @Test
+    public void snapToEdges_leftNearEdge_snapsToZero() {
+        // 从靠近左边缘（10px，阈值 32px）起拖 → 吸附到 0，整行都能选上
+        int[] s = GrabOverlay.snapToEdges(10f, 100f, 500f, 200f, 1080, 32);
+        assertEquals(0, s[0]);
+        assertEquals(500, s[2]);
+    }
+
+    @Test
+    public void snapToEdges_rightNearEdge_snapsToViewWidth() {
+        int[] s = GrabOverlay.snapToEdges(100f, 100f, 1070f, 200f, 1080, 32);
+        assertEquals(1080, s[2]);
+        assertEquals(100, s[0]);
+    }
+
+    @Test
+    public void snapToEdges_bothEdgesNear_snapsBoth() {
+        int[] s = GrabOverlay.snapToEdges(5f, 100f, 1075f, 200f, 1080, 32);
+        assertEquals(0, s[0]);
+        assertEquals(1080, s[2]);
+    }
+
+    @Test
+    public void snapToEdges_middleDrag_unchanged() {
+        int[] s = GrabOverlay.snapToEdges(200f, 100f, 800f, 300f, 1080, 32);
+        assertEquals(200, s[0]);
+        assertEquals(800, s[2]);
+        assertEquals(100, s[1]);
+        assertEquals(300, s[3]);
+    }
+
+    @Test
+    public void snapToEdges_invertedDrag_stillNormalized() {
+        // 从右往左拖：先归一化再吸附
+        int[] s = GrabOverlay.snapToEdges(500f, 200f, 10f, 100f, 1080, 32);
+        assertEquals(0, s[0]);
+        assertEquals(500, s[2]);
+    }
+
+    @Test
+    public void snapToEdges_unknownViewWidth_doesNotCrash() {
+        int[] s = GrabOverlay.snapToEdges(10f, 10f, 20f, 20f, 0, 32);
+        assertEquals(0, s[0]);
+        assertEquals(20, s[2]);
+    }
+
     // ── 框选层重做契约 ───────────────────────────
 
     private static String readFile(String path) throws Exception {
@@ -164,6 +212,53 @@ public class GrabOverlaySelectionTest {
         assertTrue("dismiss 可能从投影回调线程调用（releaseCapture），"
                         + "窗口操作必须 post 到主线程，否则 CalledFromWrongThreadException",
                 dismiss.contains("mainHandler.post("));
+    }
+
+    @Test
+    public void overlay_declaresSystemGestureExclusionRects() throws Exception {
+        String src = overlay();
+        assertTrue("必须声明系统手势排除区（否则从边缘起拖会触发系统返回，框选被截断）",
+                src.contains("setSystemGestureExclusionRects"));
+        String body = methodBody(src, "private void applyGestureExclusion(int vw, int vh)");
+        assertNotNull("必须有 applyGestureExclusion", body);
+        assertTrue("排除区必须在 onLayout/onDraw 里声明（官方要求）",
+                src.contains("onLayout(boolean changed") && src.contains("applyGestureExclusion(getWidth(), getHeight())"));
+        assertTrue("排除高度不得超过官方上限 200dp",
+                src.contains("MAX_GESTURE_EXCLUSION_DP = 200"));
+        assertTrue("排除区要全宽（左右边缘都受益）",
+                body.contains("new Rect(0, 0, vw, bandH)"));
+    }
+
+    @Test
+    public void overlay_snapsSelectionToEdges() throws Exception {
+        String src = overlay();
+        String body = methodBody(src, "private void onSelectionComplete()");
+        assertNotNull(body);
+        assertTrue("框选完成时必须做贴边吸附（修「内容被切掉」）",
+                body.contains("snapToEdges("));
+        assertTrue("吸附必须在裁剪之前（裁剪用吸附后的坐标）",
+                body.indexOf("snapToEdges(") < body.indexOf("Bitmap.createBitmap(screenshot"));
+    }
+
+    @Test
+    public void overlay_gestureCancel_doesNotCompleteSelection() throws Exception {
+        String body = methodBody(overlay(), "private boolean onTouch(MotionEvent event)");
+        assertNotNull(body);
+        int cancelIdx = body.indexOf("case MotionEvent.ACTION_CANCEL:");
+        assertTrue("CANCEL 必须有独立分支", cancelIdx >= 0);
+        int upIdx = body.indexOf("case MotionEvent.ACTION_UP:");
+        assertTrue("UP 与 CANCEL 必须分开处理", upIdx > cancelIdx);
+        // CANCEL 分支（到 UP 之前）不得完成框选：否则会得到被系统截断的区域
+        String cancelBranch = body.substring(cancelIdx, upIdx);
+        assertFalse("被系统手势抢走时不能拿它去完成框选",
+                cancelBranch.contains("onSelectionComplete()"));
+        assertTrue("CANCEL 后要提示用户重新拖", cancelBranch.contains("hintText"));
+    }
+
+    @Test
+    public void overlay_hintMentionsEdgeGesture() throws Exception {
+        String src = overlay();
+        assertTrue("提示文案要说明边缘手势问题", src.contains("边缘手势"));
     }
 
     @Test

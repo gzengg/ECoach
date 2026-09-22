@@ -37,6 +37,9 @@ public final class GrabOverlay {
 
     private static final String TAG = "GrabOverlay";
 
+    /** 返回手势每侧边缘的排除高度上限（官方限制 200dp）。 */
+    private static final int MAX_GESTURE_EXCLUSION_DP = 200;
+
     public interface Callback {
         /** 框选完成：region 已从展示帧裁好（回调方负责回收）。 */
         void onRegionSelected(Bitmap region);
@@ -58,6 +61,8 @@ public final class GrabOverlay {
     private String hintText;
     private final int minSizePx;
     private final int tapSlopPx;
+    /** 贴边吸附阈值：拖到距屏幕左右边缘这么近就吸附到边，避免内容被切掉。 */
+    private final int edgeSnapPx;
 
     private final Paint bitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint maskPaint = new Paint();
@@ -73,6 +78,7 @@ public final class GrabOverlay {
         float density = ctx.getResources().getDisplayMetrics().density;
         this.minSizePx = Math.round(32 * density);
         this.tapSlopPx = Math.round(10 * density);
+        this.edgeSnapPx = Math.round(32 * density);
 
         maskPaint.setColor(Color.argb(110, 0, 0, 0));
         chipPaint.setColor(Color.argb(210, 18, 20, 30));
@@ -108,6 +114,13 @@ public final class GrabOverlay {
             }
 
             @Override
+            protected void onLayout(boolean changed, int l, int t, int r, int b) {
+                super.onLayout(changed, l, t, r, b);
+                // 手势排除区必须在 onLayout/onDraw 里声明（官方要求）
+                applyGestureExclusion(getWidth(), getHeight());
+            }
+
+            @Override
             public boolean onTouchEvent(MotionEvent event) {
                 return onTouch(event);
             }
@@ -127,6 +140,26 @@ public final class GrabOverlay {
     }
 
     // ── 绘制 ─────────────────────────────────
+
+    /**
+     * 声明系统手势排除区：否则从左右边缘起拖会被系统「返回」手势抢走，
+     * 框选范围被截断（用户反馈）。
+     *
+     * <p>官方限制：返回手势每侧边缘最多只能排除 <b>200dp 垂直高度</b>，
+     * 所以这里给一条「全宽 × 200dp」的顶部条带（正文通常在这一带），
+     * 其余位置靠 {@link #snapToEdges} 的贴边吸附保证能选到屏幕边缘。</p>
+     */
+    private void applyGestureExclusion(int vw, int vh) {
+        if (overlayView == null || vw <= 0 || vh <= 0) return;
+        try {
+            int bandH = Math.min(dp(MAX_GESTURE_EXCLUSION_DP), vh);
+            java.util.List<Rect> rects = new java.util.ArrayList<>(1);
+            rects.add(new Rect(0, 0, vw, bandH));
+            overlayView.setSystemGestureExclusionRects(rects);
+        } catch (Exception e) {
+            Log.w(TAG, "setSystemGestureExclusionRects failed: " + e.getMessage());
+        }
+    }
 
     private void drawOverlay(Canvas canvas, int vw, int vh) {
         if (screenshot == null || vw <= 0 || vh <= 0) return;
@@ -192,8 +225,14 @@ public final class GrabOverlay {
                     invalidateOverlay();
                 }
                 return true;
-            case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
+                // 系统手势（返回/多任务）抢走了这次滑动：
+                // 不能用它去完成框选（会得到被截断的区域），保留当前框并提示重拖
+                dragging = false;
+                hintText = "边缘手势被系统拦截，请从屏幕内侧重新拖";
+                invalidateOverlay();
+                return true;
+            case MotionEvent.ACTION_UP:
                 if (dragging) {
                     dragging = false;
                     if (!movedFar) {
@@ -223,6 +262,15 @@ public final class GrabOverlay {
             callback.onCancelled();
             return;
         }
+        View v = overlayView;
+        int vw = v == null ? 0 : v.getWidth();
+        int vh = v == null ? 0 : v.getHeight();
+
+        // 贴边吸附：拖到屏幕左右边缘附近就吸附到边，避免框选内容被切掉
+        int[] snapped = snapToEdges(selectionRect.left, selectionRect.top,
+                selectionRect.right, selectionRect.bottom, vw, edgeSnapPx);
+        selectionRect = new RectF(snapped[0], snapped[1], snapped[2], snapped[3]);
+
         if (selectionRect.width() < minSizePx || selectionRect.height() < minSizePx) {
             // 框太小：不退出，给提示让用户重选（旧逻辑是静默清空，用户以为没反应）
             selectionRect = null;
@@ -231,9 +279,6 @@ public final class GrabOverlay {
             return;
         }
 
-        View v = overlayView;
-        int vw = v == null ? 0 : v.getWidth();
-        int vh = v == null ? 0 : v.getHeight();
         Bitmap region = null;
         if (vw > 0 && vh > 0) {
             int[] m = mapToBitmap(vw, vh, screenshot.getWidth(), screenshot.getHeight(),
@@ -279,6 +324,23 @@ public final class GrabOverlay {
         right = Math.max(left, Math.min(right, bmpW));
         bottom = Math.max(top, Math.min(bottom, bmpH));
         return new int[]{left, top, right, bottom};
+    }
+
+    /**
+     * 贴边吸附（视图坐标）：拖到屏幕左右边缘附近就吸附到边。
+     *
+     * <p>为什么需要：系统「返回」手势占着左右边缘（每侧最多只能排除 200dp），
+     * 用户从内侧起拖时无法把框拉到屏幕最边，导致<b>框选内容被切掉</b>。
+     * 吸附后拖到边缘附近即可选到整行。纯函数，可 JVM 单测。</p>
+     *
+     * @return {left, top, right, bottom}
+     */
+    static int[] snapToEdges(float l, float t, float r, float b, int viewW, int edgeSnapPx) {
+        float left = Math.min(l, r);
+        float right = Math.max(l, r);
+        if (left <= edgeSnapPx) left = 0f;
+        if (viewW > 0 && viewW - right <= edgeSnapPx) right = viewW;
+        return new int[]{Math.round(left), Math.round(t), Math.round(right), Math.round(b)};
     }
 
     // ── 收尾 ─────────────────────────────────
