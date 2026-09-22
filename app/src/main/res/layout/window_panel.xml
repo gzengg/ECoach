@@ -165,7 +165,7 @@
             android:background="@drawable/pill_glass"
             android:gravity="center"
             android:text="继续"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/accent_solid"
             android:textSize="14sp"
             android:fontFamily="sans-serif-medium" />
 
@@ -176,7 +176,7 @@
             android:background="@drawable/pill_glass"
             android:gravity="center"
             android:text="开始取词"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/accent_solid"
             android:textSize="14sp"
             android:fontFamily="sans-serif-medium"
             android:visibility="gone" />

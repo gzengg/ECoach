@@ -64,6 +64,52 @@ public class FloatingPanelLayoutTest {
         assertNotNull("btnSendQuestion 必须存在", el);
     }
 
+    // ── 主按钮配色必须与面板其他控件同色系 ──
+
+    @Test
+    public void primaryButtons_usePanelAccentColor() throws Exception {
+        // 与面板里的动作芯片（读 / 发送）一致的 accent_solid
+        assertEquals("听力页主按钮文字色应与面板动作芯片一致",
+                "@color/accent_solid", elementById("btnPause").getAttribute("android:textColor"));
+        assertEquals("取词页主按钮文字色应与面板动作芯片一致",
+                "@color/accent_solid", elementById("btnGrabStart").getAttribute("android:textColor"));
+    }
+
+    @Test
+    public void pillGlass_matchesPanelControlColors() throws Exception {
+        String pill = readResourceText("/drawable/pill_glass.xml");
+        String colors = readResourceText("/values/colors.xml");
+        String chip = readResourceText("/drawable/bg_chip.xml");
+
+        assertTrue("主按钮底色必须用 accent_glass token（不散落裸十六进制）",
+                pill.contains("@color/accent_glass"));
+        assertTrue("主按钮描边必须用面板描边 token（与 bg_chip 同族）",
+                pill.contains("@color/stroke_strong") || pill.contains("@color/stroke_soft"));
+        assertTrue("bg_chip 用的也是同一族描边 token", chip.contains("@color/stroke_soft"));
+        assertFalse("不得再有白色高光渐变（半透明叠在深色玻璃上会发灰，用户反馈不适配）",
+                pill.contains("#59FFFFFF"));
+        assertTrue("必须保留胶囊圆角", pill.contains("@dimen/radius_pill"));
+
+        assertTrue("colors.xml 必须定义 accent_glass",
+                colors.contains("name=\"accent_glass\""));
+        String glass = extractColor(colors, "accent_glass");
+        String solid = extractColor(colors, "accent_solid");
+        assertNotNull(glass);
+        assertNotNull(solid);
+        assertEquals("accent_glass 的 RGB 必须与 accent_solid 一致（同色系）",
+                solid.substring(3), glass.substring(3));
+        int alpha = Integer.parseInt(glass.substring(1, 3), 16);
+        assertTrue("主按钮必须是半透明的（alpha < 50%），实际 alpha=" + alpha, alpha < 0x80);
+        assertTrue("但不能全透明到看不见，alpha=" + alpha, alpha >= 0x10);
+    }
+
+    private static String extractColor(String colorsXml, String name) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("<color name=\"" + name + "\">(#([0-9A-Fa-f]{6,8}))</color>")
+                .matcher(colorsXml);
+        return m.find() ? m.group(1) : null;
+    }
+
     // ── 关闭按钮存在 ────────────────────────
 
     @Test
@@ -115,15 +161,15 @@ public class FloatingPanelLayoutTest {
 
     @Test
     public void bothTabs_primaryButtons_useGlassPill() throws Exception {
-        // v3.1：两个 Tab 主按钮统一为「半透明流光胶囊」（44dp + 白字）
+        // v3.1：两个 Tab 主按钮统一为「半透明同色系胶囊」（44dp + accent 字）
         Element pause = elementById("btnPause");
         Element grab = elementById("btnGrabStart");
-        assertEquals("听力页主按钮必须是半透明流光胶囊",
+        assertEquals("听力页主按钮必须是半透明胶囊",
                 "@drawable/pill_glass", pause.getAttribute("android:background"));
         assertEquals("取词页主按钮必须同一套样式",
                 "@drawable/pill_glass", grab.getAttribute("android:background"));
-        assertEquals("半透明底上文字用白色（对比度）",
-                "@color/text_primary", pause.getAttribute("android:textColor"));
+        assertEquals("半透明底上文字用面板强调色（与读/发送一致）",
+                "@color/accent_solid", pause.getAttribute("android:textColor"));
         assertEquals("两个主按钮必须同一高度 token",
                 "@dimen/height_cta_sm", pause.getAttribute("android:layout_height"));
         assertEquals("取词页主按钮必须同一高度 token",

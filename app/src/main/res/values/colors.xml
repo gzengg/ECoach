@@ -36,6 +36,7 @@
     <color name="accent_start">#FF22D3EE</color>     <!-- 渐变起点（青） -->
     <color name="accent_end">#FF6D8CF5</color>       <!-- 渐变终点（靛紫），非 #6366F1 -->
     <color name="accent_solid">#FF3DD9E8</color>     <!-- colorAccent，光标/进度条 tint -->
+    <color name="accent_glass">#1F3DD9E8</color>    <!-- 12% accent 青：悬浮窗主按钮底色（与 bg_chip 同色系，见 v3.1） -->
     <color name="accent_on">#FF06121A</color>        <!-- 胶囊文字色（深色），见 §11.2 -->
 
     <!-- ── 语义 ── -->

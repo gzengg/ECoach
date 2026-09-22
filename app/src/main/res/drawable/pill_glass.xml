@@ -1,20 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  悬浮窗主按钮：半透明流光胶囊（v3.1，用户要求「小一点 + 简单半透明流光」）。
-  复用 accent token，但用低透明度让面板玻璃透出来；渐变首段带一道白色高光，
-  形成斜向流光感。文字用 text_primary（白）——深色半透明底上对比度最高。
+  悬浮窗主按钮（继续 / 取词）：v3.1 改为与面板其他控件（bg_chip）同色系。
+  之前用「白色高光 → accent 渐变」，半透明叠在深色玻璃上左半边发灰，和
+  面板的芯片控件不适配（用户反馈）。
+  现在：12% accent 青底（@color/accent_glass，RGB 与 accent_solid 一致）
+      + 面板描边 token（stroke_strong，与 bg_chip 的 stroke_soft 同一族）
+      + 胶囊圆角 + 涟漪（与 bg_chip 一致）
+  文字用 accent_solid（与面板里的「读 / 发送」等动作芯片一致）。
   ⚠️ 主界面主 CTA 仍用 pill_primary（亮渐变 + accent_on 深字，AGENTS §11.2）。
 -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <gradient
-        android:type="linear"
-        android:angle="135"
-        android:startColor="#59FFFFFF"
-        android:centerColor="#4D22D3EE"
-        android:endColor="#336D8CF5" />
-    <corners android:radius="@dimen/radius_pill" />
-    <stroke
-        android:width="1dp"
-        android:color="#663DD9E8" />
-</shape>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/ripple_light">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/accent_glass" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/stroke_strong" />
+            <corners android:radius="@dimen/radius_pill" />
+        </shape>
+    </item>
+</ripple>
