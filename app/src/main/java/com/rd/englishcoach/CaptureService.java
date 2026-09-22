@@ -159,6 +159,10 @@ public class CaptureService extends Service {
     // ── 启动采集 ────────────────────────────
 
     private void startCapture(int resultCode, Intent data) {
+        // 重新授权会二次进入这里：先释放上一次的采集资源（含旧 VirtualDisplay），
+        // 否则旧 VirtualDisplay 泄漏。面板暂不撤（万一新授权失败，还要用它提示）。
+        releaseCapture();
+
         buffer = new PcmBuffer();
         conversation = new ConversationManager(50);
         history = new HistoryStore(CaptureService.this);
@@ -172,6 +176,9 @@ public class CaptureService extends Service {
         if (audioRecord == null) { notifyReconsentNeeded(getString(R.string.msg_audio_init_failed)); return; }
 
         listen.onCaptureStarted();
+        // 撤掉旧面板再建新的：否则会叠出两个悬浮窗，
+        // 点「取词」时藏的是新窗口、旧窗口留在屏上 → 看起来「点了没反应」。
+        if (panel != null) panel.hide();
         panel = new FloatingPanel(this, new PanelCallback());
         panel.show();
         panel.setListening(listen.isListening());
@@ -179,7 +186,8 @@ public class CaptureService extends Service {
         // 初始化取词：常驻 VirtualDisplay + ImageReader
         screenCapture = new ScreenTextCapture(getSystemService(WindowManager.class));
         if (!screenCapture.init(projection)) {
-            Log.w(TAG, "ScreenTextCapture init failed (non-fatal)");
+            // 不再静默：取词会不可用，用户点「取词」时会看到原因 + 重新授权入口
+            Log.e(TAG, "ScreenTextCapture init failed: " + screenCapture.lastError());
         }
         grabManager = new GrabManager();
         grabOverlay = new GrabOverlay(this, new GrabOverlay.Callback() {
@@ -400,7 +408,15 @@ public class CaptureService extends Service {
 
     private void startGrab() {
         if (screenCapture == null || !screenCapture.isReady()) {
-            if (panel != null) panel.showMessage("截屏未就绪，请重新授权");
+            // 取词不可用必须让用户在「取词」页也看得到，并给出恢复路径（重新授权）
+            String why = screenCapture == null ? "截屏通道未初始化" : screenCapture.lastError();
+            if (panel != null) {
+                panel.switchToTabExternal(1);
+                panel.setGrabStatus("取词不可用：" + (why == null ? "请重新授权投屏" : why));
+                panel.showMessage(getString(R.string.msg_grab_not_ready));
+                panel.setReconsentVisible(true);
+            }
+            Log.e(TAG, "startGrab aborted, ready=false, why=" + why);
             return;
         }
         if (panel != null) panel.hide();
@@ -411,7 +427,12 @@ public class CaptureService extends Service {
                 }
             }
             @Override public void onCaptureFailed(String r) {
-                mainHandler.post(() -> panel.showMessage(r));
+                // 截帧失败也要把面板恢复回来，否则用户会以为悬浮窗消失了
+                mainHandler.post(() -> {
+                    panel.setGrabStatus("取词失败：" + r);
+                    panel.showMessage(r);
+                    panel.showRestore();
+                });
             }
             @Override public void onOcrResult(String t) {
                 mainHandler.post(() -> panel.setGrabStatus("识别到 " + t.length() + " 字符，翻译中…"));

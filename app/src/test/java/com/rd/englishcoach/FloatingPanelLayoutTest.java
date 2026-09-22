@@ -61,6 +61,47 @@ public class FloatingPanelLayoutTest {
         assertNotNull("btnClose 必须存在（用于关闭面板）", el);
     }
 
+    // ── 公共提示区：两个 Tab 都要能看到 ──────
+
+    @Test
+    public void tvMessage_visibleFromBothTabs() throws Exception {
+        assertNotInsideTabPage("tvMessage");
+    }
+
+    @Test
+    public void btnReconsent_visibleFromBothTabs() throws Exception {
+        assertNotInsideTabPage("btnReconsent");
+    }
+
+    @Test
+    public void grabTab_hasGrabButtonAndStatus() throws Exception {
+        Element btn = elementById("btnGrabStart");
+        assertNotNull("btnGrabStart 必须存在", btn);
+        assertNotNull("tvGrabStatus 必须存在（取词页自己的状态行）", elementById("tvGrabStatus"));
+        // 取词页自身可显示状态 → 取词失败时在「取词」页也能看到
+        assertTrue("tvGrabStatus 应默认隐藏，有内容才显示",
+                "gone".equals(elementById("tvGrabStatus").getAttribute("android:visibility")));
+    }
+
+    /**
+     * 断言元素不在 tabListening / tabGrab 内部：
+     * 之前 tvMessage / btnReconsent 放在听力页里，切到取词页后任何失败提示都看不到，
+     * 用户表现就是「点取词完全没反应」。
+     */
+    private static void assertNotInsideTabPage(String id) throws Exception {
+        Element el = elementById(id);
+        assertNotNull(id + " 必须存在", el);
+        org.w3c.dom.Node n = el.getParentNode();
+        while (n != null) {
+            if (n instanceof Element) {
+                String a = ((Element) n).getAttribute("android:id");
+                assertFalse(id + " 不能放在 tab 页内部（否则切到另一页就看不到提示）：" + a,
+                        a.equals("@+id/tabListening") || a.equals("@+id/tabGrab"));
+            }
+            n = n.getParentNode();
+        }
+    }
+
     // ── 解析实现 ──────────────────────────────
 
     private static Document parseLayout() throws Exception {

@@ -110,6 +110,32 @@
             android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 
+    <!-- ═══ 公共提示区（两个 Tab 都要能看到） ═══
+         此前 tvMessage / btnReconsent 放在 tabListening 内部，切到「取词」页后
+         任何失败提示都不可见 → 用户看到的是「点取词完全没反应」。 -->
+    <TextView
+        android:id="@+id/btnReconsent"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/bg_chip"
+        android:gravity="center"
+        android:text="重新授权"
+        android:textColor="@color/warn"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp"
+        android:maxLines="3"
+        android:ellipsize="end"
+        android:textColor="@color/warn"
+        android:textSize="11sp"
+        android:visibility="gone" />
+
     <!-- ═══ 听力页（现有内容） ═══ -->
     <LinearLayout
         android:id="@+id/tabListening"
@@ -138,28 +164,6 @@
             android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:fontFamily="sans-serif-medium" />
-
-        <TextView
-            android:id="@+id/btnReconsent"
-            android:layout_width="match_parent"
-            android:layout_height="36dp"
-            android:layout_marginBottom="6dp"
-            android:background="@drawable/bg_chip"
-            android:gravity="center"
-            android:text="重新授权"
-            android:textColor="@color/warn"
-            android:textSize="14sp"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/tvMessage"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:textColor="@color/warn"
-            android:textSize="11sp"
-            android:visibility="gone" />
 
         <com.rd.englishcoach.MaxHeightScrollView
             android:id="@+id/scrollTurns"
