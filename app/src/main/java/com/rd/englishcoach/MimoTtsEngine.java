@@ -16,7 +16,6 @@ public final class MimoTtsEngine implements SpeechPlayer {
 
     private static final String TAG = "MimoTts";
 
-    private final Context ctx;
     private final Prefs prefs;
     private final AudioPlayer audioPlayer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -27,7 +26,6 @@ public final class MimoTtsEngine implements SpeechPlayer {
     private int generation;
 
     public MimoTtsEngine(Context ctx) {
-        this.ctx = ctx.getApplicationContext();
         this.prefs = new Prefs(ctx);
         this.audioPlayer = new AudioPlayer(ctx);
     }
@@ -55,11 +53,7 @@ public final class MimoTtsEngine implements SpeechPlayer {
         // 检查缓存
         byte[] cached = audioPlayer.getCached(key);
         if (cached != null) {
-            audioPlayer.play(key, cached, new AudioPlayer.Listener() {
-                @Override public void onComplete(String k) { notifyState(k, SpeechPlayer.State.IDLE, null); }
-                @Override public void onError(String k, String err) { notifyState(k, SpeechPlayer.State.ERROR, err); }
-            });
-            notifyState(key, SpeechPlayer.State.PLAYING, null);
+            play(key, cached);
             return;
         }
 
@@ -76,11 +70,7 @@ public final class MimoTtsEngine implements SpeechPlayer {
                     if (gen != generation || !key.equals(currentKey)) {
                         return; // 已 stop() 或已切到新 key：丢弃过期结果
                     }
-                    audioPlayer.play(key, wav, new AudioPlayer.Listener() {
-                        @Override public void onComplete(String k) { notifyState(k, SpeechPlayer.State.IDLE, null); }
-                        @Override public void onError(String k, String err) { notifyState(k, SpeechPlayer.State.ERROR, err); }
-                    });
-                    notifyState(key, SpeechPlayer.State.PLAYING, null);
+                    play(key, wav);
                 });
             } catch (Exception e) {
                 Log.e(TAG, "synthesize failed: " + e.getMessage());
@@ -120,15 +110,20 @@ public final class MimoTtsEngine implements SpeechPlayer {
         this.listener = l;
     }
 
-    /** 根据语言提示选择声音。 */
-    private String pickVoice(String langHint) {
-        if (langHint != null && langHint.startsWith("zh")) {
-            return prefs.ttsVoiceChinese().isEmpty() ? "冰糖" : prefs.ttsVoiceChinese();
-        }
-        return prefs.ttsVoiceEnglish().isEmpty() ? "Mia" : prefs.ttsVoiceEnglish();
+    /** 播放 WAV 并把播放结果映射成朗读状态（缓存命中与网络合成两条路径共用）。 */
+    private void play(String key, byte[] wav) {
+        audioPlayer.play(key, wav, new AudioPlayer.Listener() {
+            @Override public void onComplete(String k) { notifyState(k, State.IDLE, null); }
+            @Override public void onError(String k, String err) { notifyState(k, State.ERROR, err); }
+        });
+        notifyState(key, State.PLAYING, null);
     }
 
-
+    /** 根据语言提示选择声音。Prefs 已保证非空（空值回落默认声音），这里不再重复兜底。 */
+    private String pickVoice(String langHint) {
+        return (langHint != null && langHint.startsWith("zh"))
+                ? prefs.ttsVoiceChinese() : prefs.ttsVoiceEnglish();
+    }
 
     private void notifyState(String key, State state, String error) {
         if (listener != null) listener.onState(key, state, error);

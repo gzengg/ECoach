@@ -45,8 +45,6 @@ public final class GrabManager {
         this.callback = callback;
     }
 
-    public State getState() { return state; }
-
     /** 启动取词流程：截图 → 等用户框选 → OCR → 翻译。 */
     public void startGrab(ScreenTextCapture capture, GrabOverlay overlay) {
         if (state != State.IDLE) {

@@ -143,7 +143,10 @@ public class ListeningKeyGuardTest {
 
     @Test
     public void asrErrors_areMadeReadable() throws Exception {
-        String api = stripComments(readFile("src/main/java/com/rd/englishcoach/ApiClient.java"));
+        // HTTP 错误转换住在共享的 Http.postJson() 里（ApiClient/TtsClient 共用），
+        // 所以这里要连 Http.java 一起看，否则会把「换了个文件」误判成「丢了这个修复」。
+        String api = stripComments(readFile("src/main/java/com/rd/englishcoach/ApiClient.java"))
+                + stripComments(readFile("src/main/java/com/rd/englishcoach/Http.java"));
         assertTrue("HTTP 错误必须走 friendlyError 转换",
                 api.contains("friendlyError(code, resp)"));
         assertTrue("必须识别鉴权类错误并给可执行提示",

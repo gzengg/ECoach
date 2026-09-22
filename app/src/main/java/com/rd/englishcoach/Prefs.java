@@ -78,7 +78,6 @@ public final class Prefs {
     public void putSysPrompt(String v)   { sp.edit().putString("sys_prompt", nullSafe(v, DEF_SYS_PROMPT)).apply(); }
     public void putTtsModel(String v)        { sp.edit().putString("tts_model",    nullSafe(v, DEF_TTS_MODEL)).apply(); }
     public void putTtsVoiceEnglish(String v) { sp.edit().putString("tts_voice_en", nullSafe(v, DEF_TTS_VOICE_EN)).apply(); }
-    public void putTtsVoiceChinese(String v) { sp.edit().putString("tts_voice_zh", nullSafe(v, DEF_TTS_VOICE_ZH)).apply(); }
 
     public void putFontSp(int v)         { sp.edit().putInt("font_sp",     clamp(v, MIN_FONT_SP, MAX_FONT_SP)).apply(); }
     public void putWidthDp(int v)        { sp.edit().putInt("width_dp",    clamp(v, MIN_WIDTH_DP, MAX_WIDTH_DP)).apply(); }

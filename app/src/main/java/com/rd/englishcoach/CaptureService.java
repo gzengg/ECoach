@@ -491,7 +491,7 @@ public class CaptureService extends Service {
             if (history != null) history.appendGrab(source, translated);
         }
         // 在取词页签显示卡片
-        View item = android.view.LayoutInflater.from(this)
+        View item = LayoutInflater.from(this)
                 .inflate(R.layout.item_grab, null);
         ((TextView) item.findViewById(R.id.tvGrabSource)).setText(source);
         ((TextView) item.findViewById(R.id.tvGrabTranslated)).setText(translated);

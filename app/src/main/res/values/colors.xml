@@ -18,7 +18,6 @@
     <!-- ── 表面 ── -->
     <color name="surface_1">#FF131926</color>        <!-- 一级卡片 / 轮次卡片底板 -->
     <color name="surface_2">#FF1A2130</color>        <!-- 二级容器 / 输入框 -->
-    <color name="surface_3">#FF232C3D</color>        <!-- 按下态 / 悬浮态 -->
 
     <!-- ── 面板（悬浮窗） ── -->
     <color name="panel_glass">#E6161A21</color>      <!-- 90% 不透明度，不能降到 70% 以下 -->

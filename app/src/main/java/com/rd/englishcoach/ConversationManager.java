@@ -34,7 +34,6 @@ public final class ConversationManager {
         public String grabTranslated;       // 取词译文（仅 GRAB 类型）
         public AnswerState state = AnswerState.NONE;
         public String error;
-        public final List<QAPair> qaPairs = new ArrayList<>(); // 该条目下的自定义问答
 
         Turn(long id, TurnType type, String content) {
             this.id = id;
@@ -45,15 +44,6 @@ public final class ConversationManager {
         public boolean hasAnswer() {
             return state == AnswerState.READY && aiAnswer != null && !aiAnswer.isEmpty();
         }
-    }
-
-    public static final class QAPair {
-        public String question;
-        public String answer;
-        public AnswerState state = AnswerState.NONE;
-        public String error;
-
-        QAPair(String question) { this.question = question; }
     }
 
     private final int maxTurns;
@@ -68,27 +58,24 @@ public final class ConversationManager {
 
     /** 暂停后调用：存入转录文本（不自动调 AI）。 */
     public synchronized Turn addTranscript(String transcript) {
-        String t = transcript == null ? "" : transcript.trim();
-        Turn turn = new Turn(nextId++, TurnType.TRANSCRIPT, t);
-        turns.add(0, turn);
-        while (turns.size() > maxTurns) turns.remove(turns.size() - 1);
-        return turn;
+        return addTurn(TurnType.TRANSCRIPT, transcript);
     }
 
     /** 自定义提问（「询问AI」按钮）。 */
     public synchronized Turn addQuestion(String question) {
-        String q = question == null ? "" : question.trim();
-        Turn turn = new Turn(nextId++, TurnType.QUESTION, q);
-        turns.add(0, turn);
-        while (turns.size() > maxTurns) turns.remove(turns.size() - 1);
-        return turn;
+        return addTurn(TurnType.QUESTION, question);
     }
 
     /** 取词结果（P7）。 */
     public synchronized Turn addGrab(String source, String translated) {
-        String s = source == null ? "" : source.trim();
-        Turn turn = new Turn(nextId++, TurnType.GRAB, s);
+        Turn turn = addTurn(TurnType.GRAB, source);
         turn.grabTranslated = translated;
+        return turn;
+    }
+
+    /** 新建轮次并插到最前；超出上限时丢弃最旧的。 */
+    private Turn addTurn(TurnType type, String content) {
+        Turn turn = new Turn(nextId++, type, content == null ? "" : content.trim());
         turns.add(0, turn);
         while (turns.size() > maxTurns) turns.remove(turns.size() - 1);
         return turn;
@@ -130,26 +117,6 @@ public final class ConversationManager {
         t.state = AnswerState.ERROR;
         t.error = error == null ? "未知错误" : error;
         t.aiAnswer = null;
-    }
-
-    // ── 自定义问答 ──────────────────────────
-
-    public synchronized QAPair addQAPair(long turnId, String question) {
-        Turn t = findById(turnId);
-        if (t == null) return null;
-        QAPair qa = new QAPair(question);
-        t.qaPairs.add(qa);
-        return qa;
-    }
-
-    public synchronized void completeQA(QAPair qa, String answer) {
-        qa.answer = answer;
-        qa.state = AnswerState.READY;
-    }
-
-    public synchronized void failQA(QAPair qa, String error) {
-        qa.state = AnswerState.ERROR;
-        qa.error = error;
     }
 
     // ── 查询 ──────────────────────────────

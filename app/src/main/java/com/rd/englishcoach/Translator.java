@@ -1,12 +1,9 @@
 package com.rd.englishcoach;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 /**
  * 免费翻译：MyMemory（api.mymemory.translated.net）。
@@ -32,12 +29,7 @@ public final class Translator {
 
     /** 纯函数：判定目标语言。含 CJK 字符 → en，否则 → zh-CN。 */
     public static String detectTarget(String text) {
-        if (text == null || text.isEmpty()) return "zh-CN";
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c >= 0x4E00 && c <= 0x9FFF) return "en"; // CJK → 英文
-        }
-        return "zh-CN"; // 默认 → 中文
+        return containsCjk(text) ? "en" : "zh-CN";
     }
 
     /**
@@ -45,12 +37,17 @@ public final class Translator {
      * 与 {@link #detectTarget} 方向相反——这里标的是文本本身是什么语言。
      */
     public static String speakLang(String text) {
-        if (text == null || text.isEmpty()) return "en";
+        return containsCjk(text) ? "zh-CN" : "en";
+    }
+
+    /** 是否含 CJK 统一表意文字（中/日/韩共用区）。 */
+    private static boolean containsCjk(String text) {
+        if (text == null) return false;
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c >= 0x4E00 && c <= 0x9FFF) return "zh-CN";
+            if (c >= 0x4E00 && c <= 0x9FFF) return true;
         }
-        return "en";
+        return false;
     }
 
     /** 翻译文本，返回译文。失败抛 IOException。 */
@@ -72,7 +69,7 @@ public final class Translator {
             conn.setRequestProperty("Accept", "application/json");
 
             int code = conn.getResponseCode();
-            String resp = readStream(conn.getInputStream());
+            String resp = Http.readStream(conn.getInputStream());
 
             if (code != 200) {
                 throw new IOException("HTTP " + code + ": " + truncate(resp));
@@ -106,17 +103,6 @@ public final class Translator {
             if (upper.contains(marker)) return true;
         }
         return false;
-    }
-
-    private static String readStream(InputStream in) throws IOException {
-        if (in == null) return "";
-        StringBuilder sb = new StringBuilder(4096);
-        try (InputStreamReader r = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-            char[] buf = new char[4096];
-            int n;
-            while ((n = r.read(buf)) != -1) sb.append(buf, 0, n);
-        }
-        return sb.toString().trim();
     }
 
     private static String truncate(String s) {

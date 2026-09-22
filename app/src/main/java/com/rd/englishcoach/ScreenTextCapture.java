@@ -65,7 +65,7 @@ public final class ScreenTextCapture {
      * 用 {@code getRealSize}：VirtualDisplay 镜的是整块屏幕，
      * {@code getMetrics} 会排除导航栏 → 截图与框选坐标错位。
      */
-    public void updateScreenSize() {
+    private void updateScreenSize() {
         Point size = new Point();
         wm.getDefaultDisplay().getRealSize(size);
         screenWidth = size.x;

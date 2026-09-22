@@ -7,12 +7,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 
 /**
  * mimo-v2.5-tts 请求封装。按 AGENTS.md §4.3 契约：
@@ -113,54 +107,7 @@ public final class TtsClient {
             throws IOException, ApiClient.ApiException {
         String body = buildTtsBody(text, model, voice, format);
         String url = baseUrl + "/chat/completions";
-        String resp = post(url, apiKey, body, 120_000);
+        String resp = Http.postJson(url, apiKey, body, 120_000);
         return extractAudioBytes(resp);
-    }
-
-    // ── HTTP（复用 ApiClient 风格） ─────────────
-
-    private static String post(String urlStr, String apiKey, String body, int readTimeoutMs)
-            throws IOException, ApiClient.ApiException {
-        HttpURLConnection conn = null;
-        try {
-            conn = (HttpURLConnection) new URL(urlStr).openConnection();
-            conn.setRequestMethod("POST");
-            conn.setConnectTimeout(15_000);
-            conn.setReadTimeout(readTimeoutMs);
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
-            conn.setRequestProperty("Accept", "application/json");
-
-            byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
-            conn.setFixedLengthStreamingMode(bodyBytes.length);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(bodyBytes);
-            }
-
-            int code = conn.getResponseCode();
-            InputStream in = (code >= 400) ? conn.getErrorStream() : conn.getInputStream();
-            String resp = readStream(in);
-
-            if (code >= 400) {
-                String msg = resp.length() > 500 ? resp.substring(0, 500) + "…" : resp;
-                throw new ApiClient.ApiException(code, msg);
-            }
-            return resp;
-        } finally {
-            if (conn != null) conn.disconnect();
-        }
-    }
-
-    private static String readStream(InputStream in) throws IOException {
-        if (in == null) return "";
-        StringBuilder sb = new StringBuilder(4096);
-        try (InputStreamReader r = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-            char[] buf = new char[4096];
-            int n;
-            while ((n = r.read(buf)) != -1) sb.append(buf, 0, n);
-        }
-        return sb.toString().trim();
     }
 }

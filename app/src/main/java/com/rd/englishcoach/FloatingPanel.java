@@ -15,7 +15,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import android.animation.ObjectAnimator;
-import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.view.animation.LinearInterpolator;
 

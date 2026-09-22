@@ -6,14 +6,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 
 /**
  * 纯 HTTP 调用：ASR（mimo-v2.5-asr）+ Chat（deepseek-flash）。
@@ -51,7 +44,7 @@ public final class ApiClient {
         }
         String body = buildAsrBody(wav, model);
         String url = baseUrl + "/chat/completions";
-        String resp = post(url, apiKey, body, 120_000);
+        String resp = Http.postJson(url, apiKey, body, 120_000);
         return extractContent(resp);
     }
 
@@ -66,7 +59,7 @@ public final class ApiClient {
         }
         String body = buildHistoryBody(messages, model);
         String url = baseUrl + "/chat/completions";
-        String resp = post(url, apiKey, body, 60_000);
+        String resp = Http.postJson(url, apiKey, body, 60_000);
         return extractContent(resp);
     }
 
@@ -113,44 +106,6 @@ public final class ApiClient {
             return body.toString();
         } catch (JSONException e) {
             throw new IOException("JSON build error: " + e.getMessage(), e);
-        }
-    }
-
-    // ── HTTP POST ────────────────────────
-
-    private static String post(String urlStr, String apiKey, String body, int readTimeoutMs)
-            throws IOException, ApiException {
-
-        HttpURLConnection conn = null;
-        try {
-            conn = (HttpURLConnection) new URL(urlStr).openConnection();
-            conn.setRequestMethod("POST");
-            conn.setConnectTimeout(15_000);
-            conn.setReadTimeout(readTimeoutMs);
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
-            conn.setRequestProperty("Accept", "application/json");
-
-            byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
-            conn.setFixedLengthStreamingMode(bodyBytes.length);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(bodyBytes);
-            }
-
-            int code = conn.getResponseCode();
-            InputStream in = (code >= 400) ? conn.getErrorStream() : conn.getInputStream();
-            String resp = readStream(in);
-
-            if (code >= 400) {
-                // 转成一句可读提示（不把原始 JSON / HTML 整段丢给用户）
-                throw new ApiException(code, friendlyError(code, resp));
-            }
-
-            return resp;
-        } finally {
-            if (conn != null) conn.disconnect();
         }
     }
 
@@ -227,19 +182,5 @@ public final class ApiClient {
         } catch (JSONException e) {
             throw new ApiException(0, "JSON parse error: " + e.getMessage());
         }
-    }
-
-    // ── 工具 ──────────────────────────────
-
-    private static String readStream(InputStream in) throws IOException {
-        if (in == null) return "";
-        StringBuilder sb = new StringBuilder(4096);
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = r.readLine()) != null) {
-                sb.append(line).append('\n');
-            }
-        }
-        return sb.toString().trim();
     }
 }
