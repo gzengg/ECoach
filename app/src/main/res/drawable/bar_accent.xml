@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 答案卡片左侧 accent 竖条：青→靛渐变（与应用内 CTA 同族），区分轮次卡片。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="@color/accent_start"
+        android:endColor="@color/accent_end" />
+    <corners android:radius="@dimen/radius_pill" />
+</shape>

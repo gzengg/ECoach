@@ -62,6 +62,8 @@ public final class FloatingPanel {
     private TextView btnSendQuestion;
     // v3.0 Tab
     private TextView btnTabListen, btnTabGrab;
+    // v4.1 分段控件滑块：两个半区各一个，切 Tab 时切可见性（与 primaryBar 同一模式，无测量计算）
+    private View tabThumbListen, tabThumbGrab;
     private View tabListening, tabGrab;
     private TextView tvGrabStatus, btnGrabStart;
     private static final int TAB_LISTEN = 0;
@@ -104,6 +106,8 @@ public final class FloatingPanel {
         btnSendQuestion = root.findViewById(R.id.btnSendQuestion);
         btnTabListen    = root.findViewById(R.id.btnTabListen);
         btnTabGrab      = root.findViewById(R.id.btnTabGrab);
+        tabThumbListen  = root.findViewById(R.id.tabThumbListen);
+        tabThumbGrab    = root.findViewById(R.id.tabThumbGrab);
         tabListening    = root.findViewById(R.id.tabListening);
         tabGrab         = root.findViewById(R.id.tabGrab);
         tvGrabStatus    = root.findViewById(R.id.tvGrabStatus);
@@ -175,6 +179,9 @@ public final class FloatingPanel {
         // 两个主按钮共用同一位置（primaryBar）：只切可见性，保证位置/尺寸完全一致
         btnPause.setVisibility(listen ? View.VISIBLE : View.GONE);
         btnGrabStart.setVisibility(listen ? View.GONE : View.VISIBLE);
+        // 分段控件滑块：选中半区亮起（与 primaryBar 同一模式，几何零计算）
+        tabThumbListen.setVisibility(listen ? View.VISIBLE : View.GONE);
+        tabThumbGrab.setVisibility(listen ? View.GONE : View.VISIBLE);
         btnTabListen.setTextColor(ctx.getColor(listen ? R.color.accent_solid : R.color.text_secondary));
         btnTabGrab.setTextColor(ctx.getColor(listen ? R.color.text_secondary : R.color.accent_solid));
         // 切到听力页时，如果有输入框打开就收起

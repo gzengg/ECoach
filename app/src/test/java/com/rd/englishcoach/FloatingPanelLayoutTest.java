@@ -66,13 +66,29 @@ public class FloatingPanelLayoutTest {
 
     // ── 主按钮配色必须与面板其他控件同色系 ──
 
+    // ── 主按钮配色：v4.1 玻璃卡片化改与应用内 CTA 同款渐变胶囊 ──
+
     @Test
-    public void primaryButtons_usePanelAccentColor() throws Exception {
-        // 与面板里的动作芯片（读 / 发送）一致的 accent_solid
-        assertEquals("听力页主按钮文字色应与面板动作芯片一致",
-                "@color/accent_solid", elementById("btnPause").getAttribute("android:textColor"));
-        assertEquals("取词页主按钮文字色应与面板动作芯片一致",
-                "@color/accent_solid", elementById("btnGrabStart").getAttribute("android:textColor"));
+    public void primaryButtons_useCtaStyle() throws Exception {
+        // v4.1 重构：主按钮从 glass 弱对比改为 pill_primary 渐变胶囊（与应用内主 CTA 同款，
+        // 对比度 10.5:1），原「与动作芯片同色」的旧设计作废。
+        assertEquals("听力页主按钮文字色应为 accent_on（渐变胶囊上的深色文字）",
+                "@color/accent_on", elementById("btnPause").getAttribute("android:textColor"));
+        assertEquals("取词页主按钮文字色应与听力页一致",
+                "@color/accent_on", elementById("btnGrabStart").getAttribute("android:textColor"));
+        assertEquals("主按钮应使用与应用内 CTA 同款渐变胶囊",
+                "@drawable/pill_primary", elementById("btnPause").getAttribute("android:background"));
+    }
+
+    @Test
+    public void tabBar_isSegmentedControl() throws Exception {
+        // 方案 B：分段控件 = segment_track 底槽 + 每半区一个 pill_glass 滑块（代码切可见性）
+        String xml = readResourceText("/layout/window_panel.xml");
+        assertTrue("Tab 栏必须用分段底槽 segment_track",
+                xml.contains("@drawable/segment_track"));
+        assertTrue("必须有滑块 tabThumbListen / tabThumbGrab",
+                xml.contains("@+id/tabThumbListen") && xml.contains("@+id/tabThumbGrab"));
+        assertTrue("滑块用 pill_glass（既有 token）", xml.contains("@drawable/pill_glass"));
     }
 
     @Test
@@ -160,16 +176,16 @@ public class FloatingPanelLayoutTest {
     }
 
     @Test
-    public void bothTabs_primaryButtons_useGlassPill() throws Exception {
-        // v3.1：两个 Tab 主按钮统一为「半透明同色系胶囊」（44dp + accent 字）
+    public void bothTabs_primaryButtons_useCtaPill() throws Exception {
+        // v4.1：两个 Tab 主按钮统一为应用内 CTA 同款渐变胶囊（pill_primary + accent_on）
         Element pause = elementById("btnPause");
         Element grab = elementById("btnGrabStart");
-        assertEquals("听力页主按钮必须是半透明胶囊",
-                "@drawable/pill_glass", pause.getAttribute("android:background"));
+        assertEquals("听力页主按钮必须是渐变胶囊",
+                "@drawable/pill_primary", pause.getAttribute("android:background"));
         assertEquals("取词页主按钮必须同一套样式",
-                "@drawable/pill_glass", grab.getAttribute("android:background"));
-        assertEquals("半透明底上文字用面板强调色（与读/发送一致）",
-                "@color/accent_solid", pause.getAttribute("android:textColor"));
+                "@drawable/pill_primary", grab.getAttribute("android:background"));
+        assertEquals("渐变胶囊上文字用深色 accent_on（对比度 10.5:1）",
+                "@color/accent_on", pause.getAttribute("android:textColor"));
         assertEquals("两个主按钮必须同一高度 token",
                 "@dimen/height_cta_sm", pause.getAttribute("android:layout_height"));
         assertEquals("取词页主按钮必须同一高度 token",

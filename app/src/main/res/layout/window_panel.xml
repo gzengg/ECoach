@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  悬浮窗面板 v3.1「深空玻璃」双 Tab 版：
-  外层半透明玻璃 + 圆角 + 描边（bg_panel）
-  dragBar 留在 Tab 外面（拖动栏在哪个页签都要能拖）
-  公共区（两个 Tab 共享，保证主按钮 Y 位置一致）：
-    levelBar（音量条）/ btnReconsent / tvMessage / primaryBar（继续 | 取词）
-  听力页 = scrollTurns / inputRow
-  取词页 = tvGrabStatus / scrollGrabs
-  所有 id 保持不变，新增 id 以 btnTab*/tab*/primaryBar 为前缀。
+  悬浮窗面板 v4.1「玻璃卡片化」：外观重构，行为与 id 全部保持不变（§4.6）。
+  结构（自上而下）：
+    dragBar   状态点 + 状态文字 + 字号调节 + 关闭（拖动只绑这里，不变）
+    tabBar    分段控件：底槽(segment_track) + 滑块(pill_glass, tabThumb) + 两个透明文字层
+    levelBar  音量条 6dp
+    btnReconsent / tvMessage  公共提示区
+    primaryBar 主按钮（pill_primary 渐变胶囊，与应用内 CTA 同款）
+    tabListening 听力页 / tabGrab 取词页
+  所有既有 id 一律保留；新增 id：tabThumb。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
@@ -15,16 +16,16 @@
     android:layout_height="wrap_content"
     android:background="@drawable/bg_panel"
     android:orientation="vertical"
-    android:padding="@dimen/space_sm">
+    android:padding="@dimen/space_md">
 
-    <!-- 拖动栏（始终可见，留在 Tab 外面） -->
+    <!-- 拖动栏（始终可见，留在 Tab 外面）：热区全部 ≥32dp -->
     <LinearLayout
         android:id="@+id/dragBar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="40dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingBottom="6dp">
+        android:paddingBottom="4dp">
 
         <View
             android:id="@+id/tvDot"
@@ -37,7 +38,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="8dp"
             android:text="已暂停"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
@@ -45,92 +46,109 @@
 
         <TextView
             android:id="@+id/btnFontMinus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:background="@drawable/bg_chip"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
+            android:gravity="center"
             android:text="A−"
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
 
         <TextView
             android:id="@+id/btnFontPlus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
             android:background="@drawable/bg_chip"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
+            android:gravity="center"
             android:text="A+"
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
 
         <TextView
             android:id="@+id/btnClose"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:layout_marginStart="6dp"
             android:background="@drawable/btn_text"
-            android:paddingHorizontal="6dp"
+            android:gravity="center"
             android:text="✕"
             android:textColor="@color/text_secondary"
             android:textSize="16sp" />
     </LinearLayout>
 
-    <!-- Tab 栏：听力 / 取词 -->
+    <!-- Tab 栏：分段控件（底槽 + 两个半区滑块，几何用 weight 保证，与 primaryBar 同模式） -->
     <LinearLayout
         android:id="@+id/tabBar"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/height_chip"
-        android:layout_marginBottom="6dp"
-        android:orientation="horizontal">
+        android:layout_height="36dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/segment_track"
+        android:orientation="horizontal"
+        android:padding="2dp">
 
-        <TextView
-            android:id="@+id/btnTabListen"
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@drawable/bg_chip"
-            android:gravity="center"
-            android:text="听力"
-            android:textColor="@color/accent_solid"
-            android:textSize="13sp"
-            android:fontFamily="sans-serif-medium" />
+            android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/btnTabGrab"
+            <View
+                android:id="@+id/tabThumbListen"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/pill_glass" />
+
+            <TextView
+                android:id="@+id/btnTabListen"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="听力"
+                android:textColor="@color/accent_solid"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-medium" />
+        </FrameLayout>
+
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_chip"
-            android:gravity="center"
-            android:text="取词"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:fontFamily="sans-serif-medium" />
+            android:layout_weight="1">
+
+            <View
+                android:id="@+id/tabThumbGrab"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/pill_glass"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/btnTabGrab"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="取词"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+        </FrameLayout>
     </LinearLayout>
 
-    <!-- 音量指示条：放在公共区（两个 Tab 都有）→ 保证两个 Tab 的主按钮 Y 位置一致 -->
+    <!-- 音量指示条：公共区（两个 Tab 的主按钮 Y 位置一致） -->
     <ProgressBar
         android:id="@+id/levelBar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:layout_marginBottom="6dp"
+        android:layout_height="6dp"
+        android:layout_marginBottom="8dp"
         android:max="100"
         android:progress="0"
         android:progressDrawable="@drawable/level_bar" />
 
-    <!-- ═══ 公共提示区（两个 Tab 都要能看到） ═══
-         此前 tvMessage / btnReconsent 放在 tabListening 内部，切到「取词」页后
-         任何失败提示都不可见 → 用户看到的是「点取词完全没反应」。 -->
+    <!-- ═══ 公共提示区（两个 Tab 都要能看到） ═══ -->
     <TextView
         android:id="@+id/btnReconsent"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
-        android:layout_marginBottom="6dp"
+        android:layout_height="40dp"
+        android:layout_marginBottom="8dp"
         android:background="@drawable/bg_chip"
         android:gravity="center"
         android:text="重新授权"
@@ -142,30 +160,28 @@
         android:id="@+id/tvMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
+        android:layout_marginBottom="8dp"
         android:maxLines="3"
         android:ellipsize="end"
         android:textColor="@color/warn"
-        android:textSize="11sp"
+        android:textSize="12sp"
         android:visibility="gone" />
 
-    <!-- ═══ 公共主按钮区 ═══
-         两个 Tab 的主按钮（继续 / 取词）放在同一个容器里，只切可见性，
-         结构上保证位置与尺寸完全一致（此前「继续」被 levelBar 往下顶了）。 -->
+    <!-- ═══ 公共主按钮区：pill_primary 渐变胶囊（与应用内 CTA 同款） ═══ -->
     <FrameLayout
         android:id="@+id/primaryBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp">
+        android:layout_marginBottom="8dp">
 
         <TextView
             android:id="@+id/btnPause"
             android:layout_width="match_parent"
             android:layout_height="@dimen/height_cta_sm"
-            android:background="@drawable/pill_glass"
+            android:background="@drawable/pill_primary"
             android:gravity="center"
             android:text="继续"
-            android:textColor="@color/accent_solid"
+            android:textColor="@color/accent_on"
             android:textSize="14sp"
             android:fontFamily="sans-serif-medium" />
 
@@ -173,10 +189,10 @@
             android:id="@+id/btnGrabStart"
             android:layout_width="match_parent"
             android:layout_height="@dimen/height_cta_sm"
-            android:background="@drawable/pill_glass"
+            android:background="@drawable/pill_primary"
             android:gravity="center"
             android:text="开始取词"
-            android:textColor="@color/accent_solid"
+            android:textColor="@color/accent_on"
             android:textSize="14sp"
             android:fontFamily="sans-serif-medium"
             android:visibility="gone" />
@@ -205,16 +221,16 @@
             android:id="@+id/inputRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:visibility="gone">
             <EditText
                 android:id="@+id/etQuestion"
                 android:layout_width="0dp"
-                android:layout_height="36dp"
+                android:layout_height="40dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_chip"
+                android:background="@drawable/bg_input"
                 android:hint="输入问题…"
                 android:inputType="text"
                 android:textColor="@color/text_primary"
@@ -225,18 +241,18 @@
             <TextView
                 android:id="@+id/btnSendQuestion"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginStart="6dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/bg_chip"
                 android:gravity="center"
-                android:paddingHorizontal="10dp"
+                android:paddingHorizontal="12dp"
                 android:text="发送"
                 android:textColor="@color/accent_solid"
                 android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ═══ 取词页（新增，默认隐藏） ═══ -->
+    <!-- ═══ 取词页（默认隐藏） ═══ -->
     <LinearLayout
         android:id="@+id/tabGrab"
         android:layout_width="match_parent"
@@ -251,7 +267,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="@color/text_secondary"
-            android:textSize="11sp"
+            android:textSize="12sp"
             android:visibility="gone" />
 
         <com.rd.englishcoach.MaxHeightScrollView

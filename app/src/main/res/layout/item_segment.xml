@@ -10,8 +10,21 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_answer"
-    android:orientation="vertical"
-    android:padding="10dp">
+    android:orientation="horizontal">
+
+    <!-- 左侧 accent 竖条：区分轮次卡片（青→靛渐变，与应用内 CTA 同族） -->
+    <View
+        android:layout_width="3dp"
+        android:layout_height="match_parent"
+        android:layout_marginVertical="10dp"
+        android:background="@drawable/bar_accent" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="10dp">
 
     <!-- 英文原文（优先显示，始终可见） -->
     <TextView
@@ -105,5 +118,7 @@
         android:textColor="@color/warn"
         android:textSize="11sp"
         android:visibility="gone" />
+
+    </LinearLayout>
 
 </LinearLayout>

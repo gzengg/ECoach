@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  分段控件底槽（悬浮窗 Tab）：surface_2 实色胶囊轨道，滑块用 pill_glass（代码切换位置）。
+  与 bg_chip 同一描边族，视觉与应用内 Tab 同语言。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" shape="rectangle">
+    <solid android:color="@color/surface_2" />
+    <corners android:radius="@dimen/radius_pill" />
+</shape>
