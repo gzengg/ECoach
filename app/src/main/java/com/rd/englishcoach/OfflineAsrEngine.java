@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.k2fsa.sherpa.onnx.FeatureConfig;
 import com.k2fsa.sherpa.onnx.OfflineModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineQwen3AsrModelConfig;
 import com.k2fsa.sherpa.onnx.OfflineRecognizer;
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig;
 import com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig;
@@ -24,9 +25,12 @@ import java.util.Locale;
 /**
  * 离线识别（sherpa-onnx）：整段 PCM → VAD 切句 → 逐段识别 → 拼接。
  *
- * <p><b>模型按目录内容自动判类型，不看 id：</b>有 {@code *encoder*.onnx} + {@code *decoder*.onnx}
- * 就按 Whisper 配，否则按 SenseVoice 配（单模型 + tokens）。上游各模型的命名不统一，
- * 按文件判比逼用户改名可靠。</p>
+ * <p><b>模型按目录内容自动判类型，不看 id：</b>有 {@code conv_frontend.onnx} 按 Qwen3 配（LLM 解码器）；
+ * 否则有 {@code *encoder*.onnx} + {@code *decoder*.onnx} 按 Whisper 配；再否则按 SenseVoice 配
+ * （单模型 + tokens）。上游各模型的命名不统一，按文件判比逼用户改名可靠。</p>
+ *
+ * <p>⚠️ <b>判序不能颠倒</b>：Qwen3 包里也有 encoder/decoder，先判 encoder/decoder 会把它当 Whisper 配，
+ * 表现为「装得上、识别不出东西」。</p>
  *
  * <p>⚠️ <b>assetManager 必须传 null</b>：模型在私有目录（绝对路径），传 {@code ctx.getAssets()}
  * 会让 sherpa 把绝对路径当成 assets 路径，读不到文件后<b>直接 native abort（无 Java 异常）</b>，
@@ -52,6 +56,12 @@ final class OfflineAsrEngine implements AsrEngine {
      * 当时 VAD 没切出内容，代码直接把整段丢给了识别器。</p>
      */
     static final int MAX_SEGMENT_SECONDS = 28;
+
+    /**
+     * Qwen3 的 max_new_tokens：Java 默认 128，而 28 秒中文段轻松超过 128 个 token，
+     * 会在句子中间被截断（与 Whisper 超 30 秒静默截断同一类问题）。
+     */
+    private static final int QWEN3_MAX_NEW_TOKENS = 512;
 
     private final Context ctx;
     private final ModelManager models;
@@ -202,11 +212,25 @@ final class OfflineAsrEngine implements AsrEngine {
         try {
             stream.acceptWaveform(samples, MODEL_SAMPLE_RATE);
             r.decode(stream);
-            String text = r.getResult(stream).getText();
-            return text == null ? "" : text.trim();
+            return stripPromptPrefix(r.getResult(stream).getText());
         } finally {
             stream.release();
         }
+    }
+
+    /**
+     * 剥掉 Qwen3 输出里的提示模板残留。
+     *
+     * <p>Qwen3-ASR 是 LLM 解码器，实测输出会带语言标签前缀，形如
+     * {@code language Chinese<asr_text>开放时间…}（上游 PR 实测样例）。
+     * 不剥的话这段模板会当成识别结果传给在线问答，直接污染提示词。</p>
+     */
+    static String stripPromptPrefix(String text) {
+        if (text == null) return "";
+        String t = text;
+        int i = t.lastIndexOf("<asr_text>");
+        if (i >= 0) t = t.substring(i + "<asr_text>".length());
+        return t.replaceAll("<\\|[^|]*\\|>", "").trim();
     }
 
     // ── VAD 切句 ──────────────────────────────────────────
@@ -299,32 +323,55 @@ final class OfflineAsrEngine implements AsrEngine {
         releaseRecognizer();
 
         File dir = models.modelDir(spec);
-        // Whisper 的 tokens 叫 <名字>-tokens.txt，不能写死 tokens.txt（否则 Whisper 全部装不上）
-        File tokens = ModelManager.findTokens(dir);
-        if (tokens == null) throw new IOException(ctx.getString(R.string.asr_model_broken, "tokens.txt"));
 
         OfflineModelConfig modelConfig = new OfflineModelConfig();
-        modelConfig.setTokens(tokens.getAbsolutePath());
         modelConfig.setNumThreads(NUM_THREADS);
         modelConfig.setDebug(false);
         modelConfig.setProvider("cpu");
 
-        File encoder = ModelManager.findByName(dir, "encoder");
-        File decoder = ModelManager.findByName(dir, "decoder");
-        if (encoder != null && decoder != null) {
-            // Whisper：编码器 + 解码器两个文件，语言留空 = 自动判定（与在线模型行为一致）
-            OfflineWhisperModelConfig whisper = new OfflineWhisperModelConfig();
-            whisper.setEncoder(encoder.getAbsolutePath());
-            whisper.setDecoder(decoder.getAbsolutePath());
-            modelConfig.setWhisper(whisper);
+        // 判序：conv_frontend 存在 → Qwen3（它包里也有 encoder/decoder，判晚了会被当 Whisper）
+        File convFrontend = ModelManager.findByName(dir, "conv_frontend");
+        if (convFrontend != null) {
+            File encoder = ModelManager.findByName(dir, "encoder");
+            File decoder = ModelManager.findByName(dir, "decoder");
+            File tokenizer = ModelManager.findTokenizerDir(dir);
+            if (encoder == null || decoder == null || tokenizer == null) {
+                throw new IOException(ctx.getString(R.string.asr_model_broken, "Qwen3 模型文件"));
+            }
+            OfflineQwen3AsrModelConfig qwen3 = new OfflineQwen3AsrModelConfig();
+            qwen3.setConvFrontend(convFrontend.getAbsolutePath());
+            qwen3.setEncoder(encoder.getAbsolutePath());
+            qwen3.setDecoder(decoder.getAbsolutePath());
+            qwen3.setTokenizer(tokenizer.getAbsolutePath());
+            qwen3.setMaxNewTokens(QWEN3_MAX_NEW_TOKENS);
+            modelConfig.setQwen3Asr(qwen3);
         } else {
-            File onnx = ModelManager.findOnnx(dir);
-            if (onnx == null) throw new IOException(ctx.getString(R.string.asr_model_broken, "*.onnx"));
-            OfflineSenseVoiceModelConfig senseVoice = new OfflineSenseVoiceModelConfig();
-            senseVoice.setModel(onnx.getAbsolutePath());
-            senseVoice.setLanguage("auto"); // 中英混合的听力音频都要能识别
-            senseVoice.setUseInverseTextNormalization(true);
-            modelConfig.setSenseVoice(senseVoice);
+            // Whisper 的 tokens 叫 <名字>-tokens.txt，不能写死 tokens.txt（否则 Whisper 全部装不上）
+            File tokens = ModelManager.findTokens(dir);
+            if (tokens == null) {
+                throw new IOException(ctx.getString(R.string.asr_model_broken, "tokens.txt"));
+            }
+            modelConfig.setTokens(tokens.getAbsolutePath());
+
+            File encoder = ModelManager.findByName(dir, "encoder");
+            File decoder = ModelManager.findByName(dir, "decoder");
+            if (encoder != null && decoder != null) {
+                // Whisper：编码器 + 解码器两个文件，语言留空 = 自动判定（与在线模型行为一致）
+                OfflineWhisperModelConfig whisper = new OfflineWhisperModelConfig();
+                whisper.setEncoder(encoder.getAbsolutePath());
+                whisper.setDecoder(decoder.getAbsolutePath());
+                modelConfig.setWhisper(whisper);
+            } else {
+                File onnx = ModelManager.findOnnx(dir);
+                if (onnx == null) {
+                    throw new IOException(ctx.getString(R.string.asr_model_broken, "*.onnx"));
+                }
+                OfflineSenseVoiceModelConfig senseVoice = new OfflineSenseVoiceModelConfig();
+                senseVoice.setModel(onnx.getAbsolutePath());
+                senseVoice.setLanguage("auto"); // 中英混合的听力音频都要能识别
+                senseVoice.setUseInverseTextNormalization(true);
+                modelConfig.setSenseVoice(senseVoice);
+            }
         }
 
         FeatureConfig feature = new FeatureConfig();

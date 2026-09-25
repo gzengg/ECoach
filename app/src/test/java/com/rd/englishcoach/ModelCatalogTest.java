@@ -40,7 +40,7 @@ public class ModelCatalogTest {
     @Test
     public void catalog_constantsPointToExistingSpecs() {
         for (String id : new String[]{ModelCatalog.VAD, ModelCatalog.ASR_TURBO,
-                ModelCatalog.ASR_SENSEVOICE, ModelCatalog.ASR_LARGE_V3,
+                ModelCatalog.ASR_SENSEVOICE, ModelCatalog.ASR_LARGE_V3, ModelCatalog.ASR_QWEN3_06B,
                 ModelCatalog.TTS_PIPER_EN, ModelCatalog.TTS_PIPER_ZH}) {
             assertNotNull("常量指向了不存在的模型：" + id, ModelCatalog.byId(id));
         }
@@ -87,6 +87,39 @@ public class ModelCatalogTest {
                 ModelCatalog.byId(ModelCatalog.TTS_PIPER_EN).relativePath);
         assertEquals("vits-piper-zh_CN-huayan-medium.tar.bz2",
                 ModelCatalog.byId(ModelCatalog.TTS_PIPER_ZH).relativePath);
+        // Qwen3：官方 asr-models release 的资产名（838MB / 878702423 字节）
+        assertEquals("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2",
+                ModelCatalog.byId(ModelCatalog.ASR_QWEN3_06B).relativePath);
+    }
+
+    @Test
+    public void catalog_qwen3EntryMatchesOfficialPackage() {
+        ModelCatalog.Spec q = ModelCatalog.byId(ModelCatalog.ASR_QWEN3_06B);
+        assertEquals(ModelCatalog.Kind.ASR, q.kind);
+        assertEquals(ModelCatalog.Family.QWEN3, q.family);
+        assertEquals("体积用官方资产实测字节数（空间预检要准）",
+                878702423L, q.sizeBytes);
+        assertFalse("Qwen3 慢（RTF 约为 turbo 十倍量级），不该占推荐位", q.recommended);
+        assertArrayEquals("识别依赖 VAD", new String[]{ModelCatalog.VAD}, q.dependsOn);
+        assertFalse("Qwen3 是多文件包，必须走解包分支", q.isSingleFilePayload());
+    }
+
+    @Test
+    public void catalog_familiesCoverAsrSeriesForGrouping() {
+        // 模型页按系列分组：少一个系列就少一个组标题，多一个就多一行
+        assertEquals(ModelCatalog.Family.WHISPER,
+                ModelCatalog.byId(ModelCatalog.ASR_TURBO).family);
+        assertEquals(ModelCatalog.Family.WHISPER,
+                ModelCatalog.byId(ModelCatalog.ASR_LARGE_V3).family);
+        assertEquals(ModelCatalog.Family.SENSEVOICE,
+                ModelCatalog.byId(ModelCatalog.ASR_SENSEVOICE).family);
+        assertEquals(ModelCatalog.Family.QWEN3,
+                ModelCatalog.byId(ModelCatalog.ASR_QWEN3_06B).family);
+        // VAD 是共享依赖，不属任何识别系列（模型页固定放最前、不加组标题）
+        assertEquals(ModelCatalog.Family.VAD, ModelCatalog.byId(ModelCatalog.VAD).family);
+        for (ModelCatalog.Spec s : ModelCatalog.all()) {
+            assertNotNull(s.id + " 缺少系列，模型页会漏掉这一行", s.family);
+        }
     }
 
     @Test
@@ -216,6 +249,42 @@ public class ModelCatalogTest {
                 ModelManager.findByName(dir, "encoder").getName());
         assertEquals("turbo-decoder.int8.onnx",
                 ModelManager.findByName(dir, "decoder").getName());
+    }
+
+    @Test
+    public void missingRequirement_acceptsQwen3PackageWithTokenizerDir() throws IOException {
+        // 回归：Qwen3 包没有 tokens.txt，tokenizer 是目录（merges.txt + vocab.json）。
+        // 按 tokens 规则校验会让它「下得下来、装不上」（与当年 Whisper turbo-tokens.txt 同款坑）。
+        ModelCatalog.Spec qwen = ModelCatalog.byId(ModelCatalog.ASR_QWEN3_06B);
+        File dir = Files.createTempDirectory("qwen3").toFile();
+        assertTrue(new File(dir, "conv_frontend.onnx").createNewFile());
+        assertEquals("缺 encoder/decoder 要拦下", "*encoder*.onnx + *decoder*.onnx",
+                ModelManager.missingRequirement(dir, qwen));
+        assertTrue(new File(dir, "encoder.int8.onnx").createNewFile());
+        assertTrue(new File(dir, "decoder.int8.onnx").createNewFile());
+        assertEquals("缺 tokenizer 目录要拦下", "tokenizer/（含 merges.txt）",
+                ModelManager.missingRequirement(dir, qwen));
+
+        File tok = new File(dir, "tokenizer");
+        assertTrue(tok.mkdirs());
+        assertTrue(new File(tok, "merges.txt").createNewFile());
+        assertNull("conv_frontend + encoder/decoder + tokenizer 才算合格",
+                ModelManager.missingRequirement(dir, qwen));
+        assertEquals("tokenizer", ModelManager.findTokenizerDir(dir).getName());
+        assertNull("非 Qwen3 目录不该被误判",
+                ModelManager.findTokenizerDir(Files.createTempDirectory("plain").toFile()));
+    }
+
+    @Test
+    public void stripPromptPrefix_removesQwen3TemplateArtifacts() {
+        // 上游 PR #3399 实测样例：Qwen3 输出带语言标签前缀
+        assertEquals("开放时间：早上九点至下午五点。",
+                OfflineAsrEngine.stripPromptPrefix(
+                        "language Chinese<asr_text>开放时间：早上九点至下午五点。"));
+        assertEquals("Hello world.", OfflineAsrEngine.stripPromptPrefix("  Hello world.  "));
+        assertEquals("", OfflineAsrEngine.stripPromptPrefix(null));
+        assertEquals("你好",
+                OfflineAsrEngine.stripPromptPrefix("<|im_start|>你好<|im_end|>"));
     }
 
     @Test
@@ -399,7 +468,8 @@ public class ModelCatalogTest {
         assertTrue("VAD 必须识别为单文件载荷",
                 ModelCatalog.byId(ModelCatalog.VAD).isSingleFilePayload());
         for (String id : new String[]{ModelCatalog.ASR_TURBO, ModelCatalog.ASR_SENSEVOICE,
-                ModelCatalog.ASR_LARGE_V3, ModelCatalog.TTS_PIPER_EN, ModelCatalog.TTS_PIPER_ZH}) {
+                ModelCatalog.ASR_LARGE_V3, ModelCatalog.ASR_QWEN3_06B,
+                ModelCatalog.TTS_PIPER_EN, ModelCatalog.TTS_PIPER_ZH}) {
             assertFalse(id + " 是多文件包，必须走解包分支",
                     ModelCatalog.byId(id).isSingleFilePayload());
         }

@@ -2,6 +2,7 @@ package com.rd.englishcoach;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -228,21 +229,58 @@ final class ModelsPage implements ModelManager.Listener {
         bars.clear();
 
         LayoutInflater inflater = LayoutInflater.from(act);
-        for (ModelCatalog.Spec spec : ModelCatalog.all()) {
-            View row = inflater.inflate(R.layout.item_model, modelList, false);
-            row.setTag(spec.id);
 
-            ((TextView) row.findViewById(R.id.tvModelName)).setText(spec.labelRes);
-            ProgressBar bar = row.findViewById(R.id.modelProgress);
-            bars.put(spec.id, bar);
-
-            row.findViewById(R.id.btnModelDownload).setOnClickListener(v -> download(spec));
-            row.findViewById(R.id.btnModelImport).setOnClickListener(v -> startImport(spec));
-            row.findViewById(R.id.btnModelDelete).setOnClickListener(v -> confirmDelete(spec));
-
-            bindRow(row, spec);
-            modelList.addView(row);
+        // VAD 是识别的共享依赖，不属任何系列：不加组标题，固定放最前
+        for (ModelCatalog.Spec s : ModelCatalog.all()) {
+            if (s.family == ModelCatalog.Family.VAD) addModelRow(inflater, s);
         }
+        // 其余按系列分组（组序 = Family 声明序：Whisper → Qwen3 → SenseVoice → 朗读）
+        for (ModelCatalog.Family family : ModelCatalog.Family.values()) {
+            if (family == ModelCatalog.Family.VAD) continue;
+            List<ModelCatalog.Spec> group = new ArrayList<>();
+            for (ModelCatalog.Spec s : ModelCatalog.all()) {
+                if (s.family == family) group.add(s);
+            }
+            if (group.isEmpty()) continue;
+            modelList.addView(groupHeader(act.getString(familyTitleRes(family))));
+            for (ModelCatalog.Spec spec : group) addModelRow(inflater, spec);
+        }
+    }
+
+    /** 组标题：小一号的次级文字，只用既有 token，不另起视觉体系。 */
+    private TextView groupHeader(String title) {
+        TextView tv = new TextView(act);
+        tv.setText(title);
+        tv.setTextSize(12f);
+        tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        tv.setTextColor(act.getColor(R.color.text_secondary));
+        tv.setPadding(0, act.dp(12), 0, act.dp(4));
+        return tv;
+    }
+
+    private static int familyTitleRes(ModelCatalog.Family family) {
+        switch (family) {
+            case WHISPER: return R.string.models_group_whisper;
+            case QWEN3: return R.string.models_group_qwen3;
+            case SENSEVOICE: return R.string.models_group_sensevoice;
+            default: return R.string.models_group_tts;
+        }
+    }
+
+    private void addModelRow(LayoutInflater inflater, ModelCatalog.Spec spec) {
+        View row = inflater.inflate(R.layout.item_model, modelList, false);
+        row.setTag(spec.id);
+
+        ((TextView) row.findViewById(R.id.tvModelName)).setText(spec.labelRes);
+        ProgressBar bar = row.findViewById(R.id.modelProgress);
+        bars.put(spec.id, bar);
+
+        row.findViewById(R.id.btnModelDownload).setOnClickListener(v -> download(spec));
+        row.findViewById(R.id.btnModelImport).setOnClickListener(v -> startImport(spec));
+        row.findViewById(R.id.btnModelDelete).setOnClickListener(v -> confirmDelete(spec));
+
+        bindRow(row, spec);
+        modelList.addView(row);
     }
 
     /** 把 manager 里的状态刷到一行上（安装状态、体积、依赖、按钮可用性）。 */

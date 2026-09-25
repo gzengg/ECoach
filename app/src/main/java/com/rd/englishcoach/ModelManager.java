@@ -178,13 +178,41 @@ final class ModelManager {
     }
 
     /**
+     * 找 Qwen3 的 tokenizer 目录（{@code tokenizer/}，内含 {@code merges.txt} / {@code vocab.json}）。
+     *
+     * <p>Qwen3 没有 {@code tokens.txt}，tokenizer 是 HF 风格的一整个目录，路径直接传给引擎。
+     * 按内容找（哪个目录里有 {@code merges.txt}），不写死目录名。</p>
+     *
+     * @return tokenizer 目录，找不到返回 null
+     */
+    static File findTokenizerDir(File dir) {
+        File[] files = dir.listFiles();
+        if (files == null) return null;
+        for (File f : files) {
+            if (f.isDirectory() && new File(f, "merges.txt").isFile()) return f;
+        }
+        return null;
+    }
+
+    /**
      * 校验模型目录里是否真有引擎需要的文件；返回缺少的东西（可读名称），合格返回 null。
      *
      * <p>VAD 只要 {@code *.onnx}（silero 没有 tokens）；识别与朗读要 {@code *.onnx} + tokens。
      * 没这道校验的话「随便导入个 zip」也会提示成功，变成装上看不了、还得先手动删的坏状态。</p>
+     *
+     * <p>⚠️ <b>Qwen3 是另一套：没有 tokens.txt</b>，要的是 conv_frontend + encoder/decoder +
+     * tokenizer 目录。按 tokens 规则校验会让它「下得下来、装不上」（与当年 Whisper
+     * {@code turbo-tokens.txt} 同款坑）。判定看目录内容（有 {@code conv_frontend}），与引擎一致。</p>
      */
     static String missingRequirement(File dir, ModelCatalog.Spec spec) {
         if (findOnnx(dir) == null) return "*.onnx";
+        if (findByName(dir, "conv_frontend") != null) {
+            if (findByName(dir, "encoder") == null || findByName(dir, "decoder") == null) {
+                return "*encoder*.onnx + *decoder*.onnx";
+            }
+            if (findTokenizerDir(dir) == null) return "tokenizer/（含 merges.txt）";
+            return null;
+        }
         // 识别与朗读都需要 tokens（Piper 也有）；VAD（silero）没有
         if (spec.kind != ModelCatalog.Kind.VAD && findTokens(dir) == null) {
             return "tokens.txt 或 *-tokens.txt";

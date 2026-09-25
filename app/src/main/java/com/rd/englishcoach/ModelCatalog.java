@@ -18,6 +18,12 @@ final class ModelCatalog {
     /** 模型用途。VAD（切句，识别的依赖）/ ASR（识别）/ TTS（朗读）。 */
     enum Kind { VAD, ASR, TTS }
 
+    /**
+     * 模型系列（模型页分组标题用，同系列归一组）。
+     * 引擎加载时<b>不</b>按它判类型——那看目录内容（见 {@code OfflineAsrEngine}）。
+     */
+    enum Family { VAD, WHISPER, QWEN3, SENSEVOICE, TTS }
+
     /** 一个模型条目的全部静态信息（纯数据，可在 JVM 上直接断言）。 */
     static final class Spec {
         /** 稳定标识：同时用作目录名与持久化 key，<b>不许改名</b>（改了等于用户已装模型全丢）。 */
@@ -37,9 +43,12 @@ final class ModelCatalog {
         final boolean recommended;
         /** 依赖的模型 id（识别依赖 VAD）。 */
         final String[] dependsOn;
+        /** 所属系列（模型页分组展示用）。 */
+        final Family family;
 
         Spec(String id, Kind kind, int labelRes, long sizeBytes, String relativePath,
-             String sha256, int licenseRes, boolean recommended, String... dependsOn) {
+             String sha256, int licenseRes, boolean recommended, Family family,
+             String... dependsOn) {
             this.id = id;
             this.kind = kind;
             this.labelRes = labelRes;
@@ -48,6 +57,7 @@ final class ModelCatalog {
             this.sha256 = sha256;
             this.licenseRes = licenseRes;
             this.recommended = recommended;
+            this.family = family;
             this.dependsOn = dependsOn;
         }
 
@@ -72,6 +82,8 @@ final class ModelCatalog {
     static final String ASR_SENSEVOICE = "asr_sensevoice";
     /** 最高质量档：英文最准，体积最大。 */
     static final String ASR_LARGE_V3 = "asr_whisper_large_v3";
+    /** Qwen3 系列：LLM 解码器架构，中文/方言/抗噪强，但慢（非推荐档）。 */
+    static final String ASR_QWEN3_06B = "asr_qwen3_06b";
     /** 离线朗读：Piper 英文。一个模型只含一种语言的 voice，所以中英各一条。 */
     static final String TTS_PIPER_EN = "tts_piper_en";
     /** 离线朗读：Piper 中文。 */
@@ -81,27 +93,35 @@ final class ModelCatalog {
 
     private static final Spec[] ALL = {
             new Spec(VAD, Kind.VAD, R.string.model_silero_vad, 1 * MB,
-                    "silero_vad.onnx", "", R.string.license_mit, false),
+                    "silero_vad.onnx", "", R.string.license_mit, false, Family.VAD),
 
             // 推荐档放最前：模型选择器直接按清单顺序展示
             new Spec(ASR_TURBO, Kind.ASR, R.string.model_whisper_turbo, 538 * MB,
-                    "sherpa-onnx-whisper-turbo.tar.bz2", "", R.string.license_mit, true, VAD),
+                    "sherpa-onnx-whisper-turbo.tar.bz2", "", R.string.license_mit, true,
+                    Family.WHISPER, VAD),
 
             new Spec(ASR_SENSEVOICE, Kind.ASR, R.string.model_sensevoice, 156 * MB,
                     "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2", "",
-                    R.string.license_funasr, false, VAD),
+                    R.string.license_funasr, false, Family.SENSEVOICE, VAD),
 
             new Spec(ASR_LARGE_V3, Kind.ASR, R.string.model_whisper_large_v3, 1019 * MB,
-                    "sherpa-onnx-whisper-large-v3.tar.bz2", "", R.string.license_mit, false, VAD),
+                    "sherpa-onnx-whisper-large-v3.tar.bz2", "", R.string.license_mit, false,
+                    Family.WHISPER, VAD),
+
+            // Qwen3-ASR：LLM 解码器架构（官方包实测 878702423 字节）。
+            // 慢（RTF 约为 turbo 的十倍量级），放清单末尾，回落优先级也最低。
+            new Spec(ASR_QWEN3_06B, Kind.ASR, R.string.model_qwen3_06b, 878702423L,
+                    "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2", "",
+                    R.string.license_apache, false, Family.QWEN3, VAD),
 
             // 离线朗读（Piper/VITS）：一模型一语言，中英各一条；只想读英文就只装英文那条。
             new Spec(TTS_PIPER_EN, Kind.TTS, R.string.model_piper_en, 64 * MB,
                     "vits-piper-en_US-lessac-medium.tar.bz2", "",
-                    R.string.license_per_voice, false),
+                    R.string.license_per_voice, false, Family.TTS),
 
             new Spec(TTS_PIPER_ZH, Kind.TTS, R.string.model_piper_zh, 64 * MB,
                     "vits-piper-zh_CN-huayan-medium.tar.bz2", "",
-                    R.string.license_per_voice, false),
+                    R.string.license_per_voice, false, Family.TTS),
     };
 
     private ModelCatalog() {}

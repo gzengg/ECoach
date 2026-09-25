@@ -152,16 +152,22 @@
     <string name="models_summary">已装 %1$s · 可用空间 %2$s</string>
     <string name="models_pick_asr">离线识别用</string>
     <string name="models_pick_none">先下载一个识别模型（本页下方）</string>
+    <string name="models_group_whisper">Whisper 系列</string>
+    <string name="models_group_qwen3">Qwen3 系列</string>
+    <string name="models_group_sensevoice">SenseVoice 系列</string>
+    <string name="models_group_tts">离线朗读</string>
     <string name="models_dep_tag">需先装 %1$s</string>
 
     <string name="model_silero_vad">语音切句（VAD）</string>
     <string name="model_whisper_turbo">识别 · 推荐（Whisper turbo）</string>
     <string name="model_sensevoice">识别 · 小体积（中英粤）</string>
     <string name="model_whisper_large_v3">识别 · 最高质量（Whisper large-v3）</string>
+    <string name="model_qwen3_06b">识别 · 中文抗噪（Qwen3 0.6B，慢）</string>
     <string name="model_piper_en">朗读 · 离线英文（Piper）</string>
     <string name="model_piper_zh">朗读 · 离线中文（Piper）</string>
 
     <string name="license_mit">MIT</string>
+    <string name="license_apache">Apache-2.0</string>
     <string name="license_funasr">FunASR 模型许可 v1.1（需署名）</string>
     <string name="license_per_voice">逐 voice 不同，需逐个确认</string>
 
