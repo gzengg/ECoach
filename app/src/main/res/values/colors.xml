@@ -43,6 +43,7 @@
     <color name="warn">#FFFBBF24</color>              <!-- 提示信息 -->
     <color name="danger">#FFF87171</color>           <!-- 错误 / 删除 -->
 
-    <!-- ── 涟漪 ── -->
+    <!-- ── 涟漪 / 遮罩 ── -->
     <color name="ripple_light">#33FFFFFF</color>     <!-- 涟漪基色 -->
+    <color name="scrim">#99000000</color>            <!-- Bottom Sheet 背后遮罩 -->
 </resources>

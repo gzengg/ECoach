@@ -108,6 +108,14 @@ public class CaptureService extends Service {
     }
 
     /** 朗读状态反馈：改喇叭按钮颜色；ERROR = 两者都失败，面板提示，不崩（§11.2）。 */
+    /** 历史页朗读用：朗读链由服务长期持有，Activity 只读。 */
+    SpeechPlayer speech() { return speechPlayer; }
+
+    /** 历史有新记录 → 通知主界面（历史 Tab 角标）。 */
+    private void notifyHistoryChanged() {
+        sendBroadcast(ServiceEvents.buildHistoryBroadcast(this));
+    }
+
     private void onSpeechState(String key, SpeechPlayer.State state, String error) {
         mainHandler.post(() -> {
             if (panel != null) {
@@ -363,7 +371,10 @@ public class CaptureService extends Service {
                 // 转录入对话历史 + 显示卡片
                 ConversationManager.Turn turn = conversation.addTranscript(transcript);
                 // 持久化到转录历史文件
-                if (history != null) history.appendTranscript(transcript);
+                if (history != null) {
+                    history.appendTranscript(transcript);
+                    notifyHistoryChanged();
+                }
                 if (panel != null) {
                     panel.addTurn(turn);
                     // 状态栏显示识别诊断（音频多长 / 切了几段 / 多少字）：
@@ -397,7 +408,10 @@ public class CaptureService extends Service {
                 Log.i(TAG, "Answer #" + turnId + ": " + answer);
                 // 清空上下文后迟到的回答不能再写进持久化历史（会挂到别的记录上）
                 boolean applied = conversation.completeAnswer(turnId, answer);
-                if (applied && history != null) history.updateLastAnswer(answer);
+                if (applied && history != null) {
+                    history.updateLastAnswer(answer);
+                    notifyHistoryChanged();
+                }
                 if (panel != null) panel.updateTurn(conversation.findById(turnId));
             } catch (Exception e) {
                 Log.e(TAG, "Answer failed #" + turnId, e);
@@ -428,6 +442,7 @@ public class CaptureService extends Service {
                 // 同上：清空上下文后迟到的回答不写持久化历史
                 if (conversation.findById(qt.id) != null && history != null) {
                     history.updateLastAnswer(answer);
+                    notifyHistoryChanged();
                 }
                 if (panel != null) panel.updateTurn(conversation.findById(qt.id));
             } catch (Exception e) {
@@ -531,7 +546,10 @@ public class CaptureService extends Service {
         if (conversation != null) {
             ConversationManager.Turn turn = conversation.addGrab(source, translated);
             grabTurnId = turn.id;
-            if (history != null) history.appendGrab(source, translated);
+            if (history != null) {
+                history.appendGrab(source, translated);
+                notifyHistoryChanged();
+            }
         }
         // 在取词页签显示卡片
         View item = LayoutInflater.from(this)

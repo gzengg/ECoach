@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bottom Sheet 入场动画（§4.5：只做进入动画，不做退出动画 —— 关闭时直接消失）。
+  时长与卡片入场一致（180ms，Decelerate）。
+-->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fromYDelta="100%p"
+    android:toYDelta="0"
+    android:duration="180"
+    android:interpolator="@android:anim/decelerate_interpolator" />

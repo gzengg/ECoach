@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  底部导航（4 Tab）：纯框架 LinearLayout 自绘，不引 Material 库（依赖白名单约束）。
+  热区：每 Tab 等分屏宽（≥90dp）x 56dp，≥ 44px 要求。
+  角标：右上 8dp 圆点，由 BottomBar.setBadge 控制（随 ServiceEvents 事件联动）。
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/bg_base_glow">
+
+        <FrameLayout android:id="@+id/tabListen"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="56dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/tab_listen"
+                android:textSize="13sp"
+                android:textColor="@color/accent_solid"
+                android:fontFamily="sans-serif-medium" />
+
+            <View android:id="@+id/badgeListen"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_gravity="center_horizontal|top"
+                android:layout_marginTop="8dp"
+                android:layout_marginStart="44dp"
+                android:background="@drawable/dot_idle"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <FrameLayout android:id="@+id/tabHistory"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="56dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/tab_history"
+                android:textSize="13sp"
+                android:textColor="@color/text_tertiary" />
+
+            <View android:id="@+id/badgeHistory"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_gravity="center_horizontal|top"
+                android:layout_marginTop="10dp"
+                android:layout_marginStart="52dp"
+                android:background="@drawable/dot_active"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <FrameLayout android:id="@+id/tabModels"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="56dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/tab_models"
+                android:textSize="13sp"
+                android:textColor="@color/text_tertiary" />
+
+            <View android:id="@+id/badgeModels"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_gravity="center_horizontal|top"
+                android:layout_marginTop="10dp"
+                android:layout_marginStart="56dp"
+                android:background="@drawable/dot_warn"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <FrameLayout android:id="@+id/tabSettings"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="56dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/tab_settings"
+                android:textSize="13sp"
+                android:textColor="@color/text_tertiary" />
+        </FrameLayout>
+
+    </LinearLayout>
+</merge>

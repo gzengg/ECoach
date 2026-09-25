@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「模型」Tab 缺模型提醒角标：warn 色 8dp 圆点。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" shape="oval">
+    <solid android:color="@color/warn" />
+    <size android:width="8dp" android:height="8dp" />
+</shape>

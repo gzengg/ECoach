@@ -15,14 +15,25 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
 
-import java.util.List;
-
+/**
+ * 主界面 v4.1：单 Activity + 四个页面 View 显隐切换（监听 / 历史 / 模型 / 设置），
+ * 底部导航栏导航。容器模式照抄 {@code FloatingPanel.switchToTab}——同一时刻只显示一个页面。
+ *
+ * <p><b>页面拆分（一页一件事）：</b>监听控制留在本类（含权限引导全流程）；
+ * 历史 / 模型 / 设置分别委托给 {@link HistoryPage} / {@link ModelsPage} / {@link SettingsPage}，
+ * 各页面互不知道彼此存在。</p>
+ *
+ * <p><b>导航随上下文动态变化：</b>顶栏动作随页面切换（历史页=清空全部、模型页=下载源、
+ * 其余隐藏）；角标：监听中 → 「监听」Tab 呼吸点，历史有新记录（{@code ACTION_HISTORY_CHANGED}）
+ * → 「历史」Tab 点，识别模型缺失 → 「模型」Tab warn 点。</p>
+ *
+ * <p><b>操作按钮动态显隐：</b>「停止」「清空上下文」只在监听中显示；
+ * 未配 API Key 时显示去「设置」Tab 的引导提示。</p>
+ */
 public class MainActivity extends Activity {
 
     private static final int REQ_RECORD  = 100;
@@ -33,30 +44,48 @@ public class MainActivity extends Activity {
     private TextView tvStatus;
     private View dotStatus;
     private Button btnStart;
-    private View btnStop, btnSettings, btnNewChat, btnHistory;
+    private View btnStop, btnNewChat, tvListenHint;
+
+    private BottomBar bottomBar;
+    private TextView tvTopTitle, btnTopAction;
+    private HistoryPage historyPage;
+    private ModelsPage modelsPage;
+    private SettingsPage settingsPage;
+    /** 顶栏动作当前归属页面（btnTopAction 点击时分发）。 */
+    private int topAction = BottomBar.TAB_LISTEN;
+    /** 历史有未看过的新记录（ACTION_HISTORY_CHANGED 置位，进历史页清除）。 */
+    private boolean historyDirty = false;
+
+    private Prefs prefs;
     private BroadcastReceiver serviceReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        prefs = new Prefs(this);
 
-        tvStatus   = findViewById(R.id.tvStatus);
-        dotStatus  = findViewById(R.id.dotStatus);
-        btnStart   = findViewById(R.id.btnStart);
-        btnStop    = findViewById(R.id.btnStop);
-        btnSettings= findViewById(R.id.btnSettings);
+        tvStatus  = findViewById(R.id.tvStatus);
+        dotStatus = findViewById(R.id.dotStatus);
+        btnStart  = findViewById(R.id.btnStart);
+        btnStop   = findViewById(R.id.btnStop);
         btnNewChat = findViewById(R.id.btnNewChat);
-        btnHistory = findViewById(R.id.btnHistory);
+        tvListenHint = findViewById(R.id.tvListenHint);
 
+        bottomBar = findViewById(R.id.bottomBar);
+        tvTopTitle = findViewById(R.id.tvTopTitle);
+        btnTopAction = findViewById(R.id.btnTopAction);
+
+        historyPage = new HistoryPage(this, findViewById(R.id.pageHistory));
+        modelsPage = new ModelsPage(this, findViewById(R.id.pageModels));
+        settingsPage = new SettingsPage(this, findViewById(R.id.pageSettings));
+
+        // 主 CTA：走权限检查 → 投屏授权 → 起服务
         btnStart.setOnClickListener(v -> checkAndStart());
         btnStop.setOnClickListener(v -> {
             stopService(new Intent(this, CaptureService.class));
             updateStatus();
         });
-        btnSettings.setOnClickListener(v ->
-                startActivity(new Intent(this, SettingsActivity.class)));
-        btnHistory.setOnClickListener(v -> showTranscriptHistory());
         btnNewChat.setOnClickListener(v -> {
             if (CaptureService.current != null) {
                 CaptureService.current.clearHistory();
@@ -65,6 +94,18 @@ public class MainActivity extends Activity {
                 tvStatus.setText(R.string.status_service_off);
             }
         });
+        // 未配 API Key 的引导提示 → 跳「设置」Tab
+        tvListenHint.setOnClickListener(v -> switchTab(BottomBar.TAB_SETTINGS));
+        // 顶栏上下文动作：历史页=清空全部，模型页=下载源
+        btnTopAction.setOnClickListener(v -> {
+            if (topAction == BottomBar.TAB_HISTORY) {
+                historyPage.confirmClearAll();
+            } else if (topAction == BottomBar.TAB_MODELS) {
+                modelsPage.showSourceSheet();
+            }
+        });
+
+        bottomBar.setListener(this::switchTab);
 
         // 处理重新授权请求
         if (getIntent().getBooleanExtra("reconsent", false)) {
@@ -72,29 +113,42 @@ public class MainActivity extends Activity {
             requestProjection();
         }
 
-        // 实时监听服务状态广播
+        // 实时监听服务状态广播 + 历史变更（角标）
         serviceReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context ctx, Intent intent) {
                 if (ServiceEvents.ACTION_STATE_CHANGED.equals(intent.getAction())) {
                     boolean running = intent.getBooleanExtra(ServiceEvents.EXTRA_RUNNING, false);
                     updateStatus(running);
+                } else if (ServiceEvents.ACTION_HISTORY_CHANGED.equals(intent.getAction())) {
+                    // 不在历史页才亮角标；在历史页则直接刷新列表
+                    if (bottomBar.selected() == BottomBar.TAB_HISTORY) {
+                        historyPage.refresh();
+                    } else {
+                        historyDirty = true;
+                        bottomBar.setBadge(BottomBar.TAB_HISTORY, true);
+                    }
                 }
             }
         };
+
+        switchTab(BottomBar.TAB_LISTEN);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // 注册广播接收器
         IntentFilter filter = new IntentFilter(ServiceEvents.ACTION_STATE_CHANGED);
+        filter.addAction(ServiceEvents.ACTION_HISTORY_CHANGED);
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(serviceReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(serviceReceiver, filter);
         }
         updateStatus(CaptureService.current != null); // 兜底：防止广播丢失
+        historyPage.refresh();
+        modelsPage.refresh();
+        settingsPage.refresh();
     }
 
     @Override
@@ -103,6 +157,51 @@ public class MainActivity extends Activity {
             try { unregisterReceiver(serviceReceiver); } catch (Exception ignored) {}
         }
         super.onPause();
+    }
+
+    // ── Tab 切换（导航随页面上下文变化） ──────────────────
+
+    void switchTab(int tab) {
+        findViewById(R.id.pageListen).setVisibility(
+                tab == BottomBar.TAB_LISTEN ? View.VISIBLE : View.GONE);
+        findViewById(R.id.pageHistory).setVisibility(
+                tab == BottomBar.TAB_HISTORY ? View.VISIBLE : View.GONE);
+        findViewById(R.id.pageModels).setVisibility(
+                tab == BottomBar.TAB_MODELS ? View.VISIBLE : View.GONE);
+        findViewById(R.id.pageSettings).setVisibility(
+                tab == BottomBar.TAB_SETTINGS ? View.VISIBLE : View.GONE);
+        bottomBar.select(tab);
+
+        // 顶栏标题 + 上下文动作随页面变化
+        tvTopTitle.setText(tab == BottomBar.TAB_LISTEN ? R.string.tab_listen
+                : tab == BottomBar.TAB_HISTORY ? R.string.tab_history
+                : tab == BottomBar.TAB_MODELS ? R.string.tab_models : R.string.tab_settings);
+        topAction = tab;
+        btnTopAction.setVisibility(tab == BottomBar.TAB_HISTORY
+                || tab == BottomBar.TAB_MODELS ? View.VISIBLE : View.GONE);
+        btnTopAction.setText(tab == BottomBar.TAB_HISTORY
+                ? R.string.history_clear_all : R.string.models_source_title);
+        btnTopAction.setTextColor(getColor(
+                tab == BottomBar.TAB_HISTORY ? R.color.danger : R.color.text_secondary));
+
+        if (tab == BottomBar.TAB_HISTORY) {
+            historyPage.refresh();
+            historyDirty = false; // 看过即清角标
+        } else if (tab == BottomBar.TAB_MODELS) {
+            modelsPage.refresh();
+        } else if (tab == BottomBar.TAB_SETTINGS) {
+            settingsPage.refresh();
+        }
+        syncBadges();
+    }
+
+    /** 角标联动：监听中 / 历史有新记录 / 识别模型缺失（不在对应页才亮）。 */
+    private void syncBadges() {
+        bottomBar.setBadge(BottomBar.TAB_LISTEN, CaptureService.current != null);
+        bottomBar.setBadge(BottomBar.TAB_HISTORY,
+                historyDirty && bottomBar.selected() != BottomBar.TAB_HISTORY);
+        bottomBar.setBadge(BottomBar.TAB_MODELS,
+                bottomBar.selected() != BottomBar.TAB_MODELS && modelsPage.asrOfflineMissing());
     }
 
     // ── 权限检查 → 启动流程 ──────────────────
@@ -152,7 +251,7 @@ public class MainActivity extends Activity {
                 .setPositiveButton(R.string.overlay_retry,
                         (d, w) -> requestOverlayPermission())
                 .setNeutralButton(R.string.overlay_copy_cmd, (d, w) -> {
-                    copyToClipboard(cmd);
+                    copyText(cmd);
                     tvStatus.setText(R.string.overlay_cmd_copied);
                 })
                 .setNegativeButton(R.string.overlay_close, null)
@@ -161,11 +260,6 @@ public class MainActivity extends Activity {
 
     private String overlayAdbCommand() {
         return "adb shell appops set " + getPackageName() + " SYSTEM_ALERT_WINDOW allow";
-    }
-
-    private void copyToClipboard(String text) {
-        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("ECoach", text));
     }
 
     private void requestProjection() {
@@ -209,200 +303,9 @@ public class MainActivity extends Activity {
                 tvStatus.setText(R.string.status_projection_denied);
                 if (dotStatus != null) dotStatus.setBackgroundResource(R.drawable.dot_idle);
             }
+        } else {
+            modelsPage.onActivityResult(requestCode, resultCode, data); // 本地导入选完文件回来
         }
-    }
-
-    // ── 转录历史 ────────────────────────
-
-    private void showTranscriptHistory() {
-        HistoryStore store = new HistoryStore(this);
-        List<HistoryStore.Entry> entries = store.getAll();
-        if (entries.isEmpty()) {
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.history_title)
-                    .setMessage(R.string.history_empty)
-                    .setPositiveButton(R.string.dialog_ok, null)
-                    .show();
-            return;
-        }
-
-        final boolean[] showGrab = {false};
-        final AlertDialog[] dialogRef = new AlertDialog[1];
-        final Runnable[] render = new Runnable[1];
-
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(16);
-        root.setPadding(pad, pad, pad, 0);
-
-        // 顶部两个 Tab：转录 / 取词（分开，不再混在一起）
-        LinearLayout tabRow = new LinearLayout(this);
-        tabRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView tabTranscript = buildHistoryTab();
-        TextView tabGrab = buildHistoryTab();
-        LinearLayout.LayoutParams lp1 = new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        lp2.leftMargin = pad / 2;
-        tabTranscript.setLayoutParams(lp1);
-        tabGrab.setLayoutParams(lp2);
-        tabRow.addView(tabTranscript);
-        tabRow.addView(tabGrab);
-        root.addView(tabRow);
-
-        ScrollView scroll = new ScrollView(this);
-        final LinearLayout list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
-        scroll.addView(list);
-        root.addView(scroll);
-
-        render[0] = () -> {
-            List<HistoryStore.Entry> all = store.getAll();
-            styleHistoryTab(tabTranscript, getString(R.string.history_tab_transcript,
-                    HistoryStore.countByType(all, HistoryStore.TYPE_TRANSCRIPT)), !showGrab[0]);
-            styleHistoryTab(tabGrab, getString(R.string.history_tab_grab,
-                    HistoryStore.countByType(all, HistoryStore.TYPE_GRAB)), showGrab[0]);
-            if (dialogRef[0] != null) {
-                dialogRef[0].setTitle(getString(R.string.history_title_count, all.size()));
-            }
-            renderHistoryList(list, store, all, showGrab[0], render[0]);
-        };
-        tabTranscript.setOnClickListener(v -> { showGrab[0] = false; render[0].run(); });
-        tabGrab.setOnClickListener(v -> { showGrab[0] = true; render[0].run(); });
-        render[0].run();
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(getString(R.string.history_title_count, entries.size()))
-                .setView(root)
-                .setPositiveButton(R.string.dialog_ok, null)
-                .setNeutralButton(R.string.history_clear_all, (d, w) -> {
-                    store.clear();
-                    tvStatus.setText(R.string.status_history_cleared);
-                })
-                .create();
-        dialogRef[0] = dialog;
-        dialog.show();
-        // 底部按钮文字统一白色（主题默认是 accent 青色）
-        TextView okBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-        if (okBtn != null) okBtn.setTextColor(android.graphics.Color.WHITE);
-        TextView clearBtn = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
-        if (clearBtn != null) clearBtn.setTextColor(android.graphics.Color.WHITE);
-    }
-
-    /** 历史对话框的 Tab 按钮。 */
-    private TextView buildHistoryTab() {
-        TextView tv = new TextView(this);
-        tv.setBackgroundResource(R.drawable.bg_chip);
-        tv.setGravity(android.view.Gravity.CENTER);
-        tv.setTextSize(13);
-        tv.setPadding(0, dp(8), 0, dp(8));
-        tv.setClickable(true);
-        return tv;
-    }
-
-    private void styleHistoryTab(TextView tab, String text, boolean active) {
-        tab.setText(text);
-        tab.setTextColor(active ? getColor(R.color.accent_solid) : getColor(R.color.text_secondary));
-    }
-
-    /**
-     * 渲染历史列表，只显示指定类型。
-     * 删除用「原数组索引」({@code deleteAt(idx)})，所以分 Tab 后删掉的仍是那一条。
-     */
-    private void renderHistoryList(LinearLayout list, HistoryStore store,
-                                   List<HistoryStore.Entry> all,
-                                   boolean showGrab, Runnable onChanged) {
-        list.removeAllViews();
-        int pad = dp(16);
-        boolean any = false;
-
-        for (int i = all.size() - 1; i >= 0; i--) {
-            final int idx = i;
-            HistoryStore.Entry e = all.get(i);
-            if (e.isGrab() != showGrab) continue;
-            any = true;
-
-            String time = new java.text.SimpleDateFormat("MM-dd HH:mm",
-                    java.util.Locale.getDefault()).format(new java.util.Date(e.timestamp));
-            StringBuilder sb = new StringBuilder();
-            sb.append("[ ").append(time).append(" ] ");
-            if (e.isGrab()) {
-                // 取词：原文 → 译文
-                sb.append(e.transcript);
-                if (e.answer != null && !e.answer.isEmpty()) sb.append(" → ").append(e.answer);
-            } else {
-                sb.append(e.transcript);
-                if (e.answer != null) {
-                    sb.append("\n").append(getString(R.string.history_answer_prefix)).append(e.answer);
-                }
-            }
-            final String body = sb.toString();
-
-            TextView tv = new TextView(this);
-            tv.setText(body);
-            tv.setTextSize(14);
-            tv.setTextColor(0xFFF2F5FA);
-            tv.setTextIsSelectable(true);
-            list.addView(tv);
-
-            // 操作按钮行：复制 + 删除
-            LinearLayout btnRow = new LinearLayout(this);
-            btnRow.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams btnRowLp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
-            btnRowLp.topMargin = pad / 4;
-            btnRowLp.bottomMargin = pad / 4;
-
-            TextView btnCopy = new TextView(this);
-            btnCopy.setText(R.string.menu_copy);
-            btnCopy.setTextSize(12);
-            btnCopy.setTextColor(0xFF34D399);
-            btnCopy.setPadding(0, 0, pad, 0);
-            btnCopy.setOnClickListener(v -> {
-                copyToClipboard(body);
-                tvStatus.setText(R.string.status_copied);
-            });
-            btnRow.addView(btnCopy);
-
-            TextView btnDelete = new TextView(this);
-            btnDelete.setText(R.string.menu_delete);
-            btnDelete.setTextSize(12);
-            btnDelete.setTextColor(0xFFF87171);
-            btnDelete.setPadding(0, 0, pad, 0);
-            btnDelete.setOnClickListener(v -> {
-                store.deleteAt(idx);
-                tvStatus.setText(R.string.status_deleted);
-                if (onChanged != null) onChanged.run(); // 原地刷新，保留当前 Tab
-            });
-            btnRow.addView(btnDelete);
-            list.addView(btnRow, btnRowLp);
-
-            if (i > 0) {
-                TextView sep = new TextView(this);
-                sep.setText("");
-                sep.setMinimumHeight(1);
-                sep.setBackgroundColor(0x33FFFFFF);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, 1);
-                lp.topMargin = pad / 4;
-                lp.bottomMargin = pad / 4;
-                list.addView(sep, lp);
-            }
-        }
-
-        if (!any) {
-            TextView empty = new TextView(this);
-            empty.setText(R.string.history_empty);
-            empty.setTextSize(14);
-            empty.setTextColor(getColor(R.color.text_tertiary));
-            list.addView(empty);
-        }
-    }
-
-    private int dp(int v) {
-        return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
     // ── 状态 ──────────────────────────────
@@ -415,11 +318,50 @@ public class MainActivity extends Activity {
             dotStatus.setBackgroundResource(
                     running ? R.drawable.dot_active : R.drawable.dot_idle);
         }
+        // 操作按钮按状态显隐：停止 / 清空上下文只在监听中可用
+        btnStop.setVisibility(running ? View.VISIBLE : View.GONE);
+        btnNewChat.setVisibility(running ? View.VISIBLE : View.GONE);
+        // 未配 API Key → 引导去「设置」Tab（离线识别可用时也一样提示，因为朗读/问答还需要）
+        tvListenHint.setVisibility(
+                prefs.apiKey().isEmpty() ? View.VISIBLE : View.GONE);
+        syncBadges();
     }
 
     /** 兼容旧调用点（无参）。 */
     private void updateStatus() {
         updateStatus(CaptureService.current != null);
+    }
+
+    // ── 页面委托（HistoryPage / HistorySheet 回调用） ────────
+
+    void setStatusText(String text) {
+        tvStatus.setText(text);
+    }
+
+    void copyText(String text) {
+        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("ECoach", text));
+        setStatusText(getString(R.string.status_copied));
+    }
+
+    /** 历史页能否朗读（服务在跑且朗读链就绪）。 */
+    boolean canSpeak() {
+        return CaptureService.current != null && CaptureService.current.speech() != null;
+    }
+
+    /** 朗读一段历史文本；同一 key 再点 = 停止（与悬浮窗同一约定）。 */
+    void speak(String key, String text) {
+        if (!canSpeak()) return;
+        SpeechPlayer sp = CaptureService.current.speech();
+        if (sp.isSpeaking()) {
+            sp.stop();
+        } else {
+            sp.speak(key, text, Translator.speakLang(text));
+        }
+    }
+
+    int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
     // ── 进程退出兜底 ──────────────────────

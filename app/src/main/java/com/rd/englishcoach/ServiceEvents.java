@@ -21,6 +21,8 @@ public final class ServiceEvents {
     private ServiceEvents() {}
 
     public static final String ACTION_STATE_CHANGED = "com.rd.englishcoach.STATE_CHANGED";
+    /** 历史有新记录（转录/取词/答案回填）→ 主界面「历史」Tab 亮角标。 */
+    public static final String ACTION_HISTORY_CHANGED = "com.rd.englishcoach.HISTORY_CHANGED";
     public static final String EXTRA_RUNNING = "running";
     public static final String EXTRA_REASON  = "reason";
 
@@ -36,5 +38,10 @@ public final class ServiceEvents {
                 .putExtra(EXTRA_RUNNING, running)
                 .putExtra(EXTRA_REASON, reason)
                 .setPackage(ctx.getPackageName());
+    }
+
+    /** 构造一条「历史有新记录」广播。 */
+    public static Intent buildHistoryBroadcast(android.content.Context ctx) {
+        return new Intent(ACTION_HISTORY_CHANGED).setPackage(ctx.getPackageName());
     }
 }

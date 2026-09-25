@@ -16,69 +16,73 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 /**
- * 设置页布局契约测试。
+ * 设置 / 模型页布局契约测试（v4.1 迁入 activity_main.xml 四 Tab 容器后重定义）。
  *
- * <p>回归的 bug：旧版每个输入框上方单独占一行标签，整页高达 ~746dp，
- * 而用户机器（ColorOS / Android 16，1080x2376 @3x = 360x792dp）扣掉状态栏、
- * 标题栏、导航栏后可用视口只有 ~653dp。结果必须滚动；滚到底时最上面那行
- * 输入框被切成只剩 10px 高的一条（看起来像乱码），用户报「设置界面显示不完全」。</p>
+ * <p>历史回归：旧版每个输入框上方单独占一行标签，整页高达 ~746dp，而用户机器
+ * （ColorOS / Android 16，360x792dp）可用视口只有 ~653dp，必须滚动；滚到底时最上面
+ * 那行被切成半截（看起来像乱码）。</p>
  *
- * <p>修法：标签改到左侧（不再各占一行），整页压到 ~575dp，一屏放得下。
- * 本测试用「按 dp 累加」的方式把总高度算出来并卡上限——没有真机也能守住这条线。</p>
+ * <p>v4.1 决策：四 Tab 后设置页允许整页滚动，但约束改为——
+ * <b>每个卡片分组（card_surface）内部高度必须 ≤ 可用视口</b>：任何一组在一屏内
+ * 都能完整看到，滚动只发生在组与组之间，不会再出现「半截行」的乱码观感。</p>
  */
 public class SettingsLayoutTest {
 
-    /**
-     * 可用视口预算。360x792dp 机型：792 - 37(状态栏) - 56(标题栏) - 46(导航栏) ≈ 653dp，
-     * 留 ~13dp 余量取 640dp。
-     */
+    /** 可用视口预算。360x792dp 机型：792 - 37(状态栏) - 56(标题栏) - 46(导航栏) ≈ 653dp。 */
     private static final int VIEWPORT_BUDGET_DP = 640;
 
-    // ── 核心：一屏放得下 ──────────────────────
+    // ── 核心：每个分组一屏放得下 ──────────────
 
     @Test
-    public void contentFitsOnOneScreen() throws Exception {
-        double total = contentHeightDp();
-        System.out.println("[SettingsLayoutTest] 设置页估算总高 = "
-                + String.format("%.1f", total) + "dp / 预算 " + VIEWPORT_BUDGET_DP + "dp");
-        assertTrue(String.format(
-                "设置页内容高 %.0fdp，超过可用视口 %ddp —— 会出现必须滚动、"
-                        + "顶部输入框被切成半截（看起来像乱码）的老问题。"
-                        + "加行/加间距请同步压缩别处。",
-                total, VIEWPORT_BUDGET_DP),
-                total <= VIEWPORT_BUDGET_DP);
+    public void everyGroupFitsOnOneScreen() throws Exception {
+        List<Element> groups = cardGroups();
+        assertTrue("activity_main.xml 里应至少有设置/模型的分组卡片（设置 4 组 + 模型 1 组）",
+                groups.size() >= 5);
+        for (Element group : groups) {
+            double h = groupHeightDp(group);
+            assertTrue(String.format("分组（paddingTop=%s）内容高 %.0fdp，超过可用视口 %ddp —— "
+                            + "组内会出现滚动/半截行。加行/加间距请拆组或压缩别处。",
+                    group.getAttribute("android:paddingTop"), h, VIEWPORT_BUDGET_DP),
+                    h <= VIEWPORT_BUDGET_DP);
+            assertTrue("分组高度估算异常（" + h + "dp），估算器可能坏了", h > 16);
+        }
     }
 
+    // ── 四 Tab 容器骨架 ────────────────────────
+
     @Test
-    public void heightEstimate_isSane() throws Exception {
-        double total = contentHeightDp();
-        assertTrue("高度估算异常（" + total + "dp），估算器可能坏了", total > 300);
+    public void shell_hasFourPagesAndBottomBar() throws Exception {
+        for (String id : new String[]{"pageListen", "pageHistory", "pageModels",
+                "pageSettings", "bottomBar", "topBar", "tvTopTitle", "btnTopAction"}) {
+            assertNotNull("activity_main.xml 必须有 " + id, elementById(id));
+        }
+    }
+
+    /** Android 16 + targetSdk 35 强制 edge-to-edge，内容会画到状态栏后面。 */
+    @Test
+    public void root_fitsSystemWindows() throws Exception {
+        Element root = parseLayout().getDocumentElement();
+        assertEquals("根布局必须 fitsSystemWindows=true，否则 Android 16 上内容被状态栏裁掉",
+                "true", attr(root, "fitsSystemWindows"));
     }
 
     // ── 打开设置页不能自己滚走 / 弹键盘 ────────
 
     @Test
-    public void root_takesInitialFocus() throws Exception {
-        Element root = contentContainer();
-        assertEquals("根布局必须 focusableInTouchMode=true，否则第一个输入框会抢到焦点，"
+    public void settingsRoot_takesInitialFocus() throws Exception {
+        Element root = elementById("settingsRoot");
+        assertNotNull("必须有 settingsRoot", root);
+        assertEquals("settingsRoot 必须 focusableInTouchMode=true，否则第一个输入框会抢到焦点，"
                         + "打开设置页时键盘弹出、页面自己滚到中间",
                 "true", attr(root, "focusableInTouchMode"));
     }
 
-    /** Android 16 + targetSdk 35 强制 edge-to-edge，内容会画到状态栏后面。 */
-    @Test
-    public void scrollView_fitsSystemWindows() throws Exception {
-        Element sv = parseLayout().getDocumentElement();
-        assertEquals("ScrollView 必须 fitsSystemWindows=true，否则 Android 16 上 "
-                        + "Base URL / API Key 会被状态栏裁掉（用户报「显示不全」）",
-                "true", attr(sv, "fitsSystemWindows"));
-    }
-
-    // ── 标签在左（不再各占一行） ───────────────
+    // ── 字段与标签同行（标签不独占一行） ────────
 
     @Test
     public void everyField_hasSideLabel() throws Exception {
-        for (String id : new String[]{"etBaseUrl", "etApiKey", "etAsrModel", "etChatModel"}) {
+        for (String id : new String[]{"etBaseUrl", "etApiKey", "etAsrModel",
+                "etChatModel", "etTtsModel"}) {
             Element field = elementById(id);
             assertNotNull("找不到 " + id, field);
             Element row = (Element) field.getParentNode();
@@ -107,6 +111,7 @@ public class SettingsLayoutTest {
         Element toggle = elementById("btnToggleKey");
         assertNotNull("API Key 旁必须有「显示/隐藏」开关", toggle);
         assertEquals("开关初始文案应为「显示」", "@string/set_show_key", attr(toggle, "text"));
+        assertTrue("开关热区必须 ≥48dp", parseDp(attr(toggle, "layout_height")) >= 48);
     }
 
     // ── 不要用已废弃属性 / 输入框要能滚动 ──────
@@ -129,24 +134,21 @@ public class SettingsLayoutTest {
         assertEquals("多行框要有滚动条，否则看不出内容还没显示完", "vertical", attr(prompt, "scrollbars"));
     }
 
-    // ── 高度估算 ──────────────────────────────
+    // ── 分组高度估算 ──────────────────────────
 
-    private static double contentHeightDp() throws Exception {
-        Map<String, Map<String, String>> styles = parseStyles();
-        Element root = contentContainer();
-        double total = padding(root, styles, "paddingVertical") * 2
-                + padding(root, styles, "paddingTop")
-                + padding(root, styles, "paddingBottom");
-        for (Element child : childElements(root)) {
-            if (isGone(child)) continue;
-            total += marginTop(child, styles) + extentDp(child, styles);
+    /** 找出设置/模型页里所有 card_surface 分组（排除 item_model.xml 运行时才有的行）。 */
+    private static List<Element> cardGroups() throws Exception {
+        List<Element> out = new ArrayList<>();
+        List<Element> all = new ArrayList<>();
+        collect(parseLayout().getDocumentElement(), all);
+        for (Element e : all) {
+            if ("LinearLayout".equals(e.getTagName())
+                    && "vertical".equals(attr(e, "orientation"))
+                    && attr(e, "background").endsWith("card_surface")) {
+                out.add(e);
+            }
         }
-        return total;
-    }
-
-    /** 隐藏的 Tab 不参与高度估算（v4 起设置页与模型合并成两个 Tab，同时只显示一个）。 */
-    private static boolean isGone(Element e) {
-        return "gone".equals(e.getAttribute("android:visibility"));
+        return out;
     }
 
     /** 一个控件（或一行横向容器）占用的垂直高度。 */
@@ -157,7 +159,7 @@ public class SettingsLayoutTest {
             for (Element c : childElements(e)) max = Math.max(max, extentDp(c, styles));
             return max;
         }
-        // v2.0：纵向 LinearLayout（卡片容器）→ 递归累加子元素高度 + 内边距
+        // 纵向 LinearLayout（分组/子容器）→ 递归累加子元素高度 + 内边距
         if ("LinearLayout".equals(e.getTagName())
                 && "vertical".equals(attr(e, styles, "orientation"))) {
             double total = 0;
@@ -179,6 +181,22 @@ public class SettingsLayoutTest {
         return base;
     }
 
+    /** 一个分组（含自身内边距）的总高度。 */
+    private static double groupHeightDp(Element group) throws Exception {
+        Map<String, Map<String, String>> styles = parseStyles();
+        double total = 0;
+        for (Element c : childElements(group)) {
+            if (isGone(c)) continue;
+            total += marginTop(c, styles) + extentDp(c, styles);
+        }
+        total += padding(group, styles, "paddingTop") + padding(group, styles, "paddingBottom");
+        return total;
+    }
+
+    private static boolean isGone(Element e) {
+        return "gone".equals(e.getAttribute("android:visibility"));
+    }
+
     /** TextView/EditText 的 wrap_content 高度：行高 + 上下 fontPadding。 */
     private static double textHeightDp(String textSize) {
         if (!textSize.endsWith("sp")) return 24;
@@ -196,6 +214,7 @@ public class SettingsLayoutTest {
     }
 
     private static double parseDp(String v) {
+        if (v == null || !v.endsWith("dp")) return 0;
         return Double.parseDouble(v.replace("dp", "").trim());
     }
 
@@ -240,18 +259,27 @@ public class SettingsLayoutTest {
     // ── DOM 工具 ─────────────────────────────
 
     private static Document parseLayout() throws Exception {
-        return parseResource("/layout/activity_settings.xml");
+        return parseResource("/layout/activity_main.xml");
     }
 
-    /** ScrollView 里那个纵向 LinearLayout。 */
-    private static Element contentContainer() throws Exception {
-        NodeList all = parseLayout().getElementsByTagName("LinearLayout");
-        for (int i = 0; i < all.getLength(); i++) {
-            Element e = (Element) all.item(i);
-            if ("vertical".equals(e.getAttribute("android:orientation"))) return e;
+    private static Document parseResource(String path) throws Exception {
+        InputStream is = SettingsLayoutTest.class.getResourceAsStream(path);
+        assertNotNull("classpath 上找不到资源: " + path, is);
+        DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
+        f.setNamespaceAware(false);
+        Document doc = f.newDocumentBuilder().parse(is);
+        is.close();
+        return doc;
+    }
+
+    /** 读源文件原文（契约断言用）。 */
+    private static String readFile(String path) throws Exception {
+        java.io.File f = new java.io.File(path);
+        assertTrue("文件不存在: " + f.getAbsolutePath(), f.exists());
+        try (java.util.Scanner sc = new java.util.Scanner(f, "UTF-8")) {
+            sc.useDelimiter("\\A");
+            return sc.hasNext() ? sc.next() : "";
         }
-        fail("activity_settings.xml 里找不到纵向 LinearLayout");
-        return null;
     }
 
     private static Element elementById(String id) throws Exception {
@@ -288,26 +316,6 @@ public class SettingsLayoutTest {
         return out;
     }
 
-    /** 读源文件原文（契约断言用，与 ListeningKeyGuardTest 的 readFile 同款）。 */
-    private static String readFile(String path) throws Exception {
-        java.io.File f = new java.io.File(path);
-        assertTrue("文件不存在: " + f.getAbsolutePath(), f.exists());
-        try (java.util.Scanner sc = new java.util.Scanner(f, "UTF-8")) {
-            sc.useDelimiter("\\A");
-            return sc.hasNext() ? sc.next() : "";
-        }
-    }
-
-    private static Document parseResource(String path) throws Exception {
-        InputStream is = SettingsLayoutTest.class.getResourceAsStream(path);
-        assertNotNull("classpath 上找不到资源: " + path, is);
-        DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
-        f.setNamespaceAware(false);
-        Document doc = f.newDocumentBuilder().parse(is);
-        is.close();
-        return doc;
-    }
-
     // ── 选择芯片布局（回归：芯片被挤压导致文字换行） ──────────
 
     @Test
@@ -329,12 +337,13 @@ public class SettingsLayoutTest {
 
     @Test
     public void pickerRows_areHorizontallyScrollable() throws Exception {
-        // 芯片多了要能横向滚动，而不是被挤压换行
-        String layout = readFile("src/main/res/layout/activity_settings.xml");
-        int count = 0, idx = 0;
-        while ((idx = layout.indexOf("HorizontalScrollView", idx + 1)) > 0) count++;
-        assertEquals("三个选择行（识别模型 / 英文音色 / 中文音色）都应在 HorizontalScrollView 里"
-                + "（开+闭共 6 处）", 6, count);
-    }
+        // 识别模型芯片行在 XML（模型页）；音色芯片行迁到 Bottom Sheet（SettingsPage 代码构建）。
+        String layout = readFile("src/main/res/layout/activity_main.xml");
+        assertTrue("识别模型选择行必须横向可滚（HorizontalScrollView）",
+                layout.contains("HorizontalScrollView"));
 
+        String settingsPage = readFile("src/main/java/com/rd/englishcoach/SettingsPage.java");
+        assertTrue("音色选择 sheet 的芯片行也必须横向可滚",
+                settingsPage.contains("HorizontalScrollView"));
+    }
 }
