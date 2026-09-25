@@ -46,18 +46,14 @@ final class OfflineAsrEngine implements AsrEngine {
     private static final String TAG = "OfflineAsr";
     /** SenseVoice / Whisper 都按 16kHz 提取特征。 */
     static final int MODEL_SAMPLE_RATE = 16000;
-    /** SenseVoice / Whisper 的 4 线程是实测基线，别动。 */
-    private static final int NUM_THREADS = 4;
-
     /**
-     * Qwen3 专用线程数（实验值）。
+     * ASR 线程数统一 4：上限就是 4，别和 UI/采集抢核
+     * （采集线程被饿会丢帧，症状是「音频够长但只识别出一小段」，偶发难查）。
      *
-     * <p>Qwen3 是逐 token 自回归（每生成一个字都要跑一遍 decoder + 搬 KV cache），
-     * 耗时 ∝ 生成字数，是真机 RTF 0.47 的主因（对比 SenseVoice 0.03~0.05）。
-     * 8 Gen 3 是 1+3+2+2 核，多开线程可能落到小核——<b>收益不确定</b>，
-     * 所以只给 Qwen3 用，真机对比更慢就改回 4。</p>
+     * <p>真机对比过 Qwen3 4 vs 6 线程：<b>耗时几乎无差别</b>——瓶颈是逐 token 的 per-step
+     * 开销与内存带宽，不是算力并行度；而 6 线程只多出抢核/发热风险。所以不再分档。</p>
      */
-    private static final int QWEN3_NUM_THREADS = 6;
+    private static final int NUM_THREADS = 4;
 
     /**
      * Whisper 的 ONNX 输入窗口固定 30 秒：更长的段会被<b>静默截断</b>。
@@ -343,12 +339,9 @@ final class OfflineAsrEngine implements AsrEngine {
         modelConfig.setDebug(false);
         modelConfig.setProvider("cpu");
 
-        int threads = NUM_THREADS;
         // 判序：conv_frontend 存在 → Qwen3（它包里也有 encoder/decoder，判晚了会被当 Whisper）
         File convFrontend = ModelManager.findByName(dir, "conv_frontend");
         if (convFrontend != null) {
-            threads = threadsFor(true);
-            modelConfig.setNumThreads(threads);
             File encoder = ModelManager.findByName(dir, "encoder");
             File decoder = ModelManager.findByName(dir, "decoder");
             File tokenizer = ModelManager.findTokenizerDir(dir);
@@ -402,8 +395,7 @@ final class OfflineAsrEngine implements AsrEngine {
         // assetManager 传 null：见类注释（传非 null 会 native abort）
         recognizer = new OfflineRecognizer(null, config);
         loadedModelId = spec.id;
-        // 带上线程数：线程数实验（见 QWEN3_NUM_THREADS）要看这行确认实际生效值
-        Log.i(TAG, "loaded ASR model " + spec.id + " (threads=" + threads + ")");
+        Log.i(TAG, "loaded ASR model " + spec.id + " (threads=" + NUM_THREADS + ")");
         return recognizer;
     }
 
@@ -416,14 +408,6 @@ final class OfflineAsrEngine implements AsrEngine {
             recognizer = null;
             loadedModelId = null;
         }
-    }
-
-    /**
-     * 线程数：Qwen3 单独一档（见 {@link #QWEN3_NUM_THREADS}），其余保持 4 线程基线。
-     * 判据是「目录里有 conv_frontend」——与引擎判类型同一套规则，不看 id。
-     */
-    static int threadsFor(boolean qwen3) {
-        return qwen3 ? QWEN3_NUM_THREADS : NUM_THREADS;
     }
 
     /** 释放模型（服务销毁时调用，避免 native 内存常驻）。 */
