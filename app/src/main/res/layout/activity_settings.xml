@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  设置页 v2.0「深空玻璃」：
-  三张卡片分组（接口 / 提示词 / 外观），输入框换 bg_input，按钮分层级。
-  ⚠️ SettingsLayoutTest.contentFitsOnOneScreen 卡 ≤640dp，加行前先跑测试。
+  设置页 v4：合并了「模型」——顶部两个 Tab（设置 / 模型），同一时刻只显示一个。
+  合并原因：两个入口在体验上是一件事，用户要在两页之间来回跳。
+
+  为什么用 Tab 而不是把模型列表接在设置表单下面：设置页有「≤640dp 一屏放得下」的硬约束
+  （历史上滚到底会把顶部输入框切成半截，看起来像乱码）。Tab 让两块内容各自一屏放得下。
+
+  ⚠️ SettingsLayoutTest 会按 dp 累加估算高度（跳过 visibility=gone 的 Tab），
+     改间距/加行前先跑它。
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -24,149 +29,338 @@
         android:focusable="true"
         android:focusableInTouchMode="true">
 
-        <!-- ══════ 卡片 1：接口配置 ══════ -->
+        <!-- ══════ Tab 栏 ══════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/card_surface"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/space_lg"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
+            android:orientation="horizontal"
             android:layout_marginBottom="4dp">
 
-            <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
-                <TextView style="@style/SettingLabel"
-                    android:text="@string/set_base_url"
-                    android:labelFor="@id/etBaseUrl" />
-                <EditText android:id="@+id/etBaseUrl" style="@style/SettingInput"
-                    android:inputType="textUri"
-                    android:hint="@string/set_base_url_hint" />
+            <TextView android:id="@+id/btnTabSettings"
+                style="@style/ModelChip"
+                android:text="@string/tab_settings" />
+            <TextView android:id="@+id/btnTabModels"
+                style="@style/ModelChip"
+                android:text="@string/tab_models" />
+        </LinearLayout>
+
+        <!-- ══════ Tab 1：设置 ══════ -->
+        <LinearLayout
+            android:id="@+id/settingsTab"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- 卡片 1：接口配置 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/space_lg"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginBottom="4dp">
+
+                <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                    <TextView style="@style/SettingLabel"
+                        android:text="@string/set_base_url"
+                        android:labelFor="@id/etBaseUrl" />
+                    <EditText android:id="@+id/etBaseUrl" style="@style/SettingInput"
+                        android:inputType="textUri"
+                        android:hint="@string/set_base_url_hint" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/SettingRow">
+                    <TextView style="@style/SettingLabel"
+                        android:text="@string/set_api_key"
+                        android:labelFor="@id/etApiKey" />
+                    <EditText android:id="@+id/etApiKey" style="@style/SettingInput"
+                        android:inputType="textPassword" />
+                    <TextView android:id="@+id/btnToggleKey"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="8dp"
+                        android:textSize="13sp"
+                        android:textColor="@color/accent_solid"
+                        android:text="@string/set_show_key" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/SettingRow">
+                    <TextView style="@style/SettingLabel"
+                        android:text="@string/set_asr_model"
+                        android:labelFor="@id/etAsrModel" />
+                    <EditText android:id="@+id/etAsrModel" style="@style/SettingInput" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/SettingRow">
+                    <TextView style="@style/SettingLabel"
+                        android:text="@string/set_chat_model"
+                        android:labelFor="@id/etChatModel" />
+                    <EditText android:id="@+id/etChatModel" style="@style/SettingInput" />
+                </LinearLayout>
+
+                <!-- 朗读 TTS 模型（音色在「模型」Tab 里选） -->
+                <LinearLayout style="@style/SettingRow">
+                    <TextView style="@style/SettingLabel"
+                        android:text="TTS 模型"
+                        android:labelFor="@id/etTtsModel" />
+                    <EditText android:id="@+id/etTtsModel" style="@style/SettingInput"
+                        android:hint="mimo-v2.5-tts" />
+                </LinearLayout>
             </LinearLayout>
 
-            <LinearLayout style="@style/SettingRow">
-                <TextView style="@style/SettingLabel"
-                    android:text="@string/set_api_key"
-                    android:labelFor="@id/etApiKey" />
-                <EditText android:id="@+id/etApiKey" style="@style/SettingInput"
-                    android:inputType="textPassword" />
-                <TextView android:id="@+id/btnToggleKey"
-                    android:layout_width="wrap_content"
+            <!-- 卡片 2：系统提示词 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/space_lg"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginBottom="4dp">
+
+                <TextView android:id="@+id/etSysPromptLabel" style="@style/SettingHeader"
+                    android:text="@string/set_sys_prompt"
+                    android:labelFor="@id/etSysPrompt" />
+                <EditText android:id="@+id/etSysPrompt" style="@style/SettingField"
+                    android:layout_height="72dp"
+                    android:gravity="top|start"
+                    android:inputType="textMultiLine|textNoSuggestions"
+                    android:scrollbars="vertical" />
+            </LinearLayout>
+
+            <!-- 卡片 3：悬浮窗外观 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/space_lg"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginBottom="4dp">
+
+                <TextView style="@style/SettingHeader"
+                    android:text="@string/set_appearance" />
+
+                <LinearLayout style="@style/SettingRow">
+                    <TextView style="@style/SettingLabel"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="@string/set_font_size" />
+                    <TextView android:id="@+id/btnFontMinus" style="@style/SettingStepper"
+                        android:text="-" />
+                    <TextView android:id="@+id/tvFontValue" style="@style/SettingValue" />
+                    <TextView android:id="@+id/btnFontPlus" style="@style/SettingStepper"
+                        android:text="+" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/SettingRow">
+                    <TextView style="@style/SettingLabel"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="@string/set_width" />
+                    <TextView android:id="@+id/btnWidthMinus" style="@style/SettingStepper"
+                        android:text="-" />
+                    <TextView android:id="@+id/tvWidthValue" style="@style/SettingValue" />
+                    <TextView android:id="@+id/btnWidthPlus" style="@style/SettingStepper"
+                        android:text="+" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 按钮 -->
+            <Button android:id="@+id/btnSave"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="15sp"
+                android:text="@string/set_save" />
+
+            <Button android:id="@+id/btnReset"
+                style="@style/AppBtnSecondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="14sp"
+                android:text="@string/set_reset" />
+        </LinearLayout>
+
+        <!-- ══════ Tab 2：模型 ══════ -->
+        <LinearLayout
+            android:id="@+id/modelsTab"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- 运行模式 + 占用 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/space_lg"
+                android:paddingTop="@dimen/space_md"
+                android:paddingBottom="@dimen/space_md"
+                android:layout_marginBottom="@dimen/space_sm">
+
+                <TextView style="@style/SettingHeader"
+                    android:layout_marginTop="0dp"
+                    android:text="@string/models_mode_title" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="8dp"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="@dimen/space_sm">
+
+                    <TextView android:id="@+id/btnModeAuto"
+                        style="@style/ModelChip"
+                        android:text="@string/models_mode_auto" />
+                    <TextView android:id="@+id/btnModeOnline"
+                        style="@style/ModelChip"
+                        android:text="@string/models_mode_online" />
+                    <TextView android:id="@+id/btnModeOffline"
+                        style="@style/ModelChip"
+                        android:text="@string/models_mode_offline" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_sm"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_tertiary"
+                    android:text="@string/models_mode_hint" />
+
+                <TextView android:id="@+id/tvModelSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_sm"
                     android:textSize="13sp"
-                    android:textColor="@color/accent_solid"
-                    android:text="@string/set_show_key" />
+                    android:textColor="@color/text_secondary" />
+
+                <!-- 离线识别用哪个模型（只列已装的） -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_md"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary"
+                    android:text="@string/models_pick_asr" />
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:layout_marginTop="4dp">
+                    <LinearLayout android:id="@+id/asrModelChips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
             </LinearLayout>
 
-            <LinearLayout style="@style/SettingRow">
-                <TextView style="@style/SettingLabel"
-                    android:text="@string/set_asr_model"
-                    android:labelFor="@id/etAsrModel" />
-                <EditText android:id="@+id/etAsrModel" style="@style/SettingInput" />
+            <!-- 朗读音色（在线 mimo） -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/space_lg"
+                android:paddingTop="@dimen/space_md"
+                android:paddingBottom="@dimen/space_md"
+                android:layout_marginBottom="@dimen/space_sm">
+
+                <TextView style="@style/SettingHeader"
+                    android:layout_marginTop="0dp"
+                    android:text="@string/set_tts_voice_hint" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_sm"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary"
+                    android:text="@string/set_tts_voice_en" />
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:layout_marginTop="4dp">
+                    <LinearLayout android:id="@+id/voiceEnChips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_md"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary"
+                    android:text="@string/set_tts_voice_zh" />
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:layout_marginTop="4dp">
+                    <LinearLayout android:id="@+id/voiceZhChips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
             </LinearLayout>
 
-            <LinearLayout style="@style/SettingRow">
-                <TextView style="@style/SettingLabel"
-                    android:text="@string/set_chat_model"
-                    android:labelFor="@id/etChatModel" />
-                <EditText android:id="@+id/etChatModel" style="@style/SettingInput" />
+            <!-- 下载源 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/space_lg"
+                android:paddingTop="@dimen/space_md"
+                android:paddingBottom="@dimen/space_md"
+                android:layout_marginBottom="@dimen/space_sm">
+
+                <TextView style="@style/SettingHeader"
+                    android:layout_marginTop="0dp"
+                    android:text="@string/models_source_title" />
+
+                <EditText android:id="@+id/etModelSource"
+                    style="@style/SettingField"
+                    android:layout_marginTop="@dimen/space_sm"
+                    android:inputType="textUri"
+                    android:textSize="13sp"
+                    android:hint="@string/models_source_hint" />
+
+                <Button android:id="@+id/btnSaveSource"
+                    style="@style/AppBtnSecondary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_sm"
+                    android:textSize="14sp"
+                    android:text="@string/models_source_save" />
+
+                <Button android:id="@+id/btnRestoreSource"
+                    style="@style/AppBtnSecondary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="14sp"
+                    android:text="@string/models_source_restore" />
             </LinearLayout>
 
-            <!-- 朗读 TTS 配置 -->
-            <LinearLayout style="@style/SettingRow">
-                <TextView style="@style/SettingLabel"
-                    android:text="TTS 模型"
-                    android:labelFor="@id/etTtsModel" />
-                <EditText android:id="@+id/etTtsModel" style="@style/SettingInput"
-                    android:hint="mimo-v2.5-tts" />
-            </LinearLayout>
-
-            <LinearLayout style="@style/SettingRow">
-                <TextView style="@style/SettingLabel"
-                    android:text="声音"
-                    android:labelFor="@id/etTtsVoice" />
-                <EditText android:id="@+id/etTtsVoice" style="@style/SettingInput"
-                    android:hint="Mia" />
-            </LinearLayout>
+            <!-- 模型列表（运行时动态填充） -->
+            <LinearLayout
+                android:id="@+id/modelList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
         </LinearLayout>
-
-        <!-- ══════ 卡片 2：系统提示词 ══════ -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/card_surface"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/space_lg"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:layout_marginBottom="4dp">
-
-            <TextView android:id="@+id/etSysPromptLabel" style="@style/SettingHeader"
-                android:text="@string/set_sys_prompt"
-                android:labelFor="@id/etSysPrompt" />
-            <EditText android:id="@+id/etSysPrompt" style="@style/SettingField"
-                android:layout_height="72dp"
-                android:gravity="top|start"
-                android:inputType="textMultiLine|textNoSuggestions"
-                android:scrollbars="vertical" />
-        </LinearLayout>
-
-        <!-- ══════ 卡片 3：悬浮窗外观 ══════ -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/card_surface"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/space_lg"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:layout_marginBottom="4dp">
-
-            <TextView style="@style/SettingHeader"
-                android:text="@string/set_appearance" />
-
-            <LinearLayout style="@style/SettingRow">
-                <TextView style="@style/SettingLabel"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:text="@string/set_font_size" />
-                <TextView android:id="@+id/btnFontMinus" style="@style/SettingStepper"
-                    android:text="-" />
-                <TextView android:id="@+id/tvFontValue" style="@style/SettingValue" />
-                <TextView android:id="@+id/btnFontPlus" style="@style/SettingStepper"
-                    android:text="+" />
-            </LinearLayout>
-
-            <LinearLayout style="@style/SettingRow">
-                <TextView style="@style/SettingLabel"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:text="@string/set_width" />
-                <TextView android:id="@+id/btnWidthMinus" style="@style/SettingStepper"
-                    android:text="-" />
-                <TextView android:id="@+id/tvWidthValue" style="@style/SettingValue" />
-                <TextView android:id="@+id/btnWidthPlus" style="@style/SettingStepper"
-                    android:text="+" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- ══════ 按钮 ══════ -->
-        <Button android:id="@+id/btnSave"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="15sp"
-            android:text="@string/set_save" />
-
-        <Button android:id="@+id/btnReset"
-            style="@style/AppBtnSecondary"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="14sp"
-            android:text="@string/set_reset" />
 
     </LinearLayout>
 </ScrollView>

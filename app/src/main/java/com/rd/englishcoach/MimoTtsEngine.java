@@ -5,17 +5,39 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.ArrayDeque;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * 基于 mimo-v2.5-tts 的 {@link SpeechPlayer} 实现。
  * 网络请求在后台线程，播放/回调在主线程。
+ *
+ * <p><b>为什么必须分段合成：</b>长文本整段发给 TTS 会失败（真机：1000 词直接报错，
+ * 之后兜底到系统朗读也失败，用户看到的是「系统朗读初始化失败」——根因被兜底错误盖住了）。
+ * 所以按句切成 ≤{@link #MAX_TTS_CHARS} 字符的片段逐段合成。</p>
+ *
+ * <p><b>边合成边播（流水线）</b>：合成一段就立刻开播，同时后台继续合成后面的段。
+ * 整段文本有几百字时，若等全部合成完再播，用户要干等十几秒；
+ * 流水线让首段出声时间与文本长度无关。段与段之间若合成来不及，中间会有短暂停顿——
+ * 这是可接受的，好过整体晚出声。</p>
+ *
+ * <p>缓存按「片段」粒度（{@code key#i}）：同一段回答重复朗读时逐段命中，不必重合成。</p>
  */
 public final class MimoTtsEngine implements SpeechPlayer {
 
     private static final String TAG = "MimoTts";
 
+    /**
+     * 单次合成的文本上限（字符）。
+     *
+     * <p>上游没给出确切限制，但真机在 1000 词（约 5000 字符）时必失败，所以按 300 保守切。
+     * 分段有流水线兜底，多几次请求不会拖慢首段出声。</p>
+     */
+    static final int MAX_TTS_CHARS = 300;
+
+    private final Context ctx;
     private final Prefs prefs;
     private final AudioPlayer audioPlayer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -25,23 +47,30 @@ public final class MimoTtsEngine implements SpeechPlayer {
     /** 代数计数：stop()/新 speak 时递增，在途的网络合成结果据此作废。 */
     private int generation;
 
+    // ── 分段播放队列（只在主线程访问） ─────────────────────
+    private final ArrayDeque<Chunk> queue = new ArrayDeque<>();
+    /** 是否正在播某一段。 */
+    private boolean playing;
+    /** 后台是否还在合成（合成未完但队列暂时空，不能报 IDLE）。 */
+    private boolean producing;
+
     public MimoTtsEngine(Context ctx) {
-        this.prefs = new Prefs(ctx);
-        this.audioPlayer = new AudioPlayer(ctx);
+        this.ctx = ctx.getApplicationContext();
+        this.prefs = new Prefs(this.ctx);
+        this.audioPlayer = new AudioPlayer(this.ctx);
     }
 
     @Override
     public void speak(String key, String text, String langHint) {
         if (text == null || text.isEmpty()) return;
 
-        // 检查 key 为空时的提示
         if (prefs.apiKey().isEmpty()) {
-            notifyState(key, SpeechPlayer.State.ERROR, "请先到设置页填 API Key");
+            notifyState(key, State.ERROR, ctx.getString(R.string.msg_no_api_key));
             return;
         }
 
-        // 同 key 再点 = 停止
-        if (key.equals(currentKey) && audioPlayer.isPlaying()) {
+        // 同 key 再点 = 停止（LOADING 期间 isSpeaking 为 false，所以要连队列/合成状态一起判）
+        if (key.equals(currentKey) && (playing || producing || audioPlayer.isPlaying())) {
             stop();
             return;
         }
@@ -49,54 +78,71 @@ public final class MimoTtsEngine implements SpeechPlayer {
         generation++; // 作废在途的合成结果
         final int gen = generation;
         currentKey = key;
+        queue.clear();
+        playing = false;
 
-        // 检查缓存
-        byte[] cached = audioPlayer.getCached(key);
-        if (cached != null) {
-            play(key, cached);
-            return;
-        }
+        final List<String> chunks = TextChunker.split(text, MAX_TTS_CHARS);
+        final String voice = pickVoice(langHint);
+        producing = true;
 
-        // 网络请求
-        notifyState(key, SpeechPlayer.State.LOADING, null);
+        notifyState(key, State.LOADING, null);
         exec.execute(() -> {
-            try {
-                String model = prefs.ttsModel().isEmpty() ? "mimo-v2.5-tts" : prefs.ttsModel();
-                String voice = pickVoice(langHint);
-                byte[] wav = TtsClient.synthesize(
-                        prefs.baseUrl(), prefs.apiKey(), model, voice, text, "wav");
-
-                mainHandler.post(() -> {
-                    if (gen != generation || !key.equals(currentKey)) {
-                        return; // 已 stop() 或已切到新 key：丢弃过期结果
+            for (int i = 0; i < chunks.size(); i++) {
+                if (gen != generation) return;
+                byte[] wav = audioPlayer.getCached(chunkKey(key, i));
+                if (wav == null) {
+                    try {
+                        String model = prefs.ttsModel().isEmpty() ? "mimo-v2.5-tts" : prefs.ttsModel();
+                        wav = TtsClient.synthesize(prefs.baseUrl(), prefs.apiKey(), model, voice,
+                                chunks.get(i), "wav");
+                    } catch (Exception e) {
+                        Log.e(TAG, "synthesize failed (chunk " + i + "/" + chunks.size()
+                                + "): " + e.getMessage());
+                        final String msg = ctx.getString(R.string.speak_online_failed,
+                                e.getMessage() != null ? e.getMessage() : e.toString());
+                        mainHandler.post(() -> {
+                            if (gen != generation) return;
+                            producing = false;
+                            queue.clear();
+                            notifyState(key, State.ERROR, msg);
+                        });
+                        return;
                     }
-                    play(key, wav);
-                });
-            } catch (Exception e) {
-                Log.e(TAG, "synthesize failed: " + e.getMessage());
+                }
+                final byte[] w = wav;
+                final int index = i;
                 mainHandler.post(() -> {
-                    if (gen != generation || !key.equals(currentKey)) return; // 过期错误不报
-                    notifyState(key, SpeechPlayer.State.ERROR, e.getMessage());
+                    if (gen != generation) return;
+                    queue.add(new Chunk(chunkKey(key, index), w));
+                    if (!playing) playNext(key);
                 });
             }
+            mainHandler.post(() -> {
+                if (gen != generation) return;
+                producing = false;
+                if (!playing && queue.isEmpty()) notifyState(key, State.IDLE, null);
+            });
         });
     }
 
     @Override
     public void stop() {
         generation++; // 取消在途合成
-        boolean wasPlaying = audioPlayer.isPlaying();
+        boolean wasActive = playing || producing || audioPlayer.isPlaying();
         String key = currentKey;
+        producing = false;
+        playing = false;
+        queue.clear();
         audioPlayer.stop();
         currentKey = null;
-        if (wasPlaying && key != null) {
-            notifyState(key, SpeechPlayer.State.IDLE, null); // 让按钮颜色复位
+        if (wasActive && key != null) {
+            notifyState(key, State.IDLE, null); // 让按钮颜色复位
         }
     }
 
     @Override
     public boolean isSpeaking() {
-        return audioPlayer.isPlaying();
+        return playing || audioPlayer.isPlaying();
     }
 
     @Override
@@ -110,13 +156,35 @@ public final class MimoTtsEngine implements SpeechPlayer {
         this.listener = l;
     }
 
-    /** 播放 WAV 并把播放结果映射成朗读状态（缓存命中与网络合成两条路径共用）。 */
-    private void play(String key, byte[] wav) {
-        audioPlayer.play(key, wav, new AudioPlayer.Listener() {
-            @Override public void onComplete(String k) { notifyState(k, State.IDLE, null); }
-            @Override public void onError(String k, String err) { notifyState(k, State.ERROR, err); }
+    // ── 内部 ──────────────────────────────────────────────
+
+    /** 队列里有就接着播；播完且合成也结束才报 IDLE（否则会中途闪一下 IDLE）。 */
+    private void playNext(String key) {
+        Chunk next = queue.poll();
+        if (next == null) {
+            playing = false;
+            if (!producing) notifyState(key, State.IDLE, null);
+            return;
+        }
+        playing = true;
+        audioPlayer.play(next.key, next.wav, new AudioPlayer.Listener() {
+            @Override public void onComplete(String k) {
+                if (key.equals(currentKey)) playNext(key);
+            }
+            @Override public void onError(String k, String err) {
+                if (!key.equals(currentKey)) return;
+                producing = false;
+                queue.clear();
+                playing = false;
+                notifyState(key, State.ERROR, err);
+            }
         });
         notifyState(key, State.PLAYING, null);
+    }
+
+    /** 片段缓存键：按片段粒度缓存，重复朗读逐段命中。 */
+    private static String chunkKey(String key, int index) {
+        return key + "#" + index;
     }
 
     /** 根据语言提示选择声音。Prefs 已保证非空（空值回落默认声音），这里不再重复兜底。 */
@@ -127,5 +195,16 @@ public final class MimoTtsEngine implements SpeechPlayer {
 
     private void notifyState(String key, State state, String error) {
         if (listener != null) listener.onState(key, state, error);
+    }
+
+    /** 一段已合成的音频 + 它的缓存键。 */
+    private static final class Chunk {
+        final String key;
+        final byte[] wav;
+
+        Chunk(String key, byte[] wav) {
+            this.key = key;
+            this.wav = wav;
+        }
     }
 }

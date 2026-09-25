@@ -79,13 +79,14 @@ public class ListeningKeyGuardTest {
     }
 
     @Test
-    public void doPause_guardsBeforeTogglingListen() throws Exception {
+    public void doPause_doesNotBlockOnApiKey_becauseOfflineAsrNeedsNoKey() throws Exception {
+        // v4：识别改为「离线优先 → 在线」降级链，暂停不再拦 API Key，
+        // 否则装了离线模型也暂停不了。守卫在 OnlineAsrEngine / ApiClient 里。
         String body = methodBody(captureService(), "private void doPause()");
         assertNotNull("必须有 doPause", body);
-        int guard = body.indexOf("requireApiKey()");
-        int toggle = body.indexOf("listen.toggle()");
-        assertTrue("doPause 必须做 key 守卫", guard >= 0);
-        assertTrue("守卫必须在暂停采集之前，未填 key 时不改变监听状态", toggle >= 0 && guard < toggle);
+        assertFalse("doPause 不得再拦 API Key", body.contains("requireApiKey()"));
+        assertTrue("必须真的走识别链", body.contains("asrChain.transcribe("));
+        assertTrue("暂停采集仍必须发生（与识别成败无关）", body.indexOf("listen.toggle()") >= 0);
     }
 
     @Test

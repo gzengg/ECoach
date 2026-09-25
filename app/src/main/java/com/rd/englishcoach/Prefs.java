@@ -35,6 +35,13 @@ public final class Prefs {
     public static final String DEF_TTS_VOICE_EN     = "Mia";
     public static final String DEF_TTS_VOICE_ZH     = "冰糖";
 
+    /**
+     * mimo TTS 支持的音色（接口实测只有这几个，传其它值报 Unknown voice）。
+     * 前 5 个中文声，后 4 个英文声。
+     */
+    public static final String[] TTS_VOICES_ZH = {"mimo_default", "冰糖", "茉莉", "苏打", "白桦"};
+    public static final String[] TTS_VOICES_EN = {"Mia", "Chloe", "Milo", "Dean"};
+
     // ── 悬浮窗外观 ──
     public static final int DEF_FONT_SP   = 15;
     public static final int MIN_FONT_SP   = 10;
@@ -43,6 +50,28 @@ public final class Prefs {
     public static final int DEF_WIDTH_DP  = 300;
     public static final int MIN_WIDTH_DP  = 200;
     public static final int MAX_WIDTH_DP  = 500;
+
+    // ── 离线识别 / 离线朗读（v4） ──
+    /**
+     * 运行模式（识别与朗读共用）。
+     * 自动（默认）= 装了离线模型就用离线，否则走在线；
+     * **不装任何离线模型时行为与旧版完全一致**。
+     */
+    public static final int MODE_AUTO    = 0;
+    public static final int MODE_ONLINE  = 1;
+    public static final int MODE_OFFLINE = 2;
+    public static final int DEF_MODE     = MODE_AUTO;
+
+    /**
+     * 模型下载源（可填多个，逗号/空白分隔，**按顺序尝试**）。
+     *
+     * <p><b>只用官方源</b>：GitHub 官方 release（sherpa-onnx 的识别/朗读包，上游只发 {@code .tar.bz2}）。
+     * 不内置任何第三方镜像。官方源在墙内可能连不上（实测时好时坏）——
+     * 拉不动时用「本地导入」：在能上网的机器上下好包再导入。</p>
+     */
+    public static final String DEF_MODEL_BASE_URL =
+              "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models"
+            + ",https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models";
 
     private static final String NAME = "cfg";
 
@@ -61,6 +90,15 @@ public final class Prefs {
     public String ttsModel()        { return sp.getString("tts_model",      DEF_TTS_MODEL); }
     public String ttsVoiceEnglish() { return sp.getString("tts_voice_en",   DEF_TTS_VOICE_EN); }
     public String ttsVoiceChinese() { return sp.getString("tts_voice_zh",   DEF_TTS_VOICE_ZH); }
+
+    public String modelBaseUrl() { return sp.getString("model_base_url", DEF_MODEL_BASE_URL); }
+
+    /** 离线识别用哪个模型（id）；未装时引擎会自动回落到其它已装档。 */
+    public String offlineAsrModelId() { return sp.getString("offline_asr_model", ""); }
+
+    public int engineMode() {
+        return clamp(sp.getInt("engine_mode", DEF_MODE), MODE_AUTO, MODE_OFFLINE);
+    }
 
     public int fontSp() {
         return clamp(sp.getInt("font_sp", DEF_FONT_SP), MIN_FONT_SP, MAX_FONT_SP);
@@ -81,6 +119,10 @@ public final class Prefs {
 
     public void putFontSp(int v)         { sp.edit().putInt("font_sp",     clamp(v, MIN_FONT_SP, MAX_FONT_SP)).apply(); }
     public void putWidthDp(int v)        { sp.edit().putInt("width_dp",    clamp(v, MIN_WIDTH_DP, MAX_WIDTH_DP)).apply(); }
+    public void putModelBaseUrl(String v){ sp.edit().putString("model_base_url", nullSafe(v, DEF_MODEL_BASE_URL)).apply(); }
+    public void putOfflineAsrModelId(String v) { sp.edit().putString("offline_asr_model", v == null ? "" : v).apply(); }
+    public void putEngineMode(int v)     { sp.edit().putInt("engine_mode", clamp(v, MODE_AUTO, MODE_OFFLINE)).apply(); }
+    public void putTtsVoiceChinese(String v)   { sp.edit().putString("tts_voice_zh", nullSafe(v, DEF_TTS_VOICE_ZH)).apply(); }
 
     public void resetAll() { sp.edit().clear().apply(); }
 

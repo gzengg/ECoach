@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  选择芯片（识别模型 / 朗读音色）：选中态由代码切背景。
+  用 PickChip 而不是 ModelChip —— 后者带 layout_weight=1，会把多个芯片等分挤压导致文字换行。
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/PickChip" />

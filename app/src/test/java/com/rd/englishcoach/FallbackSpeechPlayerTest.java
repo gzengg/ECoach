@@ -95,7 +95,10 @@ public class FallbackSpeechPlayerTest {
 
         long errors = rec.events.stream().filter(e -> e.contains("ERROR")).count();
         assertEquals("两者都失败只应对外抛一次 ERROR", 1, errors);
-        assertTrue(rec.events.get(rec.events.size() - 1).contains("f-fail"));
+        String last = rec.events.get(rec.events.size() - 1);
+        // 真机踩过：只报兜底的「系统朗读初始化失败」，用户完全看不到在线朗读为什么挂
+        assertTrue("必须报出主引擎（根因）的原因: " + last, last.contains("p-fail"));
+        assertTrue("兜底的原因也要带上: " + last, last.contains("f-fail"));
     }
 
     @Test

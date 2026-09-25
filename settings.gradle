@@ -16,6 +16,9 @@ dependencyResolutionManagement {
         maven { url 'https://maven.aliyun.com/repository/central' }
         google()
         mavenCentral()
+        // 离线识别运行时（sherpa-onnx）只发在 JitPack，Maven Central 没有。
+        // 实测：JitPack 可达但较慢（首次可能触发构建），不要因为"慢"就删掉。
+        maven { url 'https://jitpack.io' }
     }
 }
 

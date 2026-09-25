@@ -20,6 +20,8 @@ public final class FallbackSpeechPlayer implements SpeechPlayer {
     private boolean active;
     /** 当前 key 的 primary 是否已失败（防止 primary 再次报错触发无限降级）。 */
     private boolean primaryFailed;
+    /** primary 的失败原因：兜底也失败时对外报它（那才是根因）。 */
+    private String primaryError;
 
     public FallbackSpeechPlayer(SpeechPlayer primary, SpeechPlayer fallback) {
         this.primary = primary;
@@ -52,6 +54,7 @@ public final class FallbackSpeechPlayer implements SpeechPlayer {
         pendingLang = langHint;
         active = true;
         primaryFailed = false;
+        primaryError = null;
         primary.speak(key, text, langHint);
     }
 
@@ -61,6 +64,7 @@ public final class FallbackSpeechPlayer implements SpeechPlayer {
         if (state == State.ERROR) {
             if (primaryFailed) return; // 已在降级流程，忽略 primary 的后续报错
             primaryFailed = true;
+            primaryError = error;
             // 降级系统 TTS 重试同一段文本，不对外抛 primary 的错
             fallback.speak(key, pendingText, pendingLang);
             return;
@@ -71,6 +75,12 @@ public final class FallbackSpeechPlayer implements SpeechPlayer {
     /** fallback 状态回调：透传；这里再 ERROR = 两者都失败，对外抛出。 */
     private void onFallbackState(String key, State state, String error) {
         if (key == null || !key.equals(currentKey)) return; // 过期事件
+        if (state == State.ERROR && primaryError != null) {
+            // 两者都失败：**先报主引擎的原因**（那才是根因），否则用户看到的永远是
+            // 兜底的「系统朗读初始化失败」，完全定位不到在线朗读为什么挂（真机踩过）。
+            forward(key, State.ERROR, primaryError + " | " + error);
+            return;
+        }
         forward(key, state, error);
     }
 

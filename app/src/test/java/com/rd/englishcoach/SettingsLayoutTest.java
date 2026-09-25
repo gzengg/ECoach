@@ -138,9 +138,15 @@ public class SettingsLayoutTest {
                 + padding(root, styles, "paddingTop")
                 + padding(root, styles, "paddingBottom");
         for (Element child : childElements(root)) {
+            if (isGone(child)) continue;
             total += marginTop(child, styles) + extentDp(child, styles);
         }
         return total;
+    }
+
+    /** 隐藏的 Tab 不参与高度估算（v4 起设置页与模型合并成两个 Tab，同时只显示一个）。 */
+    private static boolean isGone(Element e) {
+        return "gone".equals(e.getAttribute("android:visibility"));
     }
 
     /** 一个控件（或一行横向容器）占用的垂直高度。 */
@@ -156,6 +162,7 @@ public class SettingsLayoutTest {
                 && "vertical".equals(attr(e, styles, "orientation"))) {
             double total = 0;
             for (Element c : childElements(e)) {
+                if (isGone(c)) continue;
                 total += marginTop(c, styles) + extentDp(c, styles);
             }
             total += padding(e, styles, "paddingTop") + padding(e, styles, "paddingBottom");
@@ -281,6 +288,16 @@ public class SettingsLayoutTest {
         return out;
     }
 
+    /** 读源文件原文（契约断言用，与 ListeningKeyGuardTest 的 readFile 同款）。 */
+    private static String readFile(String path) throws Exception {
+        java.io.File f = new java.io.File(path);
+        assertTrue("文件不存在: " + f.getAbsolutePath(), f.exists());
+        try (java.util.Scanner sc = new java.util.Scanner(f, "UTF-8")) {
+            sc.useDelimiter("\\A");
+            return sc.hasNext() ? sc.next() : "";
+        }
+    }
+
     private static Document parseResource(String path) throws Exception {
         InputStream is = SettingsLayoutTest.class.getResourceAsStream(path);
         assertNotNull("classpath 上找不到资源: " + path, is);
@@ -290,4 +307,34 @@ public class SettingsLayoutTest {
         is.close();
         return doc;
     }
+
+    // ── 选择芯片布局（回归：芯片被挤压导致文字换行） ──────────
+
+    @Test
+    public void pickerChips_useWeightlessStyle() throws Exception {
+        // 回归：ModelChip 带 layout_weight=1，且**子视图里覆盖不掉**，
+        // 多个芯片会被等分挤压、文字换行（真机截图：中文音色 5 个时「白桦」被压成两行）。
+        String chip = readFile("src/main/res/layout/item_chip.xml");
+        assertTrue("选择芯片必须用 PickChip（wrap_content、无 weight）",
+                chip.contains("@style/PickChip"));
+        assertFalse("不得复用带 weight 的 ModelChip", chip.contains("@style/ModelChip"));
+
+        String styles = readFile("src/main/res/values/styles.xml");
+        int pick = styles.indexOf("name=\"PickChip\"");
+        assertTrue("styles.xml 必须有 PickChip", pick >= 0);
+        String pickBlock = styles.substring(pick, Math.min(styles.length(), pick + 600));
+        assertTrue("PickChip 宽度必须是 wrap_content", pickBlock.contains("wrap_content"));
+        assertTrue("PickChip 不得带 weight", pickBlock.contains("<item name=\"android:layout_weight\">0</item>"));
+    }
+
+    @Test
+    public void pickerRows_areHorizontallyScrollable() throws Exception {
+        // 芯片多了要能横向滚动，而不是被挤压换行
+        String layout = readFile("src/main/res/layout/activity_settings.xml");
+        int count = 0, idx = 0;
+        while ((idx = layout.indexOf("HorizontalScrollView", idx + 1)) > 0) count++;
+        assertEquals("三个选择行（识别模型 / 英文音色 / 中文音色）都应在 HorizontalScrollView 里"
+                + "（开+闭共 6 处）", 6, count);
+    }
+
 }

@@ -63,8 +63,10 @@ public class CaptureService extends Service {
     private ScreenTextCapture screenCapture;
     private GrabManager grabManager;
     private GrabOverlay grabOverlay;
-    // 朗读链：mimo TTS 优先，系统 TTS 兜底
+    // 朗读链（v4）：离线优先 → 在线 → 系统 TTS（最后应急）
     private SpeechPlayer speechPlayer;
+    // 识别链（v4）：离线优先 → 在线；实例长期持有，模型才能缓存住
+    private AsrChain asrChain;
 
     // ── 生命周期 ────────────────────────────
 
@@ -78,10 +80,31 @@ public class CaptureService extends Service {
         bgHandler = new Handler(bgThread.getLooper());
         networkExec = Executors.newSingleThreadExecutor();
 
-        // 朗读链：mimo TTS 优先，报错自动降级系统 TTS
-        speechPlayer = new FallbackSpeechPlayer(
-                new MimoTtsEngine(this), new SystemTtsEngine(this));
+        // 朗读链（v4）：按运行模式组装——离线 Piper 优先（装了才用），在线 mimo 兼底，
+        // 系统 TTS 只作最后应急。没装离线模型时行为与旧版完全一致。
+        speechPlayer = buildSpeechChain();
         speechPlayer.setListener(this::onSpeechState);
+        asrChain = new AsrChain(this);
+    }
+
+    /**
+     * 组装朗读降级链。
+     *
+     * <p>自动（默认）= 离线 → 在线 → 系统 TTS；只选在线/离线时就不装另一边，避免无谓的失败重试。
+     * 离线 Piper 未安装时它自己会报「不可用」并让链回落在线。</p>
+     */
+    private SpeechPlayer buildSpeechChain() {
+        SpeechPlayer offline = new SherpaTtsEngine(this);
+        SpeechPlayer online = new MimoTtsEngine(this);
+        SpeechPlayer system = new SystemTtsEngine(this);
+        switch (new Prefs(this).engineMode()) {
+            case Prefs.MODE_ONLINE:
+                return new FallbackSpeechPlayer(online, system);
+            case Prefs.MODE_OFFLINE:
+                return new FallbackSpeechPlayer(offline, system);
+            default:
+                return new FallbackSpeechPlayer(offline, new FallbackSpeechPlayer(online, system));
+        }
     }
 
     /** 朗读状态反馈：改喇叭按钮颜色；ERROR = 两者都失败，面板提示，不崩（§11.2）。 */
@@ -138,6 +161,11 @@ public class CaptureService extends Service {
             speechPlayer.stop();
             speechPlayer.release();
             speechPlayer = null;
+        }
+        if (asrChain != null) {
+            // 释放离线识别模型占的 native 内存（一次加载可能上百 MB）
+            asrChain.release();
+            asrChain = null;
         }
         broadcastState(false, ServiceEvents.REASON_STOPPED);
         current = null;
@@ -297,8 +325,8 @@ public class CaptureService extends Service {
     // ── 暂停 → 上传整段 → ASR → 显示原文 ────
 
     private void doPause() {
-        // 未填 API Key：直接提示并中止，不切暂停状态
-        if (!requireApiKey()) return;
+        // 不拦 API Key：离线识别不需要 key（守卫在 OnlineAsrEngine / ApiClient 里）。
+        // 两者都不可用时由 AsrChain 抛出可读提示，不阻止用户暂停。
         // 暂停采集
         listen.toggle();
         if (panel != null) panel.setListening(listen.isListening());
@@ -309,7 +337,13 @@ public class CaptureService extends Service {
         }
 
         byte[] pcm = buffer.snapshotAndClear();
-        if (panel != null) panel.setStatus(getString(R.string.msg_recognizing));
+        if (panel != null) {
+            // 把「实际录到多长」显示出来：识别不完整时第一眼就能分清是
+            // 「没录到」还是「录到了但识别截断」（真机查过这个，见 OfflineAsrEngine 类注释）
+            panel.setStatus(getString(R.string.msg_recognizing_audio,
+                    String.format(java.util.Locale.US, "%.1f 秒",
+                            pcm.length / 2.0 / sampleRate)));
+        }
 
         networkExec.execute(() -> {
             try {
@@ -318,10 +352,12 @@ public class CaptureService extends Service {
                     postMessage(getString(R.string.msg_too_short));
                     return;
                 }
-                Prefs prefs = new Prefs(CaptureService.this);
-                byte[] wav = WavUtil.toWav(trimmed, sampleRate);
-                String transcript = ApiClient.transcribe(wav,
-                        prefs.baseUrl(), prefs.apiKey(), prefs.asrModel());
+                // v4：整段 PCM 交给识别链（离线优先 → 在线），WAV 封装在引擎内完成
+                String transcript = asrChain.transcribe(trimmed, sampleRate);
+                if (transcript.isEmpty()) {
+                    postMessage(getString(R.string.msg_asr_empty));
+                    return;
+                }
                 Log.i(TAG, "ASR: " + transcript);
 
                 // 转录入对话历史 + 显示卡片
@@ -330,7 +366,10 @@ public class CaptureService extends Service {
                 if (history != null) history.appendTranscript(transcript);
                 if (panel != null) {
                     panel.addTurn(turn);
-                    panel.setStatus(listen.statusLabel());
+                    // 状态栏显示识别诊断（音频多长 / 切了几段 / 多少字）：
+                    // 真机出现过「1 分钟只识别出一个词」，这行能直接分清是哪一环丢的
+                    String note = asrChain.lastNote();
+                    panel.setStatus(note != null ? note : listen.statusLabel());
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Pause/ASR failed", e);
@@ -468,8 +507,12 @@ public class CaptureService extends Service {
                 mainHandler.post(() -> { panel.showMessage(r); panel.showRestore(); });
             }
             @Override public void onTranslationFailed(String src, String r) {
+                // 面向用户的失败信息必须是可读中文（不许把 API 英文原文抛给用户）
+                int res = Translator.errorRes(r);
+                final String msg = res == R.string.grab_translate_other
+                        ? getString(R.string.grab_translate_other, r) : getString(res);
                 mainHandler.post(() -> {
-                    panel.showMessage("翻译失败: " + r + "，已保留原文");
+                    panel.showMessage(msg);
                     panel.showRestore();
                     panel.switchToTabExternal(1);
                     addGrabCard(src, "(翻译失败)");

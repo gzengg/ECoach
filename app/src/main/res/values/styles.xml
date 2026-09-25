@@ -148,4 +148,48 @@
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
+    <!--
+      模型 / 音色选择芯片与行内动作按钮（v4）。
+      未选中用 bg_chip、选中用 pill_glass（与悬浮窗 Tab 同一套做法，由代码切换背景）。
+    -->
+    <style name="ModelChip">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_height">@dimen/height_chip</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_marginEnd">4dp</item>
+        <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!--
+      选择芯片（识别模型 / 朗读音色）：**不能复用 ModelChip**——
+      它带 layout_weight=1，在子视图里覆盖不掉，多个芯片会被等分挤压、文字换行
+      （真机截图：中文音色 5 个时「白桦」被压成两行）。这里用 wrap_content 自然宽度。
+    -->
+    <style name="PickChip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_weight">0</item>
+        <item name="android:layout_height">@dimen/height_chip</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_marginEnd">4dp</item>
+        <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:paddingLeft">10dp</item>
+        <item name="android:paddingRight">10dp</item>
+    </style>
+
+    <style name="ModelAction">        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">@dimen/height_chip</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingLeft">14dp</item>
+        <item name="android:paddingRight">14dp</item>
+        <item name="android:layout_marginEnd">@dimen/space_sm</item>
+        <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/accent_solid</item>
+    </style>
+
 </resources>

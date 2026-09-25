@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  模型行（v4）：名称 + 元信息（体积/许可/期望文件名）+ 动作按钮 + 下载进度条。
+  进度条复用 level_bar（音量条那套圆角轨道 + 渐变进度），不新增 drawable。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/card_surface"
+    android:orientation="vertical"
+    android:paddingHorizontal="@dimen/space_lg"
+    android:paddingVertical="@dimen/space_md"
+    android:layout_marginBottom="@dimen/space_sm">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView android:id="@+id/tvModelName"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="@color/text_primary"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView android:id="@+id/tvModelState"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/text_tertiary" />
+    </LinearLayout>
+
+    <TextView android:id="@+id/tvModelMeta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textSize="12sp"
+        android:textColor="@color/text_tertiary" />
+
+    <ProgressBar android:id="@+id/modelProgress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="@dimen/space_sm"
+        android:max="100"
+        android:progressDrawable="@drawable/level_bar"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="@dimen/space_sm">
+
+        <TextView android:id="@+id/btnModelDownload"
+            style="@style/ModelAction"
+            android:text="@string/model_action_download" />
+
+        <TextView android:id="@+id/btnModelImport"
+            style="@style/ModelAction"
+            android:text="@string/model_action_import" />
+
+        <TextView android:id="@+id/btnModelDelete"
+            style="@style/ModelAction"
+            android:text="@string/model_action_delete" />
+    </LinearLayout>
+</LinearLayout>

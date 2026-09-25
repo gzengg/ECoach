@@ -155,7 +155,8 @@ public final class GrabManager {
                 // 翻译
                 setState(State.TRANSLATING);
                 try {
-                    String translated = Translator.translate(src);
+                    // 用 translateLong：取词是整屏 OCR，实测能到 580 字符，超过 MyMemory 单次 500 字符上限
+                    String translated = Translator.translateLong(src);
                     mainHandler.post(() -> {
                         if (callback != null) callback.onTranslationResult(src, translated);
                     });
