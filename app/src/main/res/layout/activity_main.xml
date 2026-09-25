@@ -250,9 +250,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingHorizontal="12dp"
+            android:paddingHorizontal="16dp"
             android:paddingTop="4dp"
-            android:paddingBottom="12dp"
+            android:paddingBottom="16dp"
             android:visibility="gone">
 
             <LinearLayout
@@ -344,9 +344,9 @@
             android:layout_height="match_parent"
             android:fitsSystemWindows="true"
             android:clipToPadding="false"
-            android:paddingHorizontal="12dp"
+            android:paddingHorizontal="16dp"
             android:paddingTop="4dp"
-            android:paddingBottom="12dp"
+            android:paddingBottom="16dp"
             android:visibility="gone">
 
             <!-- focusableInTouchMode：抢初始焦点，打开时不弹键盘、不自己滚走 -->
@@ -366,9 +366,9 @@
                     android:background="@drawable/card_surface"
                     android:orientation="vertical"
                     android:paddingHorizontal="16dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp"
-                    android:layout_marginBottom="4dp">
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginBottom="8dp">
 
                     <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
                         <TextView style="@style/SettingLabel"
@@ -425,15 +425,15 @@
                     android:background="@drawable/card_surface"
                     android:orientation="vertical"
                     android:paddingHorizontal="16dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp"
-                    android:layout_marginBottom="4dp">
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginBottom="8dp">
 
                     <TextView android:id="@+id/etSysPromptLabel" style="@style/SettingHeader"
                         android:text="@string/set_sys_prompt"
                         android:labelFor="@id/etSysPrompt" />
                     <EditText android:id="@+id/etSysPrompt" style="@style/SettingField"
-                        android:layout_height="72dp"
+                        android:layout_height="96dp"
                         android:gravity="top|start"
                         android:inputType="textMultiLine|textNoSuggestions"
                         android:scrollbars="vertical" />
@@ -446,9 +446,9 @@
                     android:background="@drawable/card_surface"
                     android:orientation="vertical"
                     android:paddingHorizontal="16dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp"
-                    android:layout_marginBottom="4dp">
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginBottom="8dp">
 
                     <TextView style="@style/SettingHeader"
                         android:text="@string/set_appearance" />
@@ -485,9 +485,9 @@
                     android:background="@drawable/card_surface"
                     android:orientation="vertical"
                     android:paddingHorizontal="16dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp"
-                    android:layout_marginBottom="4dp">
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginBottom="8dp">
 
                     <TextView style="@style/SettingHeader"
                         android:text="@string/set_tts_voice_hint" />
@@ -542,7 +542,7 @@
                 <Button android:id="@+id/btnSave"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="12dp"
                     android:textSize="15sp"
                     android:text="@string/set_save" />
 
@@ -550,7 +550,7 @@
                     style="@style/AppBtnSecondary"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="8dp"
                     android:textSize="14sp"
                     android:text="@string/set_reset" />
             </LinearLayout>

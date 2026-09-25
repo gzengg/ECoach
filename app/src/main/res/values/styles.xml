@@ -10,6 +10,9 @@
         <item name="android:statusBarColor">@color/bg_base</item>
         <item name="android:navigationBarColor">@color/bg_base</item>
         <item name="android:windowLightStatusBar">false</item>
+        <!-- 去掉系统标题栏：页面标题由主界面顶栏提供，否则出现双层标题 -->
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
         <!-- 主题色 -->
         <item name="android:colorPrimary">@color/bg_base</item>
         <item name="android:colorPrimaryDark">@color/bg_base</item>
@@ -90,7 +93,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:orientation">horizontal</item>
         <item name="android:gravity">center_vertical</item>
-        <item name="android:layout_marginTop">6dp</item>
+        <item name="android:layout_marginTop">8dp</item>
     </style>
 
     <style name="SettingLabel">
