@@ -18,8 +18,11 @@ import android.widget.TextView;
  * <p><b>角标（导航随上下文动态变化）：</b>监听中 → 「监听」Tab 呼吸点（复用 dot_active）；
  * 历史有新记录 → 「历史」Tab 点；自动模式下识别模型缺失 → 「模型」Tab warn 点。
  * 由 MainActivity 按事件调用 {@link #setBadge}。</p>
+ *
+ * <p>⚠️ 从 XML 实例化的自定义 View 必须是 public（LayoutInflater 反射创建），
+ * 否则 setContentView 直接 InflateException 闪退（真机踩过）。</p>
  */
-final class BottomBar extends LinearLayout {
+public final class BottomBar extends LinearLayout {
 
     /** Tab 序号（与 view_bottom_bar.xml 里的顺序一致）。 */
     static final int TAB_LISTEN = 0;
@@ -40,7 +43,7 @@ final class BottomBar extends LinearLayout {
 
     interface Listener { void onTabSelected(int tab); }
 
-    BottomBar(Context ctx) {
+    public BottomBar(Context ctx) {
         super(ctx);
         setOrientation(VERTICAL);
         LayoutInflater.from(ctx).inflate(R.layout.view_bottom_bar, this, true);
@@ -55,7 +58,7 @@ final class BottomBar extends LinearLayout {
         style();
     }
 
-    /** XML 预览用构造器（运行时不走）。 */
+    /** XML 实例化走这个构造器（LayoutInflater 反射要求 public）。 */
     public BottomBar(Context ctx, AttributeSet attrs) { this(ctx); }
 
     void setListener(Listener l) { listener = l; }
