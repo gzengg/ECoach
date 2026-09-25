@@ -162,12 +162,15 @@ final class OfflineAsrEngine implements AsrEngine {
         long t3 = System.currentTimeMillis();
         long vadMs = t1 - t0;
         long asrMs = t2 - t1 + (t3 - t2);   // 整段重试的那次也算进去
+        String totalSec = String.format(Locale.US, "%.1f", (t3 - t0) / 1000.0);
+        // 悬浮窗只显示这三个数（太长会被最小尺寸的拖动栏裁掉）；
+        // 完整诊断（切段路径 + 分阶段耗时）只进日志，排障看 logcat
         lastNote = ctx.getString(R.string.asr_note,
-                String.format(Locale.US, "%.1f", audioSeconds), path, text.length(),
-                String.format(Locale.US, "%.1f", (t3 - t0) / 1000.0),
-                String.format(Locale.US, "%.1f", vadMs / 1000.0),
-                String.format(Locale.US, "%.1f", asrMs / 1000.0));
-        Log.i(TAG, "offline ASR(" + spec.id + ") " + lastNote + " -> " + text);
+                String.format(Locale.US, "%.1f", audioSeconds), text.length(), totalSec);
+        Log.i(TAG, "offline ASR(" + spec.id + ") 音频 " + String.format(Locale.US, "%.1f", audioSeconds)
+                + "s · " + path + " · " + text.length() + " 字 · 耗时 " + totalSec
+                + "s（切句 " + String.format(Locale.US, "%.1f", vadMs / 1000.0)
+                + " + 识别 " + String.format(Locale.US, "%.1f", asrMs / 1000.0) + "） -> " + text);
         return text;
     }
 

@@ -77,10 +77,10 @@
     <string name="msg_recognizing">识别中…</string>
     <string name="msg_recognizing_audio">识别中…（音频 %1$s）</string>
     <!-- 识别诊断（真机排障用）：音频多长 · 走了哪条切段路径 · 多少字 · 各阶段耗时 -->
-    <string name="asr_note">音频 %1$s 秒 · %2$s · %3$d 字 · 耗时 %4$s 秒（切句 %5$s + 识别 %6$s）</string>
+    <!-- 悬浮窗那行要短：完整诊断（切段路径 + 分阶段耗时）进日志，见 OfflineAsrEngine -->
+    <string name="asr_note">音频 %1$s 秒 · %2$d 字 · 耗时 %3$s 秒</string>
     <string name="asr_path_vad">VAD %1$d 段合并 %2$d 块（语音 %3$s 秒）</string>
     <string name="asr_path_whole">整段切 %1$d 段</string>
-    <string name="asr_path_online">在线 %1$d 段</string>
     <string name="msg_grab_recognizing">取词识别中…</string>
     <string name="grab_translate_too_long">翻译失败：文本太长，免费接口单次上限 500 字符（已保留原文）</string>
     <string name="grab_translate_empty">翻译失败：没有可翻译的文字</string>

@@ -52,11 +52,10 @@ final class OnlineAsrEngine implements AsrEngine {
             }
         }
         double elapsed = (System.currentTimeMillis() - t0) / 1000.0;
+        // 与离线同格式的短摘要（悬浮窗那行要短，见 strings.asr_note）
         lastNote = ctx.getString(R.string.asr_note,
                 String.format(java.util.Locale.US, "%.1f", pcm.length / 2.0 / sampleRate),
-                ctx.getString(R.string.asr_path_online, chunks.size()), out.length(),
-                String.format(java.util.Locale.US, "%.1f", elapsed),
-                "0", String.format(java.util.Locale.US, "%.1f", elapsed));
+                out.length(), String.format(java.util.Locale.US, "%.1f", elapsed));
         return out.toString();
     }
 }

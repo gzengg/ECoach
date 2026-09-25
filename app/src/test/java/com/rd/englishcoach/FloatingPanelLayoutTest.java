@@ -229,6 +229,38 @@ public class FloatingPanelLayoutTest {
                 dimens.contains("<dimen name=\"height_cta_sm\">44dp</dimen>"));
     }
 
+    // ── 状态行不能被裁（最小尺寸下拖动栏只有 40dp） ──
+
+    @Test
+    public void statusLine_isShortAndCappedToTwoLines() throws Exception {
+        // 回归：诊断行原本把「VAD 2 段合并 3 块（语音 48.7 秒）」和分阶段耗时都塞进来，
+        // 三行文字在 40dp 的拖动栏里被裁掉半行（真机截图）。完整诊断进日志，不进这行。
+        String strings = readResourceText("/values/strings.xml");
+        int noteAt = strings.indexOf("asr_note");
+        assertTrue("strings.xml 里找不到 asr_note", noteAt > 0);
+        int noteOpen = strings.indexOf('>', noteAt);
+        int noteClose = strings.indexOf("</string>", noteOpen);
+        String fmt = strings.substring(noteOpen + 1, noteClose);
+
+        int placeholders = 0;
+        for (int i = 1; i <= 9; i++) {
+            if (fmt.contains("%" + i + "$")) placeholders++;
+        }
+        assertEquals("asr_note 只该有 3 个占位（音频秒 / 字数 / 耗时）", 3, placeholders);
+
+        String sample = String.format(fmt, "49.0", 870, "23.4");
+        assertTrue("实际文案 " + sample.length() + " 字太长，最小尺寸下会裁行：" + sample,
+                sample.length() <= 30);
+        assertFalse("切段路径不该进状态行（进日志）：" + sample, sample.contains("VAD"));
+        assertFalse("分阶段耗时不该进状态行（进日志）：" + sample, sample.contains("切句"));
+
+        // 安全网：即便文案再长，也最多两行 + 省略号，不出现半行
+        assertEquals("状态行必须限两行", "2",
+                elementById("tvStatus").getAttribute("android:maxLines"));
+        assertEquals("超长要省略而不是裁半行", "end",
+                elementById("tvStatus").getAttribute("android:ellipsize"));
+    }
+
     private static String readResourceText(String path) throws Exception {
         InputStream is = FloatingPanelLayoutTest.class.getResourceAsStream(path);
         assertNotNull("classpath 上找不到资源: " + path, is);
