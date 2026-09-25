@@ -72,7 +72,7 @@ dependencies {
     implementation 'com.google.mlkit:text-recognition-chinese:16.0.1'
     // 离线识别运行时（v4）：ASR + VAD 共用一份。
     // 只发在 JitPack；arm64 的 .so 由 abiFilters 控制，不会把 4 种架构都打进去。
-    implementation 'com.github.k2-fsa.sherpa-onnx:sherpa-onnx:v1.13.5'
+    implementation 'com.github.k2-fsa.sherpa-onnx:sherpa-onnx:v1.13.7'
     // 仅用于解压模型包：上游 sherpa-onnx 发的是 .tar.bz2，JDK 只有 zip/gzip，没有 bzip2。
     // 纯 Java、无 native。（AGENTS §1 规则 1 白名单）
     implementation 'org.apache.commons:commons-compress:1.27.1'
