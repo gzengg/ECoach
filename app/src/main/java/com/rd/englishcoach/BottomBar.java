@@ -43,8 +43,17 @@ public final class BottomBar extends LinearLayout {
 
     interface Listener { void onTabSelected(int tab); }
 
-    public BottomBar(Context ctx) {
-        super(ctx);
+    public BottomBar(Context ctx) { this(ctx, null); }
+
+    /**
+     * XML 实例化走这个构造器。
+     * ⚠️ 必须 {@code super(ctx, attrs)} 把 XML 属性（含 android:id）交给父类：
+     * 真机踩过——签名是 public 但内部 {@code this(ctx)} 丢弃了 attrs，
+     * 视图能创建却没有 id，MainActivity 里 {@code findViewById(R.id.bottomBar)} 返回 null，
+     * 第一次 setListener 就 NPE 闪退。
+     */
+    public BottomBar(Context ctx, AttributeSet attrs) {
+        super(ctx, attrs);
         setOrientation(VERTICAL);
         LayoutInflater.from(ctx).inflate(R.layout.view_bottom_bar, this, true);
         for (int i = 0; i < TAB_IDS.length; i++) {
@@ -57,9 +66,6 @@ public final class BottomBar extends LinearLayout {
         }
         style();
     }
-
-    /** XML 实例化走这个构造器（LayoutInflater 反射要求 public）。 */
-    public BottomBar(Context ctx, AttributeSet attrs) { this(ctx); }
 
     void setListener(Listener l) { listener = l; }
 

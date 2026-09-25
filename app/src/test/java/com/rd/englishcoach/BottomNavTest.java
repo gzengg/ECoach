@@ -93,6 +93,22 @@ public class BottomNavTest {
         assertFalse("不得使用 FLAG_LAYOUT_NO_LIMITS", src.contains("FLAG_LAYOUT_NO_LIMITS"));
     }
 
+    /**
+     * 回归：XML 自定义 View 的 attrs 构造器必须 {@code super(ctx, attrs)}。
+     * 真机踩过：类是 public 但内部 {@code this(ctx)} 丢弃 attrs →
+     * android:id 未设置 → findViewById 返回 null → 启动即 NPE 闪退。
+     */
+    @Test
+    public void bottomBar_attrsConstructorPassesAttrsToSuper() throws Exception {
+        String src = readFile("src/main/java/com/rd/englishcoach/BottomBar.java");
+        assertTrue("XML 自定义 View 必须是 public（LayoutInflater 反射要求）",
+                src.contains("public final class BottomBar"));
+        assertTrue("attrs 构造器必须 super(ctx, attrs)，否则 android:id 丢失、findViewById 返回 null",
+                src.contains("super(ctx, attrs)"));
+        assertFalse("attrs 构造器不得再 this(ctx) 委托（会丢弃 attrs）",
+                src.contains("this(ctx);"));
+    }
+
     // ── 容器接线 ──────────────────────────────
 
     @Test
