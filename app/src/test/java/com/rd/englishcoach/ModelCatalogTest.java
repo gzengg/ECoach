@@ -399,6 +399,14 @@ public class ModelCatalogTest {
     }
 
     @Test
+    public void threadsFor_keepsBaselineForOthersOnlyQwen3Differs() {
+        // 回归：线程数实验只能动 Qwen3。SenseVoice / Whisper 的 4 线程是实测基线，
+        // 跟着一起改会把已验证的速度/功耗一起推翻。
+        assertEquals(4, OfflineAsrEngine.threadsFor(false));
+        assertEquals(6, OfflineAsrEngine.threadsFor(true));
+    }
+
+    @Test
     public void resample_downsamplesToExpectedLength() {
         assertEquals(1600, OfflineAsrEngine.resample(new float[4800], 48000, 16000).length);
         float[] same = {0.1f, 0.2f};
