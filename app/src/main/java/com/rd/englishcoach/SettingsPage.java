@@ -19,7 +19,7 @@ import java.util.function.Consumer;
  *   <li>音色选择从「模型」Tab 迁回这里（它是在线 TTS 的属性），改为行式入口
  *       + Bottom Sheet 横向芯片选择（sheet 内容横向可滚，芯片不会被挤压换行）；</li>
  *   <li>「保存」不再 finish()（四 Tab 后设置只是其中一个页面，退出去会把整个应用带走），
- *       改为应用 + Toast。</li>
+ *       改为应用 + Toast；保存后顺带收起键盘，并通知主界面刷新 API Key 检测状态。</li>
  * </ul>
  */
 final class SettingsPage {
@@ -109,6 +109,9 @@ final class SettingsPage {
         prefs.putChatModel(etChatModel.getText().toString().trim());
         prefs.putSysPrompt(etSysPrompt.getText().toString().trim());
         prefs.putTtsModel(etTtsModel.getText().toString().trim());
+        // 收起键盘（否则键盘挡住下半页，看不到保存结果），并让 API Key 检测状态立刻生效
+        act.hideKeyboard();
+        act.onConfigSaved();
         Toast.makeText(act, act.getString(R.string.set_saved), Toast.LENGTH_SHORT).show();
     }
 

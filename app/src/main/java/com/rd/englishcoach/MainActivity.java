@@ -10,13 +10,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Rect;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.provider.Settings;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 /**
@@ -362,6 +368,62 @@ public class MainActivity extends Activity {
 
     int dp(int v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    // ── 键盘收起 与 保存后的状态刷新 ──────────
+
+    /**
+     * 点空白处收起键盘（命中输入框则保留）。
+     *
+     * <p>为什么在 Activity 层拦：内容区各页都是 ScrollView / 可点容器，监听挂在某个 View 上时
+     * 子 View 会先把事件吃掉，根本收不到「点空白」那一下。{@code dispatchTouchEvent} 能看到全部事件。</p>
+     */
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            View content = findViewById(R.id.content);
+            if (content == null || !hitsAnyEditText(content, ev)) hideKeyboard();
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    /** 触摸点是否落在某个可见输入框里（递归：输入框可能被行容器包着）。 */
+    private static boolean hitsAnyEditText(View v, MotionEvent ev) {
+        if (v instanceof EditText && v.getVisibility() == View.VISIBLE && hits(v, ev)) return true;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                if (hitsAnyEditText(g.getChildAt(i), ev)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hits(View v, MotionEvent ev) {
+        Rect r = new Rect();
+        return v.getGlobalVisibleRect(r)
+                && r.contains((int) ev.getRawX(), (int) ev.getRawY());
+    }
+
+    /** 收起键盘（设置页输入框与历史搜索框共用）。 */
+    void hideKeyboard() {
+        View focus = getCurrentFocus();
+        IBinder token = focus != null
+                ? focus.getWindowToken()
+                : getWindow().getDecorView().getWindowToken();
+        if (focus != null) focus.clearFocus();
+        InputMethodManager imm =
+                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null && token != null) imm.hideSoftInputFromWindow(token, 0);
+    }
+
+    /**
+     * 设置页保存后调用：让「API Key 检测状态」立刻生效。
+     *
+     * <p>真机踩过：填完 Key 保存后，监听页仍挂着「未配 API Key」的引导，用户以为没保存成功。</p>
+     */
+    void onConfigSaved() {
+        updateStatus();
     }
 
     // ── 进程退出兜底 ──────────────────────
