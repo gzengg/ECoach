@@ -416,6 +416,27 @@ final class OfflineAsrEngine implements AsrEngine {
         releaseVad();
     }
 
+    /**
+     * 预热：后台把离线识别模型加载好（服务开始监听时调用）。
+     *
+     * <p>模型是懒加载的，首次识别要现加载（1~3 秒，Qwen3 那种 838MB 档更久）——用户说完第一句
+     * 还得干等这段。参照实现（白云歌 BaiYunGe 的 warmup）就是这么做的：把加载等待挪到用户开口之前。</p>
+     *
+     * <p>⚠️ 只加载、不跑静音推理：ONNX Runtime 的开销主要在 session 创建（图优化 + 权重载入），
+     * 不像桌面 Vulkan 还要额外付「首次推理编译 GPU 管线」的钱（那个实测约 5 秒）。</p>
+     */
+    void preload() {
+        try {
+            ModelCatalog.Spec spec = pickSpec();
+            if (spec == null) return;   // 没装离线模型：无从预热，等在线链路
+            recognizerFor(spec);
+            Log.i(TAG, "preloaded ASR model " + spec.id);
+        } catch (Exception e) {
+            // 预热失败不报错：真正识别时还会再试一次，并按正常路径给出可读错误
+            Log.w(TAG, "preload failed: " + e.getMessage());
+        }
+    }
+
     // ── 纯函数（可单测） ──────────────────────────────────
 
     /** PCM16 小端 → float 采样（[-1,1]）。 */

@@ -85,6 +85,14 @@ public class CaptureService extends Service {
         speechPlayer = buildSpeechChain();
         speechPlayer.setListener(this::onSpeechState);
         asrChain = new AsrChain(this);
+
+        // 预热离线识别模型（借 BaiYunGe 的 warmup 思路）：开始监听即后台加载，
+        // 用户说完第一句时模型已就绪，不用再干等 1~3 秒。
+        final AsrChain chain = asrChain;
+        networkExec.execute(() -> {
+            // 服务被销毁/重建后这个任务就不该再跑（免得白加载一次模型）
+            if (asrChain == chain) chain.warmUp();
+        });
     }
 
     /**

@@ -98,4 +98,14 @@ final class AsrChain {
     void release() {
         if (offline instanceof OfflineAsrEngine) ((OfflineAsrEngine) offline).release();
     }
+
+    /**
+     * 预热离线识别模型（服务开始监听时后台调用）：把首次识别的加载等待挪到用户开口之前。
+     *
+     * <p>显式「仅在线」时不预热——那会白加载几百 MB 的离线模型。</p>
+     */
+    void warmUp() {
+        if (prefs.engineMode() == Prefs.MODE_ONLINE) return;
+        if (offline instanceof OfflineAsrEngine) ((OfflineAsrEngine) offline).preload();
+    }
 }
