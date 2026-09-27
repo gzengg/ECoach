@@ -64,7 +64,7 @@ public final class MimoTtsEngine implements SpeechPlayer {
     public void speak(String key, String text, String langHint) {
         if (text == null || text.isEmpty()) return;
 
-        if (prefs.apiKey().isEmpty()) {
+        if (prefs.ttsApiKey().isEmpty()) {
             notifyState(key, State.ERROR, ctx.getString(R.string.msg_no_api_key));
             return;
         }
@@ -92,8 +92,8 @@ public final class MimoTtsEngine implements SpeechPlayer {
                 byte[] wav = audioPlayer.getCached(chunkKey(key, i));
                 if (wav == null) {
                     try {
-                        String model = prefs.ttsModel().isEmpty() ? "mimo-v2.5-tts" : prefs.ttsModel();
-                        wav = TtsClient.synthesize(prefs.baseUrl(), prefs.apiKey(), model, voice,
+                        String model = prefs.ttsModel().isEmpty() ? Prefs.DEF_TTS_MODEL : prefs.ttsModel();
+                        wav = TtsClient.synthesize(prefs.ttsBaseUrl(), prefs.ttsApiKey(), model, voice,
                                 chunks.get(i), "wav");
                     } catch (Exception e) {
                         Log.e(TAG, "synthesize failed (chunk " + i + "/" + chunks.size()

@@ -359,7 +359,7 @@
                 android:focusable="true"
                 android:focusableInTouchMode="true">
 
-                <!-- 分组 1：接口（单向垂直：标签在上、输入在下） -->
+                <!-- 分组 1：问答模型 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -370,9 +370,12 @@
                     android:paddingBottom="8dp"
                     android:layout_marginBottom="8dp">
 
+                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
+                        android:text="@string/set_group_chat" />
+
                     <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
                         <TextView style="@style/SettingLabel"
-                            android:text="@string/set_base_url"
+                            android:text="@string/set_label_endpoint"
                             android:labelFor="@id/etBaseUrl" />
                         <EditText android:id="@+id/etBaseUrl" style="@style/SettingInput"
                             android:inputType="textUri"
@@ -381,40 +384,110 @@
 
                     <LinearLayout style="@style/SettingRow">
                         <TextView style="@style/SettingLabel"
-                            android:text="@string/set_api_key"
+                            android:text="@string/set_label_key"
                             android:labelFor="@id/etApiKey" />
                         <EditText android:id="@+id/etApiKey" style="@style/SettingInput"
                             android:inputType="textPassword" />
-                        <TextView android:id="@+id/btnToggleKey"
-                            android:layout_width="wrap_content"
-                            android:layout_height="48dp"
-                            android:gravity="center"
-                            android:paddingHorizontal="10dp"
-                            android:textSize="13sp"
-                            android:textColor="@color/accent_solid"
+                        <TextView android:id="@+id/btnToggleKey" style="@style/SettingTrailing"
                             android:text="@string/set_show_key" />
                     </LinearLayout>
 
                     <LinearLayout style="@style/SettingRow">
                         <TextView style="@style/SettingLabel"
-                            android:text="@string/set_asr_model"
-                            android:labelFor="@id/etAsrModel" />
-                        <EditText android:id="@+id/etAsrModel" style="@style/SettingInput" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_chat_model"
+                            android:text="@string/set_label_model"
                             android:labelFor="@id/etChatModel" />
                         <EditText android:id="@+id/etChatModel" style="@style/SettingInput" />
+                        <TextView android:id="@+id/btnPickChat" style="@style/SettingTrailing"
+                            android:text="@string/set_pick" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- 分组 2：识别模型（qwen-audio 系列走 DashScope，端点是完整 URL） -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_surface"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
+                        android:text="@string/set_group_asr" />
+
+                    <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_endpoint"
+                            android:labelFor="@id/etAsrBaseUrl" />
+                        <EditText android:id="@+id/etAsrBaseUrl" style="@style/SettingInput"
+                            android:inputType="textUri"
+                            android:hint="@string/set_asr_url_hint" />
                     </LinearLayout>
 
                     <LinearLayout style="@style/SettingRow">
                         <TextView style="@style/SettingLabel"
-                            android:text="@string/set_tts_model"
+                            android:text="@string/set_label_key"
+                            android:labelFor="@id/etAsrKey" />
+                        <EditText android:id="@+id/etAsrKey" style="@style/SettingInput"
+                            android:inputType="textPassword"
+                            android:hint="@string/set_key_follow_hint" />
+                        <TextView android:id="@+id/btnToggleAsrKey" style="@style/SettingTrailing"
+                            android:text="@string/set_show_key" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_model"
+                            android:labelFor="@id/etAsrModel" />
+                        <EditText android:id="@+id/etAsrModel" style="@style/SettingInput" />
+                        <TextView android:id="@+id/btnPickAsr" style="@style/SettingTrailing"
+                            android:text="@string/set_pick" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- 分组 3：朗读模型（mimo TTS 走 OpenAI 兼容的 chat/completions） -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_surface"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
+                        android:text="@string/set_group_tts" />
+
+                    <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_endpoint"
+                            android:labelFor="@id/etTtsBaseUrl" />
+                        <EditText android:id="@+id/etTtsBaseUrl" style="@style/SettingInput"
+                            android:inputType="textUri"
+                            android:hint="@string/set_base_url_hint" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_key"
+                            android:labelFor="@id/etTtsKey" />
+                        <EditText android:id="@+id/etTtsKey" style="@style/SettingInput"
+                            android:inputType="textPassword"
+                            android:hint="@string/set_key_follow_hint" />
+                        <TextView android:id="@+id/btnToggleTtsKey" style="@style/SettingTrailing"
+                            android:text="@string/set_show_key" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_model"
                             android:labelFor="@id/etTtsModel" />
                         <EditText android:id="@+id/etTtsModel" style="@style/SettingInput"
                             android:hint="mimo-v2.5-tts" />
+                        <TextView android:id="@+id/btnPickTts" style="@style/SettingTrailing"
+                            android:text="@string/set_pick" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -536,6 +609,38 @@
                             android:textSize="13sp"
                             android:textColor="@color/text_primary" />
                     </FrameLayout>
+
+                    <!-- 探测当前 TTS 模型的可选音色（mimo 这类会把可用音色回显在报错里） -->
+                    <TextView android:id="@+id/btnDetectVoices"
+                        style="@style/SettingTrailing"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/set_detect_voices" />
+                </LinearLayout>
+
+                <!-- 分组 7：诊断（在线接口连通性） -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_surface"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
+                        android:text="@string/set_diag" />
+
+                    <TextView android:id="@+id/btnDetectConnectivity"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:background="@drawable/btn_text"
+                        android:textSize="13sp"
+                        android:textColor="@color/accent_solid"
+                        android:text="@string/set_detect_connectivity" />
                 </LinearLayout>
 
                 <!-- 按钮 -->

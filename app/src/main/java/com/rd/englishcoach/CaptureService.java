@@ -412,7 +412,7 @@ public class CaptureService extends Service {
                 Prefs p = new Prefs(CaptureService.this);
                 String[][] msgs = conversation.buildMessages(p.sysPrompt());
                 String answer = ApiClient.answerWithHistory(msgs,
-                        p.baseUrl(), p.apiKey(), p.chatModel());
+                        p.chatBaseUrl(), p.apiKey(), p.chatModel());
                 Log.i(TAG, "Answer #" + turnId + ": " + answer);
                 // 清空上下文后迟到的回答不能再写进持久化历史（会挂到别的记录上）
                 boolean applied = conversation.completeAnswer(turnId, answer);
@@ -445,7 +445,7 @@ public class CaptureService extends Service {
                 Prefs p = new Prefs(CaptureService.this);
                 String[][] msgs = conversation.buildMessages(p.sysPrompt());
                 String answer = ApiClient.answerWithHistory(msgs,
-                        p.baseUrl(), p.apiKey(), p.chatModel());
+                        p.chatBaseUrl(), p.apiKey(), p.chatModel());
                 conversation.completeAnswer(qt.id, answer);
                 // 同上：清空上下文后迟到的回答不写持久化历史
                 if (conversation.findById(qt.id) != null && history != null) {
@@ -594,7 +594,7 @@ public class CaptureService extends Service {
     /** 朗读入口：未填 API Key → 明确提示，不发请求。 */
     private void speak(String key, String text, String langHint) {
         if (text == null || text.trim().isEmpty()) return;
-        if (new Prefs(this).apiKey().trim().isEmpty()) {
+        if (new Prefs(this).ttsApiKey().trim().isEmpty()) {
             postMessage(getString(R.string.msg_no_api_key));
             return;
         }

@@ -5,6 +5,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * mimo-v2.5-tts 请求封装。接口契约：
@@ -107,5 +110,48 @@ public final class TtsClient {
         String url = baseUrl + "/chat/completions";
         String resp = Http.postJson(url, apiKey, body, 120_000);
         return extractAudioBytes(resp);
+    }
+
+    // ── 音色探测 ─────────────────────
+
+    /** 探测用的非法 voice：服务端必定报 Unknown voice 并回显可用列表。 */
+    private static final String PROBE_VOICE = "__ec_voice_probe__";
+
+    /**
+     * 探测某个 TTS 模型的可选音色。
+     *
+     * <p>OpenAI 兼容的 TTS 没有「列音色」接口，但 mimo 这类服务在 voice 非法时会把可用音色
+     * 回显在报错里（实测 {@code error.param = "Unknown voice: x. Available voices: [a, b, c]"}）。
+     * 所以发一次明显不存在的 voice，从报错里解析列表。探测不到时返回空列表，由 UI 回退到手填。</p>
+     */
+    public static List<String> detectVoices(String baseUrl, String apiKey, String model) {
+        try {
+            String body = buildTtsBody("hi", model, PROBE_VOICE, "wav");
+            Http.postJson(baseUrl + "/chat/completions", apiKey, body, 30_000);
+            return Collections.emptyList(); // 探测请求反而成功 → 没有可解析的报错
+        } catch (ApiClient.ApiException e) {
+            return parseVoices(e.rawBody != null ? e.rawBody : e.getMessage());
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 从报错文本里解析 {@code Available voices: [a, b, c]}。纯函数，单测直接调。
+     * 解析不到返回空列表。
+     */
+    public static List<String> parseVoices(String message) {
+        List<String> out = new ArrayList<>();
+        if (message == null) return out;
+        int i = message.toLowerCase().indexOf("available voices");
+        if (i < 0) return out;
+        int open = message.indexOf('[', i);
+        int close = open < 0 ? -1 : message.indexOf(']', open + 1);
+        if (open < 0 || close < 0) return out;
+        for (String s : message.substring(open + 1, close).split(",")) {
+            String t = s.trim();
+            if (!t.isEmpty()) out.add(t);
+        }
+        return out;
     }
 }

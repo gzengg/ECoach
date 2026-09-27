@@ -209,6 +209,49 @@ public class ApiClientTest {
         }
     }
 
+    // ── ASR：DashScope 协议（v4.2） ────────────
+
+    @Test
+    public void buildAsrBody_dashScopeShape_withDataUriPrefix() throws Exception {
+        String body = ApiClient.buildAsrBody(new byte[]{1, 2, 3, 4}, "qwen-audio-3.0-asr-flash");
+        org.json.JSONObject o = new org.json.JSONObject(body);
+        assertEquals("qwen-audio-3.0-asr-flash", o.getString("model"));
+        String data = o.getJSONObject("input").getJSONArray("messages")
+                .getJSONObject(0).getJSONArray("content")
+                .getJSONObject(0).getJSONObject("input_audio").getString("data");
+        assertTrue("base64 必须带 data URI 前缀（实测裸 base64 返回 500）",
+                data.startsWith("data:audio/wav;base64,"));
+        assertEquals("wav", o.getJSONObject("parameters").getString("format"));
+    }
+
+    @Test
+    public void extractAsrText_prefersOutputText() throws Exception {
+        String json = "{\"output\":{\"text\":\"  hello world  \"},\"text\":\"ignored\"}";
+        assertEquals("hello world", ApiClient.extractAsrText(json));
+    }
+
+    @Test
+    public void extractAsrText_fallsBackToTopLevelText() throws Exception {
+        assertEquals("fallback", ApiClient.extractAsrText("{\"text\":\"fallback\"}"));
+    }
+
+    @Test
+    public void extractAsrText_silenceIsEmptyNotError() throws Exception {
+        // 静音时 text 为空，属正常（不是错误）
+        assertEquals("", ApiClient.extractAsrText(
+                "{\"sentence\":{},\"text\":\"\",\"output\":{\"text\":\"\"}}"));
+    }
+
+    @Test
+    public void extractAsrText_topLevelError_mapsToReadable() {
+        try {
+            ApiClient.extractAsrText("{\"error\":{\"message\":\"Invalid token (request id: abc)\"}}");
+            fail("should throw");
+        } catch (ApiClient.ApiException e) {
+            assertEquals(ApiClient.MSG_API_KEY_INVALID, e.getMessage());
+        }
+    }
+
     @Test
     public void answerWithHistory_emptyKey_throwsBeforeNetwork() throws Exception {
         try {

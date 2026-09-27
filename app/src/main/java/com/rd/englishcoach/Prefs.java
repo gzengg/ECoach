@@ -7,11 +7,23 @@ import android.content.SharedPreferences;
  * 默认值集中在这里定义，其他模块不要各自再写一份。
  */
 public final class Prefs {
-    // ── 服务端 API ──
-    public static final String DEF_BASE_URL   = "https://mimo.ezlook.top/v1";
-    public static final String DEF_API_KEY    = "";
-    public static final String DEF_ASR_MODEL  = "mimo-v2.5-asr";
-    public static final String DEF_CHAT_MODEL = "deepseek-flash";
+    // ── 服务端 API（三套独立：问答 / 识别 / 朗读，可分别指向不同服务商） ──
+    /** 问答接口（OpenAI 兼容）。 */
+    public static final String DEF_BASE_URL     = "https://tokendance.space/gateway/v1";
+    /** 识别接口：qwen-audio 系列走阿里云 DashScope 协议，端点是完整 URL（非 OpenAI 的 /v1 前缀）。 */
+    public static final String DEF_ASR_BASE_URL =
+              "https://tokendance.space/gateway/alibaba"
+            + "/api/v1/services/aigc/multimodal-generation/generation";
+    /** 朗读接口（mimo TTS 走 OpenAI 兼容的 chat/completions）。 */
+    public static final String DEF_TTS_BASE_URL = "https://tokendance.space/gateway/v1";
+    public static final String DEF_API_KEY      = "";
+    public static final String DEF_CHAT_MODEL   = "deepseek-v4.1-flash";
+    public static final String DEF_ASR_MODEL    = "qwen-audio-3.0-asr-flash";
+
+    /** v4.2 迁移用：识别旧版（mimo.ezlook.top）的默认值，命中才清掉，用户自定义的值不动。 */
+    private static final String LEGACY_BASE_URL   = "https://mimo.ezlook.top/v1";
+    private static final String LEGACY_ASR_MODEL  = "mimo-v2.5-asr";
+    private static final String LEGACY_CHAT_MODEL = "deepseek-flash";
 
     public static final String DEF_SYS_PROMPT =
             "You are helping a Chinese high school student prepare for the "
@@ -79,15 +91,50 @@ public final class Prefs {
 
     public Prefs(Context c) {
         sp = c.getApplicationContext().getSharedPreferences(NAME, Context.MODE_PRIVATE);
+        migrateLegacyDefaults();
+    }
+
+    /**
+     * 一次性迁移：旧默认服务是 mimo.ezlook.top，v4.2 起默认改为 tokendance。
+     * 只清掉「仍是旧默认值」的三项，落回新默认；用户改过的值原样保留。
+     */
+    private void migrateLegacyDefaults() {
+        if (sp.getBoolean("migrated_tokendance", false)) return;
+        SharedPreferences.Editor e = sp.edit();
+        if (LEGACY_BASE_URL.equals(sp.getString("base_url", ""))) e.remove("base_url");
+        if (LEGACY_ASR_MODEL.equals(sp.getString("asr_model", ""))) e.remove("asr_model");
+        if (LEGACY_CHAT_MODEL.equals(sp.getString("chat_model", ""))) e.remove("chat_model");
+        e.putBoolean("migrated_tokendance", true);
+        e.apply();
     }
 
     // ── 读 ──────────────────────────────────
-    public String baseUrl()   { return sp.getString("base_url",  DEF_BASE_URL); }
-    public String apiKey()    { return sp.getString("api_key",    DEF_API_KEY); }
-    public String asrModel()  { return sp.getString("asr_model",  DEF_ASR_MODEL); }
-    public String chatModel() { return sp.getString("chat_model", DEF_CHAT_MODEL); }
-    public String sysPrompt() { return sp.getString("sys_prompt", DEF_SYS_PROMPT); }
-    public String ttsModel()        { return sp.getString("tts_model",      DEF_TTS_MODEL); }
+    public String chatBaseUrl() { return sp.getString("base_url",  DEF_BASE_URL); }
+    public String apiKey()      { return sp.getString("api_key",   DEF_API_KEY); }
+    public String asrModel()    { return sp.getString("asr_model", DEF_ASR_MODEL); }
+    public String chatModel()   { return sp.getString("chat_model", DEF_CHAT_MODEL); }
+    public String sysPrompt()   { return sp.getString("sys_prompt", DEF_SYS_PROMPT); }
+    public String ttsModel()    { return sp.getString("tts_model", DEF_TTS_MODEL); }
+    public String asrBaseUrl()  { return sp.getString("asr_base_url", DEF_ASR_BASE_URL); }
+    public String ttsBaseUrl()  { return sp.getString("tts_base_url", DEF_TTS_BASE_URL); }
+
+    /**
+     * 识别 / 朗读的 Key：留空则回退用问答 Key（tokendance 一个 Key 通吃三个协议，免得填三遍）。
+     */
+    public String asrApiKey() { return keyFallback("asr_api_key"); }
+    public String ttsApiKey() { return keyFallback("tts_api_key"); }
+
+    /**
+     * 原始存储值（空 = 未单独设置，跟随问答 Key）。
+     * 设置页编辑用：要把「留空即跟随」如实显示为空，不能用回退后的值回填。
+     */
+    public String asrApiKeyRaw() { return sp.getString("asr_api_key", ""); }
+    public String ttsApiKeyRaw() { return sp.getString("tts_api_key", ""); }
+
+    private String keyFallback(String name) {
+        String v = sp.getString(name, "");
+        return (v == null || v.isEmpty()) ? apiKey() : v;
+    }
     public String ttsVoiceEnglish() { return sp.getString("tts_voice_en",   DEF_TTS_VOICE_EN); }
     public String ttsVoiceChinese() { return sp.getString("tts_voice_zh",   DEF_TTS_VOICE_ZH); }
 
@@ -109,9 +156,14 @@ public final class Prefs {
     }
 
     // ── 写 ──────────────────────────────────
-    public void putBaseUrl(String v)     { sp.edit().putString("base_url",  nullSafe(v, DEF_BASE_URL)).apply(); }
+    public void putChatBaseUrl(String v) { sp.edit().putString("base_url",  nullSafe(v, DEF_BASE_URL)).apply(); }
     public void putApiKey(String v)      { sp.edit().putString("api_key",    nullSafe(v, DEF_API_KEY)).apply(); }
     public void putAsrModel(String v)    { sp.edit().putString("asr_model",  nullSafe(v, DEF_ASR_MODEL)).apply(); }
+    public void putAsrBaseUrl(String v)  { sp.edit().putString("asr_base_url", nullSafe(v, DEF_ASR_BASE_URL)).apply(); }
+    public void putTtsBaseUrl(String v)  { sp.edit().putString("tts_base_url", nullSafe(v, DEF_TTS_BASE_URL)).apply(); }
+    /** 留空即「跟随问答 Key」：写空串，由 {@link #keyFallback} 回退。 */
+    public void putAsrApiKey(String v)   { sp.edit().putString("asr_api_key", v == null ? "" : v.trim()).apply(); }
+    public void putTtsApiKey(String v)   { sp.edit().putString("tts_api_key", v == null ? "" : v.trim()).apply(); }
     public void putChatModel(String v)   { sp.edit().putString("chat_model", nullSafe(v, DEF_CHAT_MODEL)).apply(); }
     public void putSysPrompt(String v)   { sp.edit().putString("sys_prompt", nullSafe(v, DEF_SYS_PROMPT)).apply(); }
     public void putTtsModel(String v)        { sp.edit().putString("tts_model",    nullSafe(v, DEF_TTS_MODEL)).apply(); }

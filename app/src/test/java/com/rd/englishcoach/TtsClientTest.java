@@ -124,6 +124,26 @@ public class TtsClientTest {
         TtsClient.extractAudioBytes(resp.toString());
     }
 
+    // ── parseVoices（音色动态检测） ─────────────
+
+    @Test
+    public void parseVoices_extractsAvailableList() {
+        String err = "{\"error\":{\"code\":\"400\",\"message\":\"Param Incorrect\","
+                + "\"param\":\"Unknown voice: x. Available voices: [mimo_default, 冰糖, Mia]\"}}";
+        java.util.List<String> v = TtsClient.parseVoices(err);
+        assertEquals(3, v.size());
+        assertEquals("mimo_default", v.get(0));
+        assertEquals("冰糖", v.get(1));
+        assertEquals("Mia", v.get(2));
+    }
+
+    @Test
+    public void parseVoices_noList_returnsEmpty() {
+        assertTrue(TtsClient.parseVoices("Param Incorrect").isEmpty());
+        assertTrue(TtsClient.parseVoices(null).isEmpty());
+        assertTrue(TtsClient.parseVoices("Available voices: []").isEmpty());
+    }
+
     /** 最简 base64 编码（测试用，不依赖 android.util.Base64）。 */
     private static final String B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     private static String simpleBase64(byte[] data) {

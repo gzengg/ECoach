@@ -53,8 +53,9 @@ final class Http {
             int code = conn.getResponseCode();
             String resp = readStream(code >= 400 ? conn.getErrorStream() : conn.getInputStream());
             if (code >= 400) {
-                // 不把原始 JSON / 网关 HTML 整段丢给用户，统一转成一句可读提示
-                throw new ApiClient.ApiException(code, ApiClient.friendlyError(code, resp));
+                // 不把原始 JSON / 网关 HTML 整段丢给用户，统一转成一句可读提示；
+                // 但原始体随异常带出，留给需要自己解析的调用方（如 TTS 音色探测）。
+                throw new ApiClient.ApiException(code, ApiClient.friendlyError(code, resp), resp);
             }
             return resp;
         } finally {

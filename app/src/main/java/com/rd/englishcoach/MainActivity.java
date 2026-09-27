@@ -327,9 +327,10 @@ public class MainActivity extends Activity {
         // 操作按钮按状态显隐：停止 / 清空上下文只在监听中可用
         btnStop.setVisibility(running ? View.VISIBLE : View.GONE);
         btnNewChat.setVisibility(running ? View.VISIBLE : View.GONE);
-        // 未配 API Key → 引导去「设置」Tab（离线识别可用时也一样提示，因为朗读/问答还需要）
-        tvListenHint.setVisibility(
-                prefs.apiKey().isEmpty() ? View.VISIBLE : View.GONE);
+        // 未配 API Key → 引导去「设置」Tab（三套 Key 全空才算未配；离线识别可用时也一样提示，因为朗读/问答还需要）
+        boolean noKey = prefs.apiKey().isEmpty()
+                && prefs.asrApiKey().isEmpty() && prefs.ttsApiKey().isEmpty();
+        tvListenHint.setVisibility(noKey ? View.VISIBLE : View.GONE);
         syncBadges();
     }
 

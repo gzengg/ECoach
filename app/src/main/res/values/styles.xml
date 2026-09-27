@@ -90,6 +90,17 @@
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
+    <!-- 行内尾部动作（显示/隐藏 Key、选择模型）：窄按钮，48dp 热区 -->
+    <style name="SettingTrailing">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingLeft">10dp</item>
+        <item name="android:paddingRight">10dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/accent_solid</item>
+    </style>
+
     <!-- 单行输入框：跟随右侧剩余宽度 -->
     <style name="SettingInput">
         <item name="android:layout_width">0dp</item>

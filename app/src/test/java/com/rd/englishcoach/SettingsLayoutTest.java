@@ -81,8 +81,9 @@ public class SettingsLayoutTest {
 
     @Test
     public void everyField_hasSideLabel() throws Exception {
-        for (String id : new String[]{"etBaseUrl", "etApiKey", "etAsrModel",
-                "etChatModel", "etTtsModel"}) {
+        for (String id : new String[]{"etBaseUrl", "etApiKey", "etChatModel",
+                "etAsrBaseUrl", "etAsrKey", "etAsrModel",
+                "etTtsBaseUrl", "etTtsKey", "etTtsModel"}) {
             Element field = elementById(id);
             assertNotNull("找不到 " + id, field);
             Element row = (Element) field.getParentNode();
@@ -105,8 +106,11 @@ public class SettingsLayoutTest {
 
     @Test
     public void apiKey_startsMasked_withToggle() throws Exception {
-        Element key = elementById("etApiKey");
-        assertEquals("API Key 默认必须打码", "textPassword", attr(key, "inputType"));
+        // 三套 Key 都必须打码
+        for (String id : new String[]{"etApiKey", "etAsrKey", "etTtsKey"}) {
+            Element key = elementById(id);
+            assertEquals(id + " 默认必须打码", "textPassword", attr(key, "inputType"));
+        }
 
         Element toggle = elementById("btnToggleKey");
         assertNotNull("API Key 旁必须有「显示/隐藏」开关", toggle);

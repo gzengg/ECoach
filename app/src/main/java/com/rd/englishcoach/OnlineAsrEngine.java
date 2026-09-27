@@ -28,7 +28,7 @@ final class OnlineAsrEngine implements AsrEngine {
 
     @Override
     public boolean isAvailable() {
-        return !prefs.apiKey().trim().isEmpty();
+        return !prefs.asrApiKey().trim().isEmpty();
     }
 
     @Override
@@ -44,7 +44,7 @@ final class OnlineAsrEngine implements AsrEngine {
                 AudioChunker.maxSamples(sampleRate, MAX_CHUNK_SECONDS));
         for (byte[] chunk : chunks) {
             byte[] wav = WavUtil.toWav(chunk, sampleRate);
-            String part = ApiClient.transcribe(wav, prefs.baseUrl(), prefs.apiKey(),
+            String part = ApiClient.transcribe(wav, prefs.asrBaseUrl(), prefs.asrApiKey(),
                     prefs.asrModel());
             if (part != null && !part.trim().isEmpty()) {
                 if (out.length() > 0) out.append(' ');

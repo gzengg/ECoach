@@ -65,6 +65,35 @@ public class PrefsTest {
         assertEquals("", Prefs.DEF_API_KEY);
     }
 
+    // ── v4.2：默认服务迁到 TokenDance ─────────
+
+    @Test
+    public void defChatModel_isTokendance() {
+        assertEquals("deepseek-v4.1-flash", Prefs.DEF_CHAT_MODEL);
+    }
+
+    @Test
+    public void defAsrModel_isQwenAudio() {
+        assertEquals("qwen-audio-3.0-asr-flash", Prefs.DEF_ASR_MODEL);
+    }
+
+    @Test
+    public void defBaseUrl_isTokendanceGateway() {
+        assertEquals("https://tokendance.space/gateway/v1", Prefs.DEF_BASE_URL);
+    }
+
+    @Test
+    public void defTtsBaseUrl_isTokendanceGateway() {
+        assertEquals("https://tokendance.space/gateway/v1", Prefs.DEF_TTS_BASE_URL);
+    }
+
+    @Test
+    public void defAsrBaseUrl_isCompleteDashScopeEndpoint() {
+        // 识别走 DashScope，端点是完整 URL（不是 OpenAI 那种 /v1 前缀）
+        assertTrue(Prefs.DEF_ASR_BASE_URL.startsWith("https://tokendance.space/gateway/alibaba/"));
+        assertTrue(Prefs.DEF_ASR_BASE_URL.endsWith("/generation"));
+    }
+
     @Test
     public void defTtsModel_correct() {
         assertEquals("mimo-v2.5-tts", Prefs.DEF_TTS_MODEL);
