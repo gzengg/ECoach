@@ -127,10 +127,15 @@ final class TtsProtocols {
         }
     }
 
-    /** 音频在 {@code data.audio}，是 hex 编码的完整 WAV。 */
+    /** 音频在 {@code data.audio}（hex 编码的完整 WAV）；出错时把 {@code base_resp} 的原因报出来。 */
     static byte[] parseMinimax(String json) throws IOException {
         try {
             JSONObject o = new JSONObject(json);
+            JSONObject br = o.optJSONObject("base_resp");
+            if (br != null && br.optInt("status_code", 0) != 0) {
+                throw new IOException("MiniMax TTS " + br.optInt("status_code") + ": "
+                        + br.optString("status_msg", ""));
+            }
             JSONObject data = o.optJSONObject("data");
             String hex = data == null ? null : data.optString("audio", null);
             if (hex == null || hex.isEmpty()) throw new IOException("MiniMax TTS returned no audio");

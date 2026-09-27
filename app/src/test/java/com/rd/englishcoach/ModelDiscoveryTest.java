@@ -94,6 +94,21 @@ public class ModelDiscoveryTest {
                 "https://tokendance.space/gateway/alibaba/api/v1/services/aigc/multimodal-generation/generation"));
     }
 
+    @Test
+    public void modelsUrl_vendorGatewayPaths_useGatewayCatalog() {
+        // 厂商协议的 Base 不是 /gateway/v1*，直接拼 /models 会 404（真机：朗读模型列表出不来）
+        assertEquals("https://tokendance.space/gateway/v1/models",
+                ModelDiscovery.modelsUrl("https://tokendance.space/gateway/minimax/v1"));
+        assertEquals("https://tokendance.space/gateway/v1/models",
+                ModelDiscovery.modelsUrl("https://tokendance.space/gateway/ark"));
+    }
+
+    @Test
+    public void modelsUrl_geminiBeta_keepsOwnPath() {
+        assertEquals("https://tokendance.space/gateway/v1beta/models",
+                ModelDiscovery.modelsUrl("https://tokendance.space/gateway/v1beta"));
+    }
+
     /** new-api / tbtk 风格的目录：字段是 supported_endpoint_types，且没有 context_length。 */
     private static final String NEW_API_JSON = "{\"data\":["
             + "{\"id\":\"gpt-5.6-terra\",\"object\":\"model\",\"created\":1,"

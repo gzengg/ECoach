@@ -117,14 +117,20 @@ final class ModelDiscovery {
     /**
      * 模型目录地址。
      *
-     * <p>OpenAI 兼容的根（{@code .../v1}）直接拼 {@code /models}；
-     * <b>DashScope 识别端点是完整路径</b>（{@code .../alibaba/api/v1/services/aigc/…/generation}），
-     * 没有 {@code /models}，改用同网关的目录 {@code {origin}/gateway/v1/models}。</p>
+     * <p>网关的目录只挂在 OpenAI 根下（TokenDance 是 {@code /gateway/v1/models}）；
+     * 而厂商协议的 Base 是别的子路径（{@code /gateway/minimax/v1}、{@code /gateway/ark}、
+     * {@code /gateway/alibaba/...}），直接拼 {@code /models} 会 404。
+     * 所以只要 Base 在 {@code /gateway/} 下但不是 {@code /gateway/v1*}，就改用网关目录。</p>
      */
     static String modelsUrl(String apiBase) {
         String b = trimSlash(apiBase);
-        int i = b.indexOf("/alibaba/api/v1/services/");
-        if (i > 0) return b.substring(0, i) + "/v1/models";
+        int g = b.indexOf("/gateway/");
+        if (g > 0) {
+            String after = b.substring(g);
+            if (!after.startsWith("/gateway/v1")) {   // minimax / ark / alibaba 等厂商路径
+                return b.substring(0, g) + "/gateway/v1/models";
+            }
+        }
         return b + "/models";
     }
 

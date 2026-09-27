@@ -118,6 +118,15 @@ public class PrefsTest {
     }
 
     @Test
+    public void defaultTtsVoice_perProtocol() {
+        // 音色是协议私有的：换成 MiniMax/豆包时不能再用 mimo 的「冰糖」
+        assertEquals("male-qn-qingse", Prefs.defaultTtsVoice(TtsProtocols.MINIMAX_T2A, false));
+        assertEquals("alloy", Prefs.defaultTtsVoice(TtsProtocols.SPEECH, true));
+        assertEquals(Prefs.DEF_TTS_VOICE_ZH, Prefs.defaultTtsVoice(TtsProtocols.CHAT_TTS, false));
+        assertEquals(Prefs.DEF_TTS_VOICE_EN, Prefs.defaultTtsVoice(TtsProtocols.CHAT_TTS, true));
+    }
+
+    @Test
     public void defTtsModel_correct() {
         assertEquals("mimo-v2.5-tts", Prefs.DEF_TTS_MODEL);
     }

@@ -45,6 +45,18 @@ public class TtsProtocolsTest {
         assertArrayEquals(new byte[]{10, 11, 12}, b);
     }
 
+    @Test
+    public void parseMinimax_surfacesBaseRespError() {
+        // 音色无效时 MiniMax 返回 base_resp 错误、没有音频；不能只报「no audio」把真因盖掉
+        String json = "{\"base_resp\":{\"status_code\":1004,\"status_msg\":\"voice id not exist\"}}";
+        try {
+            TtsProtocols.parseMinimax(json);
+            fail("should throw");
+        } catch (java.io.IOException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("voice id not exist"));
+        }
+    }
+
     // ── 豆包 Ark TTS ──────────────────────────
 
     @Test

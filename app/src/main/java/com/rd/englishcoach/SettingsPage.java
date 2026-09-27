@@ -139,6 +139,15 @@ final class SettingsPage {
             prefs.putTtsProtocol(p);
             autoFill(etTtsBaseUrl, old, p, Prefs::defaultTtsBaseUrl, prefs::putTtsBaseUrl);
             autoFill(etTtsModel, old, p, Prefs::defaultTtsModel, prefs::putTtsModel);
+            // 音色也是协议私有的（mimo 的「冰糖」传给 MiniMax 是无效 voice_id，会「没声音」）
+            if (prefs.ttsVoiceChinese().equals(Prefs.defaultTtsVoice(old, false))) {
+                prefs.putTtsVoiceChinese(Prefs.defaultTtsVoice(p, false));
+            }
+            if (prefs.ttsVoiceEnglish().equals(Prefs.defaultTtsVoice(old, true))) {
+                prefs.putTtsVoiceEnglish(Prefs.defaultTtsVoice(p, true));
+            }
+            tvVoiceEn.setText(prefs.ttsVoiceEnglish());
+            tvVoiceZh.setText(prefs.ttsVoiceChinese());
         });
     }
 

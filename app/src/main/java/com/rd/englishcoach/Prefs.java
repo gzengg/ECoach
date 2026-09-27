@@ -219,6 +219,21 @@ public final class Prefs {
             default:                       return DEF_TTS_MODEL;
         }
     }
+
+    /**
+     * 各协议的默认音色。
+     *
+     * <p>音色是<b>协议私有</b>的：mimo 的「冰糖」传给 MiniMax 就是无效 voice_id（报 no audio）。
+     * 所以切协议时音色也要跟着换，否则会出现「端点对了但没声音」。</p>
+     */
+    public static String defaultTtsVoice(String protocol, boolean english) {
+        switch (protocol) {
+            case TtsProtocols.SPEECH:      return "alloy";
+            case TtsProtocols.MINIMAX_T2A: return "male-qn-qingse";
+            case TtsProtocols.ARK_TTS:     return "zh_female_vv_uranus_bigtts";
+            default:                       return english ? DEF_TTS_VOICE_EN : DEF_TTS_VOICE_ZH;
+        }
+    }
     public void putChatModel(String v)   { sp.edit().putString("chat_model", nullSafe(v, DEF_CHAT_MODEL)).apply(); }
     public void putSysPrompt(String v)   { sp.edit().putString("sys_prompt", nullSafe(v, DEF_SYS_PROMPT)).apply(); }
     public void putTtsModel(String v)        { sp.edit().putString("tts_model",    nullSafe(v, DEF_TTS_MODEL)).apply(); }
