@@ -56,6 +56,20 @@
     <string name="set_probe_ok">正常</string>
     <string name="set_probe_result">%1$s：%2$s</string>
     <string name="set_detect_voices">检测音色</string>
+
+    <!-- 协议选择（v4.3 多协议） -->
+    <string name="set_label_protocol">协议</string>
+    <string name="proto_openai_chat">OpenAI</string>
+    <string name="proto_openai_responses">Responses</string>
+    <string name="proto_anthropic">Claude</string>
+    <string name="proto_gemini">Gemini</string>
+    <string name="proto_dashscope">DashScope</string>
+    <string name="proto_chat_audio">Chat+Audio</string>
+    <string name="proto_transcriptions">Whisper</string>
+    <string name="proto_chat_tts">MiMo</string>
+    <string name="proto_speech">OpenAI TTS</string>
+    <string name="proto_minimax_t2a">MiniMax</string>
+    <string name="proto_ark_tts">豆包</string>
     <string name="set_detect_voices_ok">检测到 %1$d 个音色</string>
     <string name="set_detect_voices_fail">未检测到音色列表，请手动填写</string>
 

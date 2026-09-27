@@ -150,22 +150,27 @@ final class ModelDiscovery {
 
     // ── 连通性探测（返回 null = 正常，否则可读原因） ──────
 
-    static String probeChat(String baseUrl, String key, String model) {
+    static String probeChat(String protocol, String baseUrl, String key, String model) {
         try {
-            ApiClient.answerWithHistory(new String[][]{{"user", "ping"}}, baseUrl, key, model);
+            ChatProtocols.complete(protocol, baseUrl, key, model, new String[][]{{"user", "ping"}});
             return null;
         } catch (Exception e) {
             return msg(e);
         }
     }
 
-    static String probeTts(String baseUrl, String key, String model) {
+    static String probeTts(String protocol, String baseUrl, String key, String model) {
         try {
-            TtsClient.synthesize(baseUrl, key, model, Prefs.DEF_TTS_VOICE_EN, "hi", "wav");
+            TtsProtocols.synthesize(protocol, baseUrl, key, model, firstVoice(protocol), "hi");
             return null;
         } catch (Exception e) {
             return msg(e);
         }
+    }
+
+    private static String firstVoice(String protocol) {
+        String[] v = TtsProtocols.defaultVoices(protocol);
+        return (v != null && v.length > 0) ? v[0] : Prefs.DEF_TTS_VOICE_EN;
     }
 
     /**
@@ -174,9 +179,10 @@ final class ModelDiscovery {
      * <p>实测（TokenDance / qwen-audio）：静音返回 HTTP 400 空体，只是「没听到语音」，
      * 说明端点可达、Key 有效；Key 无效则返回 401。所以 400 也算连通正常。</p>
      */
-    static String probeAsr(String asrUrl, String key, String model) {
+    static String probeAsr(String protocol, String asrUrl, String key, String model) {
         try {
-            ApiClient.transcribe(WavUtil.toWav(new byte[16000], 16000), asrUrl, key, model);
+            AsrProtocols.transcribe(protocol, asrUrl, key, model,
+                    WavUtil.toWav(new byte[16000], 16000));
             return null;
         } catch (ApiClient.ApiException e) {
             if (e.httpCode == 400) return null; // 静音无语音 → 端点与 Key 都正常

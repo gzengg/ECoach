@@ -11,7 +11,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 基于 mimo-v2.5-tts 的 {@link SpeechPlayer} 实现。
+ * 在线朗读 {@link SpeechPlayer} 实现：按 {@code ttsProtocol} 走不同协议
+ * （mimo chat+modalities / OpenAI /audio/speech / MiniMax T2A / 豆包 Ark TTS）。
  * 网络请求在后台线程，播放/回调在主线程。
  *
  * <p><b>为什么必须分段合成：</b>长文本整段发给 TTS 会失败（真机：1000 词直接报错，
@@ -25,9 +26,9 @@ import java.util.concurrent.Executors;
  *
  * <p>缓存按「片段」粒度（{@code key#i}）：同一段回答重复朗读时逐段命中，不必重合成。</p>
  */
-public final class MimoTtsEngine implements SpeechPlayer {
+public final class OnlineTtsEngine implements SpeechPlayer {
 
-    private static final String TAG = "MimoTts";
+    private static final String TAG = "OnlineTts";
 
     /**
      * 单次合成的文本上限（字符）。
@@ -54,7 +55,7 @@ public final class MimoTtsEngine implements SpeechPlayer {
     /** 后台是否还在合成（合成未完但队列暂时空，不能报 IDLE）。 */
     private boolean producing;
 
-    public MimoTtsEngine(Context ctx) {
+    public OnlineTtsEngine(Context ctx) {
         this.ctx = ctx.getApplicationContext();
         this.prefs = new Prefs(this.ctx);
         this.audioPlayer = new AudioPlayer(this.ctx);
@@ -93,8 +94,8 @@ public final class MimoTtsEngine implements SpeechPlayer {
                 if (wav == null) {
                     try {
                         String model = prefs.ttsModel().isEmpty() ? Prefs.DEF_TTS_MODEL : prefs.ttsModel();
-                        wav = TtsClient.synthesize(prefs.ttsBaseUrl(), prefs.ttsApiKey(), model, voice,
-                                chunks.get(i), "wav");
+                        wav = TtsProtocols.synthesize(prefs.ttsProtocol(), prefs.ttsBaseUrl(),
+                                prefs.ttsApiKey(), model, voice, chunks.get(i));
                     } catch (Exception e) {
                         Log.e(TAG, "synthesize failed (chunk " + i + "/" + chunks.size()
                                 + "): " + e.getMessage());

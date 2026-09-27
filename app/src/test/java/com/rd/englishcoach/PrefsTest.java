@@ -95,6 +95,13 @@ public class PrefsTest {
     }
 
     @Test
+    public void defProtocols_areSet() {
+        assertEquals(ChatProtocols.OPENAI_CHAT, Prefs.DEF_CHAT_PROTOCOL);
+        assertEquals(AsrProtocols.DASHSCOPE, Prefs.DEF_ASR_PROTOCOL);
+        assertEquals(TtsProtocols.CHAT_TTS, Prefs.DEF_TTS_PROTOCOL);
+    }
+
+    @Test
     public void defTtsModel_correct() {
         assertEquals("mimo-v2.5-tts", Prefs.DEF_TTS_MODEL);
     }

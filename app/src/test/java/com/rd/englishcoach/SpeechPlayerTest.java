@@ -4,8 +4,8 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
- * SpeechPlayer 接口 + MimoTtsEngine 行为验证。
- * MimoTtsEngine 依赖 Android Context，无法在纯 JVM 上实例化，
+ * SpeechPlayer 接口 + OnlineTtsEngine 行为验证。
+ * OnlineTtsEngine 依赖 Android Context，无法在纯 JVM 上实例化，
  * 但可以验证接口约定和 TtsClient 静态方法（已由 TtsClientTest 覆盖）。
  */
 public class SpeechPlayerTest {
@@ -44,10 +44,10 @@ public class SpeechPlayerTest {
     }
 
     @Test
-    public void mimoTtsEngine_implementsSpeechPlayer() {
-        // 验证 MimoTtsEngine 实现了 SpeechPlayer（编译时检查，运行时需要 Context）
-        assertTrue("MimoTtsEngine 必须实现 SpeechPlayer",
-                SpeechPlayer.class.isAssignableFrom(MimoTtsEngine.class));
+    public void onlineTtsEngine_implementsSpeechPlayer() {
+        // 验证 OnlineTtsEngine 实现了 SpeechPlayer（编译时检查，运行时需要 Context）
+        assertTrue("OnlineTtsEngine 必须实现 SpeechPlayer",
+                SpeechPlayer.class.isAssignableFrom(OnlineTtsEngine.class));
     }
 
     @Test

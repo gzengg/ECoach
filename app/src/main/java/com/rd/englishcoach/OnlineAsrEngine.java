@@ -44,8 +44,8 @@ final class OnlineAsrEngine implements AsrEngine {
                 AudioChunker.maxSamples(sampleRate, MAX_CHUNK_SECONDS));
         for (byte[] chunk : chunks) {
             byte[] wav = WavUtil.toWav(chunk, sampleRate);
-            String part = ApiClient.transcribe(wav, prefs.asrBaseUrl(), prefs.asrApiKey(),
-                    prefs.asrModel());
+            String part = AsrProtocols.transcribe(prefs.asrProtocol(), prefs.asrBaseUrl(),
+                    prefs.asrApiKey(), prefs.asrModel(), wav);
             if (part != null && !part.trim().isEmpty()) {
                 if (out.length() > 0) out.append(' ');
                 out.append(part.trim());

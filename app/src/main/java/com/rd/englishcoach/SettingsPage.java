@@ -45,6 +45,7 @@ final class SettingsPage {
 
     private final EditText etSysPrompt;
     private final TextView tvFontValue, tvWidthValue, tvVoiceEn, tvVoiceZh;
+    private final LinearLayout chatProtocolChips, asrProtocolChips, ttsProtocolChips;
 
     /** 上次「检测音色」的结果（null = 用 Prefs 里的默认列表）。 */
     private List<String> detectedVoices;
@@ -71,6 +72,9 @@ final class SettingsPage {
         tvWidthValue   = root.findViewById(R.id.tvWidthValue);
         tvVoiceEn      = root.findViewById(R.id.tvVoiceEn);
         tvVoiceZh      = root.findViewById(R.id.tvVoiceZh);
+        chatProtocolChips = root.findViewById(R.id.chatProtocolChips);
+        asrProtocolChips  = root.findViewById(R.id.asrProtocolChips);
+        ttsProtocolChips  = root.findViewById(R.id.ttsProtocolChips);
 
         btnToggleKey.setOnClickListener(v -> toggleKeyVisible(etApiKey, btnToggleKey));
         btnToggleAsrKey.setOnClickListener(v -> toggleKeyVisible(etAsrKey, btnToggleAsrKey));
@@ -110,7 +114,53 @@ final class SettingsPage {
         root.findViewById(R.id.btnSave).setOnClickListener(v -> save());
         root.findViewById(R.id.btnReset).setOnClickListener(v -> { prefs.resetAll(); loadAll(); });
 
+        buildProtocolChips();
         loadAll();
+    }
+
+    // ── 协议选择 ────────────────────────────
+
+    private void buildProtocolChips() {
+        fillProtocolChips(chatProtocolChips, ChatProtocols.ALL, prefs.chatProtocol(), prefs::putChatProtocol);
+        fillProtocolChips(asrProtocolChips, AsrProtocols.ALL, prefs.asrProtocol(), prefs::putAsrProtocol);
+        fillProtocolChips(ttsProtocolChips, TtsProtocols.ALL, prefs.ttsProtocol(), prefs::putTtsProtocol);
+    }
+
+    /** 协议芯片：选中态用 pill_glass + accent，其余 bg_chip（与模式/音色芯片同做法）。 */
+    private void fillProtocolChips(LinearLayout row, String[] protocols, String current,
+                                   Consumer<String> setter) {
+        row.removeAllViews();
+        for (String p : protocols) {
+            TextView chip = (TextView) LayoutInflater.from(act)
+                    .inflate(R.layout.item_chip, row, false);
+            chip.setText(protocolLabel(p));
+            boolean on = p.equals(current);
+            chip.setBackgroundResource(on ? R.drawable.pill_glass : R.drawable.bg_chip);
+            chip.setTextColor(act.getColor(on ? R.color.accent_solid : R.color.text_secondary));
+            chip.setOnClickListener(v -> {
+                setter.accept(p);
+                fillProtocolChips(row, protocols, p, setter);
+                detectedVoices = null; // 换协议后音色列表回退到该协议默认
+            });
+            row.addView(chip);
+        }
+    }
+
+    private String protocolLabel(String p) {
+        switch (p) {
+            case ChatProtocols.OPENAI_CHAT:      return act.getString(R.string.proto_openai_chat);
+            case ChatProtocols.OPENAI_RESPONSES: return act.getString(R.string.proto_openai_responses);
+            case ChatProtocols.ANTHROPIC:        return act.getString(R.string.proto_anthropic);
+            case ChatProtocols.GEMINI:           return act.getString(R.string.proto_gemini);
+            case AsrProtocols.DASHSCOPE:         return act.getString(R.string.proto_dashscope);
+            case AsrProtocols.CHAT_AUDIO:        return act.getString(R.string.proto_chat_audio);
+            case AsrProtocols.TRANSCRIPTIONS:    return act.getString(R.string.proto_transcriptions);
+            case TtsProtocols.CHAT_TTS:          return act.getString(R.string.proto_chat_tts);
+            case TtsProtocols.SPEECH:            return act.getString(R.string.proto_speech);
+            case TtsProtocols.MINIMAX_T2A:       return act.getString(R.string.proto_minimax_t2a);
+            case TtsProtocols.ARK_TTS:           return act.getString(R.string.proto_ark_tts);
+            default:                             return p;
+        }
     }
 
     /** Tab 切进本页时同步一遍（外部可能改过配置）。 */
@@ -196,9 +246,9 @@ final class SettingsPage {
         sheet.show(box);
 
         new Thread(() -> {
-            String chat = ModelDiscovery.probeChat(chatUrl, chatKey, chatModel);
-            String asr  = ModelDiscovery.probeAsr(asrUrl, asrKey, asrModel);
-            String tts  = ModelDiscovery.probeTts(ttsUrl, ttsKey, ttsModel);
+            String chat = ModelDiscovery.probeChat(prefs.chatProtocol(), chatUrl, chatKey, chatModel);
+            String asr  = ModelDiscovery.probeAsr(prefs.asrProtocol(), asrUrl, asrKey, asrModel);
+            String tts  = ModelDiscovery.probeTts(prefs.ttsProtocol(), ttsUrl, ttsKey, ttsModel);
             final String text = probeLine(act.getString(R.string.set_pick_kind_chat), chat)
                     + "\n\n" + probeLine(act.getString(R.string.set_pick_kind_asr), asr)
                     + "\n\n" + probeLine(act.getString(R.string.set_pick_kind_tts), tts);
@@ -339,6 +389,11 @@ final class SettingsPage {
     // ── 检测音色（探测当前 TTS 模型可选音色） ──────────────
 
     private void detectVoices() {
+        // 只有 mimo（chat-tts）会在报错里回显可用音色；其他协议用内置默认音色列表
+        if (!TtsProtocols.CHAT_TTS.equals(prefs.ttsProtocol())) {
+            toast(act.getString(R.string.set_detect_voices_fail));
+            return;
+        }
         final String url = val(etTtsBaseUrl);
         final String model = val(etTtsModel);
         final String key = orElse(val(etTtsKey), val(etApiKey));
@@ -426,16 +481,18 @@ final class SettingsPage {
      * 未知音色两侧都列（用户自选）。检测不到时手填入口兜底。
      */
     private String[] voicesFor(boolean english) {
-        if (detectedVoices == null || detectedVoices.isEmpty()) {
-            return english ? Prefs.TTS_VOICES_EN : Prefs.TTS_VOICES_ZH;
+        if (detectedVoices != null && !detectedVoices.isEmpty()) {
+            List<String> known = Arrays.asList(english ? Prefs.TTS_VOICES_EN : Prefs.TTS_VOICES_ZH);
+            List<String> other = Arrays.asList(english ? Prefs.TTS_VOICES_ZH : Prefs.TTS_VOICES_EN);
+            List<String> out = new ArrayList<>();
+            for (String v : detectedVoices) {
+                if (known.contains(v) || !other.contains(v)) out.add(v);
+            }
+            return out.toArray(new String[0]);
         }
-        List<String> known = Arrays.asList(english ? Prefs.TTS_VOICES_EN : Prefs.TTS_VOICES_ZH);
-        List<String> other = Arrays.asList(english ? Prefs.TTS_VOICES_ZH : Prefs.TTS_VOICES_EN);
-        List<String> out = new ArrayList<>();
-        for (String v : detectedVoices) {
-            if (known.contains(v) || !other.contains(v)) out.add(v);
-        }
-        return out.toArray(new String[0]);
+        String[] proto = TtsProtocols.defaultVoices(prefs.ttsProtocol());
+        if (proto != null) return proto;
+        return english ? Prefs.TTS_VOICES_EN : Prefs.TTS_VOICES_ZH;
     }
 
     // ── 小工具 ─────────────────────────────────────────

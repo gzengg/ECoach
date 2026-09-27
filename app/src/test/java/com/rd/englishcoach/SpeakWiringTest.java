@@ -91,8 +91,8 @@ public class SpeakWiringTest {
         String src = stripComments(readFile("src/main/java/com/rd/englishcoach/CaptureService.java"));
         assertTrue("必须创建 FallbackSpeechPlayer 链",
                 src.contains("new FallbackSpeechPlayer("));
-        assertTrue("链的 primary 必须是 MimoTtsEngine",
-                src.contains("new MimoTtsEngine("));
+        assertTrue("链的 primary 必须是 OnlineTtsEngine",
+                src.contains("new OnlineTtsEngine("));
         assertTrue("链的 fallback 必须是 SystemTtsEngine",
                 src.contains("new SystemTtsEngine("));
         assertTrue("必须注册朗读状态 Listener",
@@ -251,14 +251,14 @@ public class SpeakWiringTest {
         assertTrue("fallback 再 ERROR 才是两者都失败，透传 ERROR", fb.contains("forward(key, state, error)"));
     }
 
-    // ── MimoTtsEngine 加固 ────────────────────
+    // ── OnlineTtsEngine 加固 ────────────────────
 
     @Test
-    public void mimoTtsEngine_stopCancelsInflight() throws Exception {
-        String src = stripComments(readFile("src/main/java/com/rd/englishcoach/MimoTtsEngine.java"));
+    public void onlineTtsEngine_stopCancelsInflight() throws Exception {
+        String src = stripComments(readFile("src/main/java/com/rd/englishcoach/OnlineTtsEngine.java"));
         assertTrue("必须有代数计数取消在途合成", src.contains("generation++"));
         String stop = methodBody(src, "public void stop()");
-        assertNotNull("MimoTtsEngine 必须有 stop", stop);
+        assertNotNull("OnlineTtsEngine 必须有 stop", stop);
         assertTrue("stop 必须作废在途合成", stop.contains("generation++"));
         assertTrue("播放中 stop 应抛 IDLE 复位按钮", stop.contains("State.IDLE"));
         assertTrue("网络结果回调必须做代数/key 校验（过期不播）",

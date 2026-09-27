@@ -1,7 +1,7 @@
 package com.rd.englishcoach;
 
 /**
- * 朗读抽象接口。两种实现：{@code MimoTtsEngine}（API）和 {@code SystemTtsEngine}（兜底）。
+ * 朗读抽象接口。两种实现：{@code OnlineTtsEngine}（API）和 {@code SystemTtsEngine}（兜底）。
  *
  * <p>交互约定（用户明确要求）：</p>
  * <ul>

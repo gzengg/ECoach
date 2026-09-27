@@ -103,7 +103,7 @@ public class CaptureService extends Service {
      */
     private SpeechPlayer buildSpeechChain() {
         SpeechPlayer offline = new SherpaTtsEngine(this);
-        SpeechPlayer online = new MimoTtsEngine(this);
+        SpeechPlayer online = new OnlineTtsEngine(this);
         SpeechPlayer system = new SystemTtsEngine(this);
         switch (new Prefs(this).engineMode()) {
             case Prefs.MODE_ONLINE:
@@ -411,8 +411,8 @@ public class CaptureService extends Service {
             try {
                 Prefs p = new Prefs(CaptureService.this);
                 String[][] msgs = conversation.buildMessages(p.sysPrompt());
-                String answer = ApiClient.answerWithHistory(msgs,
-                        p.chatBaseUrl(), p.apiKey(), p.chatModel());
+                String answer = ChatProtocols.complete(p.chatProtocol(), p.chatBaseUrl(),
+                        p.apiKey(), p.chatModel(), msgs);
                 Log.i(TAG, "Answer #" + turnId + ": " + answer);
                 // 清空上下文后迟到的回答不能再写进持久化历史（会挂到别的记录上）
                 boolean applied = conversation.completeAnswer(turnId, answer);
@@ -444,8 +444,8 @@ public class CaptureService extends Service {
             try {
                 Prefs p = new Prefs(CaptureService.this);
                 String[][] msgs = conversation.buildMessages(p.sysPrompt());
-                String answer = ApiClient.answerWithHistory(msgs,
-                        p.chatBaseUrl(), p.apiKey(), p.chatModel());
+                String answer = ChatProtocols.complete(p.chatProtocol(), p.chatBaseUrl(),
+                        p.apiKey(), p.chatModel(), msgs);
                 conversation.completeAnswer(qt.id, answer);
                 // 同上：清空上下文后迟到的回答不写持久化历史
                 if (conversation.findById(qt.id) != null && history != null) {

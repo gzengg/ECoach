@@ -34,8 +34,8 @@ public class TextChunkerTest {
     @Test
     public void ttsChunkLimit_isWellUnderFailingLength() {
         // 真机：1000 词（~5000 字符）整段朗读必失败 → 单次上限必须远小于它
-        assertTrue("TTS 单次上限必须远小于失败长度（5000 字符），实际 " + MimoTtsEngine.MAX_TTS_CHARS,
-                MimoTtsEngine.MAX_TTS_CHARS <= 500);
+        assertTrue("TTS 单次上限必须远小于失败长度（5000 字符），实际 " + OnlineTtsEngine.MAX_TTS_CHARS,
+                OnlineTtsEngine.MAX_TTS_CHARS <= 500);
         // 翻译侧：MyMemory 硬限制 500，本地上限必须留余量
         assertTrue("翻译单次上限必须 < 500，实际 " + Translator.MAX_QUERY_CHARS,
                 Translator.MAX_QUERY_CHARS < 500);
@@ -46,11 +46,11 @@ public class TextChunkerTest {
         String text = longAnswer();
         assertTrue("测试文本要够长，实际 " + text.length(), text.length() > 4000);
 
-        List<String> chunks = TextChunker.split(text, MimoTtsEngine.MAX_TTS_CHARS);
+        List<String> chunks = TextChunker.split(text, OnlineTtsEngine.MAX_TTS_CHARS);
         assertTrue("长文本必须切多段，实际 " + chunks.size(), chunks.size() > 10);
         StringBuilder joined = new StringBuilder();
         for (String c : chunks) {
-            assertTrue("每段不得超过上限：" + c.length(), c.length() <= MimoTtsEngine.MAX_TTS_CHARS);
+            assertTrue("每段不得超过上限：" + c.length(), c.length() <= OnlineTtsEngine.MAX_TTS_CHARS);
             assertFalse("不得出现空段", c.trim().isEmpty());
             joined.append(c);
         }

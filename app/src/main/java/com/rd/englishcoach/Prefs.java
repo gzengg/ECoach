@@ -20,6 +20,11 @@ public final class Prefs {
     public static final String DEF_CHAT_MODEL   = "deepseek-v4.1-flash";
     public static final String DEF_ASR_MODEL    = "qwen-audio-3.0-asr-flash";
 
+    /** 三套接口各自的协议（默认值取自各协议类的常量，避免两处各写一份）。 */
+    public static final String DEF_CHAT_PROTOCOL = ChatProtocols.OPENAI_CHAT;
+    public static final String DEF_ASR_PROTOCOL  = AsrProtocols.DASHSCOPE;
+    public static final String DEF_TTS_PROTOCOL  = TtsProtocols.CHAT_TTS;
+
     /** v4.2 迁移用：识别旧版（mimo.ezlook.top）的默认值，命中才清掉，用户自定义的值不动。 */
     private static final String LEGACY_BASE_URL   = "https://mimo.ezlook.top/v1";
     private static final String LEGACY_ASR_MODEL  = "mimo-v2.5-asr";
@@ -117,6 +122,9 @@ public final class Prefs {
     public String ttsModel()    { return sp.getString("tts_model", DEF_TTS_MODEL); }
     public String asrBaseUrl()  { return sp.getString("asr_base_url", DEF_ASR_BASE_URL); }
     public String ttsBaseUrl()  { return sp.getString("tts_base_url", DEF_TTS_BASE_URL); }
+    public String chatProtocol() { return sp.getString("chat_protocol", DEF_CHAT_PROTOCOL); }
+    public String asrProtocol()  { return sp.getString("asr_protocol",  DEF_ASR_PROTOCOL); }
+    public String ttsProtocol()  { return sp.getString("tts_protocol",  DEF_TTS_PROTOCOL); }
 
     /**
      * 识别 / 朗读的 Key：留空则回退用问答 Key（tokendance 一个 Key 通吃三个协议，免得填三遍）。
@@ -164,6 +172,9 @@ public final class Prefs {
     /** 留空即「跟随问答 Key」：写空串，由 {@link #keyFallback} 回退。 */
     public void putAsrApiKey(String v)   { sp.edit().putString("asr_api_key", v == null ? "" : v.trim()).apply(); }
     public void putTtsApiKey(String v)   { sp.edit().putString("tts_api_key", v == null ? "" : v.trim()).apply(); }
+    public void putChatProtocol(String v) { sp.edit().putString("chat_protocol", nullSafe(v, DEF_CHAT_PROTOCOL)).apply(); }
+    public void putAsrProtocol(String v)  { sp.edit().putString("asr_protocol",  nullSafe(v, DEF_ASR_PROTOCOL)).apply(); }
+    public void putTtsProtocol(String v)  { sp.edit().putString("tts_protocol",  nullSafe(v, DEF_TTS_PROTOCOL)).apply(); }
     public void putChatModel(String v)   { sp.edit().putString("chat_model", nullSafe(v, DEF_CHAT_MODEL)).apply(); }
     public void putSysPrompt(String v)   { sp.edit().putString("sys_prompt", nullSafe(v, DEF_SYS_PROMPT)).apply(); }
     public void putTtsModel(String v)        { sp.edit().putString("tts_model",    nullSafe(v, DEF_TTS_MODEL)).apply(); }

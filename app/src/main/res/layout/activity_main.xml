@@ -375,6 +375,21 @@
 
                     <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
                         <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_protocol" />
+                        <HorizontalScrollView
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="@dimen/height_chip"
+                            android:scrollbars="none">
+                            <LinearLayout android:id="@+id/chatProtocolChips"
+                                android:layout_width="wrap_content"
+                                android:layout_height="match_parent"
+                                android:orientation="horizontal" />
+                        </HorizontalScrollView>
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
+                        <TextView style="@style/SettingLabel"
                             android:text="@string/set_label_endpoint"
                             android:labelFor="@id/etBaseUrl" />
                         <EditText android:id="@+id/etBaseUrl" style="@style/SettingInput"
@@ -417,6 +432,21 @@
                         android:text="@string/set_group_asr" />
 
                     <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_protocol" />
+                        <HorizontalScrollView
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="@dimen/height_chip"
+                            android:scrollbars="none">
+                            <LinearLayout android:id="@+id/asrProtocolChips"
+                                android:layout_width="wrap_content"
+                                android:layout_height="match_parent"
+                                android:orientation="horizontal" />
+                        </HorizontalScrollView>
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
                         <TextView style="@style/SettingLabel"
                             android:text="@string/set_label_endpoint"
                             android:labelFor="@id/etAsrBaseUrl" />
@@ -461,6 +491,21 @@
                         android:text="@string/set_group_tts" />
 
                     <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_protocol" />
+                        <HorizontalScrollView
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="@dimen/height_chip"
+                            android:scrollbars="none">
+                            <LinearLayout android:id="@+id/ttsProtocolChips"
+                                android:layout_width="wrap_content"
+                                android:layout_height="match_parent"
+                                android:orientation="horizontal" />
+                        </HorizontalScrollView>
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
                         <TextView style="@style/SettingLabel"
                             android:text="@string/set_label_endpoint"
                             android:labelFor="@id/etTtsBaseUrl" />
