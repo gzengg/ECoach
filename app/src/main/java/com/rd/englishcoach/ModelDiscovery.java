@@ -97,11 +97,25 @@ final class ModelDiscovery {
 
     // ── 网络：拉模型目录 ────────────────
 
-    /** {@code GET {base}/models}（无需鉴权）。失败返回空列表。 */
-    static List<ModelInfo> fetchModels(String baseUrl) {
+    /**
+     * 模型目录地址。
+     *
+     * <p>OpenAI 兼容的根（{@code .../v1}）直接拼 {@code /models}；
+     * <b>DashScope 识别端点是完整路径</b>（{@code .../alibaba/api/v1/services/aigc/…/generation}），
+     * 没有 {@code /models}，改用同网关的目录 {@code {origin}/gateway/v1/models}。</p>
+     */
+    static String modelsUrl(String apiBase) {
+        String b = trimSlash(apiBase);
+        int i = b.indexOf("/alibaba/api/v1/services/");
+        if (i > 0) return b.substring(0, i) + "/v1/models";
+        return b + "/models";
+    }
+
+    /** {@code GET {目录}}（无需鉴权）。失败返回空列表。 */
+    static List<ModelInfo> fetchModels(String apiBase) {
         HttpURLConnection conn = null;
         try {
-            conn = (HttpURLConnection) new URL(trimSlash(baseUrl) + "/models").openConnection();
+            conn = (HttpURLConnection) new URL(modelsUrl(apiBase)).openConnection();
             conn.setConnectTimeout(15_000);
             conn.setReadTimeout(30_000);
             conn.setRequestProperty("Accept", "application/json");

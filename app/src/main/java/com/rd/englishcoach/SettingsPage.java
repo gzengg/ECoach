@@ -248,7 +248,7 @@ final class SettingsPage {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         sheet.show(box);
 
-        final String baseUrl = val(etBaseUrl);
+        final String baseUrl = pickerBase(kind);
         new Thread(() -> {
             final List<ModelDiscovery.ModelInfo> picked =
                     ModelDiscovery.byKind(ModelDiscovery.fetchModels(baseUrl), kind);
@@ -320,6 +320,19 @@ final class SettingsPage {
             case ASR: return act.getString(R.string.set_pick_kind_asr);
             case TTS: return act.getString(R.string.set_pick_kind_tts);
             default:  return act.getString(R.string.set_pick_kind_chat);
+        }
+    }
+
+    /**
+     * 该类目该用哪个接口的 Base URL 拉模型目录。
+     *
+     * <p>三套接口独立：各用自己的地址，<b>改问答地址不会连带干掉识别/朗读的模型列表</b>。</p>
+     */
+    private String pickerBase(ModelDiscovery.Kind kind) {
+        switch (kind) {
+            case ASR: return val(etAsrBaseUrl);
+            case TTS: return val(etTtsBaseUrl);
+            default:  return val(etBaseUrl);
         }
     }
 

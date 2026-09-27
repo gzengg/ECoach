@@ -80,4 +80,17 @@ public class ModelDiscoveryTest {
         assertEquals(1, ModelDiscovery.byKind(all, ModelDiscovery.Kind.ASR).size());
         assertEquals(2, ModelDiscovery.byKind(all, ModelDiscovery.Kind.TTS).size());
     }
+
+    @Test
+    public void modelsUrl_openAiRoot_appendsModels() {
+        assertEquals("https://x/v1/models", ModelDiscovery.modelsUrl("https://x/v1"));
+        assertEquals("https://x/v1/models", ModelDiscovery.modelsUrl("https://x/v1/"));
+    }
+
+    @Test
+    public void modelsUrl_dashScopeEndpoint_usesGatewayCatalog() {
+        // 识别端点是完整路径，没有 /models；要用同网关的目录
+        assertEquals("https://tokendance.space/gateway/v1/models", ModelDiscovery.modelsUrl(
+                "https://tokendance.space/gateway/alibaba/api/v1/services/aigc/multimodal-generation/generation"));
+    }
 }
