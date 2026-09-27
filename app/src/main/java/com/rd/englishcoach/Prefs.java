@@ -175,6 +175,50 @@ public final class Prefs {
     public void putChatProtocol(String v) { sp.edit().putString("chat_protocol", nullSafe(v, DEF_CHAT_PROTOCOL)).apply(); }
     public void putAsrProtocol(String v)  { sp.edit().putString("asr_protocol",  nullSafe(v, DEF_ASR_PROTOCOL)).apply(); }
     public void putTtsProtocol(String v)  { sp.edit().putString("tts_protocol",  nullSafe(v, DEF_TTS_PROTOCOL)).apply(); }
+
+    // ── 各协议的默认地址 / 默认模型（默认服务 = TokenDance 网关） ──
+
+    /**
+     * 换协议时要跟着换地址：不同协议的端点前缀不同（如 MiniMax 在 {@code /gateway/minimax/v1}、
+     * 豆包在 {@code /gateway/ark}）。设置页只在用户没自定义过时自动填，这些方法给出「应该填什么」。
+     */
+    public static String defaultChatBaseUrl(String protocol) {
+        return ChatProtocols.GEMINI.equals(protocol)
+                ? "https://tokendance.space/gateway/v1beta" : DEF_BASE_URL;
+    }
+
+    public static String defaultChatModel(String protocol) {
+        return ChatProtocols.GEMINI.equals(protocol) ? "gemini-2.5-flash" : DEF_CHAT_MODEL;
+    }
+
+    public static String defaultAsrBaseUrl(String protocol) {
+        return AsrProtocols.DASHSCOPE.equals(protocol) ? DEF_ASR_BASE_URL : DEF_BASE_URL;
+    }
+
+    public static String defaultAsrModel(String protocol) {
+        switch (protocol) {
+            case AsrProtocols.CHAT_AUDIO:     return "qwen3-asr-flash";
+            case AsrProtocols.TRANSCRIPTIONS: return "whisper-1";
+            default:                          return DEF_ASR_MODEL;
+        }
+    }
+
+    public static String defaultTtsBaseUrl(String protocol) {
+        switch (protocol) {
+            case TtsProtocols.MINIMAX_T2A: return "https://tokendance.space/gateway/minimax/v1";
+            case TtsProtocols.ARK_TTS:     return "https://tokendance.space/gateway/ark";
+            default:                       return DEF_TTS_BASE_URL;
+        }
+    }
+
+    public static String defaultTtsModel(String protocol) {
+        switch (protocol) {
+            case TtsProtocols.SPEECH:      return "gpt-4o-mini-tts";
+            case TtsProtocols.MINIMAX_T2A: return "minimax-speech-2.8-turbo";
+            case TtsProtocols.ARK_TTS:     return "seed-tts-2.0";
+            default:                       return DEF_TTS_MODEL;
+        }
+    }
     public void putChatModel(String v)   { sp.edit().putString("chat_model", nullSafe(v, DEF_CHAT_MODEL)).apply(); }
     public void putSysPrompt(String v)   { sp.edit().putString("sys_prompt", nullSafe(v, DEF_SYS_PROMPT)).apply(); }
     public void putTtsModel(String v)        { sp.edit().putString("tts_model",    nullSafe(v, DEF_TTS_MODEL)).apply(); }

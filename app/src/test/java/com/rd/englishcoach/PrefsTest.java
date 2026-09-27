@@ -102,6 +102,22 @@ public class PrefsTest {
     }
 
     @Test
+    public void protocolDefaults_baseAndModel() {
+        // 换协议要跟着换地址：MiniMax / 豆包 端点前缀不同
+        assertTrue(Prefs.defaultTtsBaseUrl(TtsProtocols.MINIMAX_T2A).contains("/minimax/"));
+        assertTrue(Prefs.defaultTtsBaseUrl(TtsProtocols.ARK_TTS).endsWith("/gateway/ark"));
+        assertEquals(Prefs.DEF_TTS_BASE_URL, Prefs.defaultTtsBaseUrl(TtsProtocols.CHAT_TTS));
+        assertEquals("minimax-speech-2.8-turbo", Prefs.defaultTtsModel(TtsProtocols.MINIMAX_T2A));
+        assertEquals("seed-tts-2.0", Prefs.defaultTtsModel(TtsProtocols.ARK_TTS));
+        // 识别：dashscope 是完整端点，chat-audio 是 OpenAI 根
+        assertEquals(Prefs.DEF_ASR_BASE_URL, Prefs.defaultAsrBaseUrl(AsrProtocols.DASHSCOPE));
+        assertEquals(Prefs.DEF_BASE_URL, Prefs.defaultAsrBaseUrl(AsrProtocols.CHAT_AUDIO));
+        // 问答：gemini 走 /v1beta
+        assertTrue(Prefs.defaultChatBaseUrl(ChatProtocols.GEMINI).endsWith("/v1beta"));
+        assertEquals(Prefs.DEF_BASE_URL, Prefs.defaultChatBaseUrl(ChatProtocols.OPENAI_CHAT));
+    }
+
+    @Test
     public void defTtsModel_correct() {
         assertEquals("mimo-v2.5-tts", Prefs.DEF_TTS_MODEL);
     }

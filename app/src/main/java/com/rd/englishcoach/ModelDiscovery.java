@@ -128,14 +128,17 @@ final class ModelDiscovery {
         return b + "/models";
     }
 
-    /** {@code GET {目录}}（无需鉴权）。失败返回空列表。 */
-    static List<ModelInfo> fetchModels(String apiBase) {
+    /** {@code GET {目录}}。有的网关（new-api/tbtk）列表也要鉴权，所以要带 key；失败返回空列表。 */
+    static List<ModelInfo> fetchModels(String apiBase, String apiKey) {
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(modelsUrl(apiBase)).openConnection();
             conn.setConnectTimeout(15_000);
             conn.setReadTimeout(30_000);
             conn.setRequestProperty("Accept", "application/json");
+            if (apiKey != null && !apiKey.isEmpty()) {
+                conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            }
             return parseModels(Http.readStream(conn.getInputStream()));
         } catch (Exception e) {
             return new ArrayList<>();

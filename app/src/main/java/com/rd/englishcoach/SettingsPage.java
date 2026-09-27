@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 设置页：三套接口（问答 / 识别 / 朗读）+ 系统提示词 + 悬浮窗外观 + 朗读音色。
@@ -121,9 +122,39 @@ final class SettingsPage {
     // ── 协议选择 ────────────────────────────
 
     private void buildProtocolChips() {
-        fillProtocolChips(chatProtocolChips, ChatProtocols.ALL, prefs.chatProtocol(), prefs::putChatProtocol);
-        fillProtocolChips(asrProtocolChips, AsrProtocols.ALL, prefs.asrProtocol(), prefs::putAsrProtocol);
-        fillProtocolChips(ttsProtocolChips, TtsProtocols.ALL, prefs.ttsProtocol(), prefs::putTtsProtocol);
+        fillProtocolChips(chatProtocolChips, ChatProtocols.ALL, prefs.chatProtocol(), p -> {
+            String old = prefs.chatProtocol();
+            prefs.putChatProtocol(p);
+            autoFill(etBaseUrl, old, p, Prefs::defaultChatBaseUrl, prefs::putChatBaseUrl);
+            autoFill(etChatModel, old, p, Prefs::defaultChatModel, prefs::putChatModel);
+        });
+        fillProtocolChips(asrProtocolChips, AsrProtocols.ALL, prefs.asrProtocol(), p -> {
+            String old = prefs.asrProtocol();
+            prefs.putAsrProtocol(p);
+            autoFill(etAsrBaseUrl, old, p, Prefs::defaultAsrBaseUrl, prefs::putAsrBaseUrl);
+            autoFill(etAsrModel, old, p, Prefs::defaultAsrModel, prefs::putAsrModel);
+        });
+        fillProtocolChips(ttsProtocolChips, TtsProtocols.ALL, prefs.ttsProtocol(), p -> {
+            String old = prefs.ttsProtocol();
+            prefs.putTtsProtocol(p);
+            autoFill(etTtsBaseUrl, old, p, Prefs::defaultTtsBaseUrl, prefs::putTtsBaseUrl);
+            autoFill(etTtsModel, old, p, Prefs::defaultTtsModel, prefs::putTtsModel);
+        });
+    }
+
+    /**
+     * 协议切换时，若地址/模型还是「旧协议的默认值」（说明用户没自定义过），就换成新协议的默认值；
+     * 用户自定义过的一律不动。不同协议的端点前缀不同（MiniMax 在 /gateway/minimax/v1 等），
+     * 不跟着换就会出现「换了协议但地址还是旧的」→ 连通性检测 404。
+     */
+    private void autoFill(EditText field, String oldProtocol, String newProtocol,
+                          Function<String, String> defaults, Consumer<String> save) {
+        String cur = val(field);
+        if (cur.isEmpty() || cur.equals(defaults.apply(oldProtocol))) {
+            String next = defaults.apply(newProtocol);
+            field.setText(next);
+            save.accept(next);
+        }
     }
 
     /** 协议芯片：选中态用 pill_glass + accent，其余 bg_chip（与模式/音色芯片同做法）。 */
@@ -299,9 +330,10 @@ final class SettingsPage {
         sheet.show(box);
 
         final String baseUrl = pickerBase(kind);
+        final String key = pickerKey(kind);
         new Thread(() -> {
             final List<ModelDiscovery.ModelInfo> picked =
-                    ModelDiscovery.byKind(ModelDiscovery.fetchModels(baseUrl), kind);
+                    ModelDiscovery.byKind(ModelDiscovery.fetchModels(baseUrl, key), kind);
             act.runOnUiThread(() -> {
                 if (!sheet.showing()) return;
                 if (picked.isEmpty()) { status.setText(R.string.set_pick_empty); return; }
@@ -383,6 +415,15 @@ final class SettingsPage {
             case ASR: return val(etAsrBaseUrl);
             case TTS: return val(etTtsBaseUrl);
             default:  return val(etBaseUrl);
+        }
+    }
+
+    /** 拉模型目录用的 Key（识别/朗读留空时跟随问答 Key）。 */
+    private String pickerKey(ModelDiscovery.Kind kind) {
+        switch (kind) {
+            case ASR: return orElse(val(etAsrKey), val(etApiKey));
+            case TTS: return orElse(val(etTtsKey), val(etApiKey));
+            default:  return val(etApiKey);
         }
     }
 

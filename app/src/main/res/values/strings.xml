@@ -48,7 +48,7 @@
     <string name="set_pick_kind_tts">朗读</string>
     <string name="set_pick_search">搜索模型</string>
     <string name="set_pick_loading">正在获取模型列表…</string>
-    <string name="set_pick_empty">没拿到模型：检查该接口的 Base URL 是否可达</string>
+    <string name="set_pick_empty">没拿到模型：检查该接口的 Base URL 与 Key</string>
     <string name="set_pick_none">该类目下没有匹配的模型</string>
     <string name="set_diag">诊断</string>
     <string name="set_detect_connectivity">检测连通性（问答 / 识别 / 朗读）</string>
