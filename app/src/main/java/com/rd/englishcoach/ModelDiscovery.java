@@ -50,7 +50,10 @@ final class ModelDiscovery {
                 String id = o.optString("id", "");
                 if (id.isEmpty()) continue;
                 List<String> protocols = new ArrayList<>();
+                // 不同网关字段名不一：TokenDance 用 supported_protocols，
+                // tbtk/new-api 用 supported_endpoint_types（值为 openai / openai-response / anthropic）
                 JSONArray ps = o.optJSONArray("supported_protocols");
+                if (ps == null) ps = o.optJSONArray("supported_endpoint_types");
                 if (ps != null) {
                     for (int j = 0; j < ps.length(); j++) protocols.add(ps.optString(j, ""));
                 }
@@ -66,27 +69,41 @@ final class ModelDiscovery {
     /**
      * 按用途分类；不属于三类（图像 / 视频 / 搜索 / 向量等）返回 null。
      *
-     * <p>主要看 {@code supported_protocols}（ASR=含 asr，TTS=含 tts/t2a/voice），
-     * 问答额外要求有对话协议且 {@code context_length > 0}。
-     * <b>但 mimo-v2.5-tts 这类只声明 {@code openai:chat-completions}（与文本模型同协议），
-     * 只能靠 id 里的 tts/speech 关键词识别</b>，否则会被误归到问答。</p>
+     * <p>用<b>白名单</b>认对话协议（chat/messages/responses/generate-content/…），
+     * 避开「openai:image-generations」这类含 openai 但非对话的协议；
+     * ASR / TTS 同样看协议关键词，另外 mimo-v2.5-tts 这类只声明
+     * {@code openai:chat-completions} 的靠 id 里的 tts/speech 识别。</p>
      */
     static Kind kindOf(ModelInfo m) {
         String id = m.id.toLowerCase();
-        boolean asr = id.contains("asr");
-        boolean tts = id.contains("tts") || id.contains("speech");
+        boolean asr = id.contains("asr") || id.contains("transcri") || id.contains("whisper");
+        boolean tts = id.contains("tts") || id.contains("speech") || id.contains("t2a");
         boolean chat = false;
         for (String p : m.protocols) {
             String s = p.toLowerCase();
-            if (s.contains("asr")) asr = true;
-            if (s.contains("tts") || s.contains("t2a") || s.contains("voice")) tts = true;
-            if (s.contains("chat-completions") || s.contains("messages")
-                    || s.contains("responses")) chat = true;
+            if (s.contains("asr") || s.contains("transcription")) { asr = true; continue; }
+            if (s.contains("tts") || s.contains("t2a") || s.contains("voice")) { tts = true; continue; }
+            if (isChatProtocol(s)) chat = true;
         }
         if (asr) return Kind.ASR;
         if (tts) return Kind.TTS;
-        if (chat && m.contextLength > 0) return Kind.CHAT;
-        return null;
+        if (chat) return Kind.CHAT;
+        // 目录没给协议信息（部分网关只返回 id/name）→ 当文本模型
+        if (m.protocols.isEmpty()) return Kind.CHAT;
+        // 有协议但都不属于三类：只有明显是文本模型（有上下文长度）才收录
+        return m.contextLength > 0 ? Kind.CHAT : null;
+    }
+
+    /** 白名单识别对话协议，避开含 openai 但非对话的（图像/向量/重排等）。 */
+    private static boolean isChatProtocol(String s) {
+        return s.contains("chat")            // openai:chat-completions
+            || s.contains("messages")        // anthropic:messages
+            || s.contains("responses")       // openai:responses
+            || s.contains("response")        // openai-response（new-api 风格）
+            || s.equals("openai")            // new-api 简要写法
+            || s.contains("generate-content")// gemini
+            || s.contains("gemini")
+            || s.contains("anthropic");
     }
 
     static List<ModelInfo> byKind(List<ModelInfo> all, Kind kind) {

@@ -93,4 +93,20 @@ public class ModelDiscoveryTest {
         assertEquals("https://tokendance.space/gateway/v1/models", ModelDiscovery.modelsUrl(
                 "https://tokendance.space/gateway/alibaba/api/v1/services/aigc/multimodal-generation/generation"));
     }
+
+    /** new-api / tbtk 风格的目录：字段是 supported_endpoint_types，且没有 context_length。 */
+    private static final String NEW_API_JSON = "{\"data\":["
+            + "{\"id\":\"gpt-5.6-terra\",\"object\":\"model\",\"created\":1,"
+            + " \"owned_by\":\"openai\",\"supported_endpoint_types\":[\"openai\"]},"
+            + "{\"id\":\"claude-opus-5\",\"object\":\"model\",\"created\":1,"
+            + " \"owned_by\":\"claude\","
+            + " \"supported_endpoint_types\":[\"openai\",\"openai-response\",\"anthropic\"]}"
+            + "]}";
+
+    @Test
+    public void parseModels_readsSupportedEndpointTypes() {
+        List<ModelDiscovery.ModelInfo> all = ModelDiscovery.parseModels(NEW_API_JSON);
+        assertEquals(2, all.size());
+        assertEquals(2, ModelDiscovery.byKind(all, ModelDiscovery.Kind.CHAT).size());
+    }
 }
