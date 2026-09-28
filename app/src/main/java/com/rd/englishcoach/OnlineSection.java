@@ -124,6 +124,22 @@ final class OnlineSection {
         toast(act.getString(R.string.set_saved));
     }
 
+    /**
+     * 收起态的一行摘要：模型 · 协议（· 未配 Key）。
+     *
+     * <p>折叠卡收起后只剩这一行，所以「缺什么」必须写进来——不展开也能看出哪套没配好。</p>
+     */
+    String summaryOf(ModelDiscovery.Kind k) {
+        String model = val(modelField(k));
+        String s = (model.isEmpty() ? act.getString(R.string.models_iface_no_model) : model)
+                + " · " + protocolLabel(protocol(k));
+        // 识别 / 朗读的 Key 留空时回退用问答的 Key，所以两边都空才算真的没配
+        if (val(keyField(k)).isEmpty() && val(etApiKey).isEmpty()) {
+            s += " · " + act.getString(R.string.models_iface_no_key);
+        }
+        return s;
+    }
+
     private void loadAll() {
         etBaseUrl.setText(prefs.chatBaseUrl());
         etApiKey.setText(prefs.apiKey());

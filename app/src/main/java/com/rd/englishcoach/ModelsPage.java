@@ -28,12 +28,20 @@ import java.util.Map;
  *   <li>下载源编辑从页内表单移到顶栏入口的 Bottom Sheet（页内少一块卡片）；
  *       「顺手保存」的逻辑收敛到 sheet 的保存按钮，下载一律用已保存值；</li>
  *   <li>删除确认 / 下载失败详情从 AlertDialog 改为 Bottom Sheet
- *       （失败详情是「每个源各自原因」的多行文本，必须看得全）。</li>
+ *       （失败详情是「每个源各自原因」的多行文本，必须看得全）；</li>
+ *   <li>v4.4 起页面分「在线 / 离线」两个子 Tab：在线=配接口（三套各自独立，默认收起成一行摘要），
+ *       离线=下模型。引擎模式（自动 / 仅在线 / 仅离线）留在子 Tab 之上——它是「用哪边」的开关，
+ *       自动模式下两侧同时参与，塞进任何一侧都会让另一侧的用户找不到。</li>
  * </ul>
  */
 final class ModelsPage implements ModelManager.Listener {
 
     private static final int REQ_IMPORT = 1001;
+
+    /** 子 Tab 变化通知（顶栏「下载源」只在离线侧有意义）。 */
+    interface SubTabListener {
+        void onModelsSubTab(boolean online);
+    }
 
     private final MainActivity act;
     private final Prefs prefs;
@@ -46,6 +54,12 @@ final class ModelsPage implements ModelManager.Listener {
     private final LinearLayout asrChips;
     private final LinearLayout modelList;
     private final View btnModeAuto, btnModeOnline, btnModeOffline;
+    private final View pageOnline, pageOffline;
+    private final TextView btnTabOnline, btnTabOffline;
+    /** 三套在线接口的折叠块（顺序 = {@link ModelDiscovery.Kind} 声明序）：摘要行、收起容器、摘要文字、箭头。 */
+    private final View[] ifaceHeads, ifaceBoxes;
+    private final TextView[] ifaceSums, ifaceCarets;
+    private SubTabListener subTabListener;
     /** 模型 id → 该行的进度条，避免每次回调都重新 find 一遍。 */
     private final Map<String, ProgressBar> bars = new HashMap<>();
     /** 本地导入的目标模型（选文件是异步的，得记住点的是哪一行）。 */
@@ -61,6 +75,28 @@ final class ModelsPage implements ModelManager.Listener {
         asrChips = root.findViewById(R.id.asrModelChips);
         modelList = root.findViewById(R.id.modelList);
 
+        // 子 Tab：纯显隐，不重载数据（两侧的视图都一直活着）
+        pageOnline = root.findViewById(R.id.pageOnline);
+        pageOffline = root.findViewById(R.id.pageOffline);
+        btnTabOnline = root.findViewById(R.id.btnTabOnline);
+        btnTabOffline = root.findViewById(R.id.btnTabOffline);
+        btnTabOnline.setOnClickListener(v -> setOnlineTab(true));
+        btnTabOffline.setOnClickListener(v -> setOnlineTab(false));
+
+        // 三套在线接口折叠成一行摘要：同一时刻只展开一套，高度才可预期
+        ifaceHeads = new View[]{root.findViewById(R.id.headIfaceChat),
+                root.findViewById(R.id.headIfaceAsr), root.findViewById(R.id.headIfaceTts)};
+        ifaceBoxes = new View[]{root.findViewById(R.id.boxIfaceChat),
+                root.findViewById(R.id.boxIfaceAsr), root.findViewById(R.id.boxIfaceTts)};
+        ifaceSums = new TextView[]{root.findViewById(R.id.sumIfaceChat),
+                root.findViewById(R.id.sumIfaceAsr), root.findViewById(R.id.sumIfaceTts)};
+        ifaceCarets = new TextView[]{root.findViewById(R.id.caretIfaceChat),
+                root.findViewById(R.id.caretIfaceAsr), root.findViewById(R.id.caretIfaceTts)};
+        for (int i = 0; i < ifaceHeads.length; i++) {
+            final int idx = i;
+            ifaceHeads[i].setOnClickListener(v -> toggleIface(idx));
+        }
+
         // 在线接口区块：本页自己的「保存」按钮负责把地址/Key/模型落盘
         online = new OnlineSection(act, root);
         root.findViewById(R.id.btnSaveModels).setOnClickListener(v -> online.save());
@@ -74,6 +110,7 @@ final class ModelsPage implements ModelManager.Listener {
 
         buildModelList();
         buildAsrPicker();
+        applySubTab();
     }
 
     /** Tab 切进本页时刷新（安装状态与在线配置可能被外部改动过）。 */
@@ -82,6 +119,53 @@ final class ModelsPage implements ModelManager.Listener {
         refreshModelSummary();
         buildAsrPicker();
         online.refresh();
+        applySubTab();
+    }
+
+    // ── 在线 / 离线子 Tab + 折叠卡 ──────────────────────
+
+    /** 顶栏「下载源」只在离线侧显示（在线侧是配接口，用不到下载源）。 */
+    void setSubTabListener(SubTabListener l) {
+        this.subTabListener = l;
+        applySubTab();
+    }
+
+    boolean onlineTab() {
+        return prefs.modelsOnlineTab();
+    }
+
+    private void setOnlineTab(boolean online) {
+        prefs.putModelsOnlineTab(online);
+        applySubTab();
+    }
+
+    private void applySubTab() {
+        boolean online = onlineTab();
+        pageOnline.setVisibility(online ? View.VISIBLE : View.GONE);
+        pageOffline.setVisibility(online ? View.GONE : View.VISIBLE);
+        styleChip(btnTabOnline, online);
+        styleChip(btnTabOffline, !online);
+        refreshIfaceSummaries();
+        if (subTabListener != null) subTabListener.onModelsSubTab(online);
+    }
+
+    /** 点摘要行展开/收起；展开一套时把其它两套收起来。 */
+    private void toggleIface(int idx) {
+        boolean expand = ifaceBoxes[idx].getVisibility() != View.VISIBLE;
+        for (int i = 0; i < ifaceBoxes.length; i++) {
+            ifaceBoxes[i].setVisibility(i == idx && expand ? View.VISIBLE : View.GONE);
+        }
+        refreshIfaceSummaries();
+    }
+
+    /** 收起态摘要 + 箭头方向（收起 ▸ / 展开 ▾）。 */
+    private void refreshIfaceSummaries() {
+        ModelDiscovery.Kind[] kinds = ModelDiscovery.Kind.values();
+        for (int i = 0; i < ifaceBoxes.length && i < kinds.length; i++) {
+            ifaceSums[i].setText(online.summaryOf(kinds[i]));
+            boolean open = ifaceBoxes[i].getVisibility() == View.VISIBLE;
+            ifaceCarets[i].setText(open ? R.string.models_iface_expanded : R.string.models_iface_collapsed);
+        }
     }
 
     /** 自动/仅离线模式下识别模型缺失 → 「模型」Tab 亮 warn 角标。 */

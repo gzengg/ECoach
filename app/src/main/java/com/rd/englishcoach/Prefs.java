@@ -148,6 +148,14 @@ public final class Prefs {
 
     public String modelBaseUrl() { return sp.getString("model_base_url", DEF_MODEL_BASE_URL); }
 
+    /**
+     * 模型页停在「在线」还是「离线」子 Tab（默认在线）。
+     *
+     * <p>同一把开关左右两手都要用：在线侧是「配接口」（配一次很少动），离线侧是「下模型」
+     * （会反复回来），所以分开后得记住上次停在哪边。</p>
+     */
+    public boolean modelsOnlineTab() { return sp.getBoolean("models_online_tab", true); }
+
     /** 离线识别用哪个模型（id）；未装时引擎会自动回落到其它已装档。 */
     public String offlineAsrModelId() { return sp.getString("offline_asr_model", ""); }
 
@@ -242,6 +250,7 @@ public final class Prefs {
     public void putFontSp(int v)         { sp.edit().putInt("font_sp",     clamp(v, MIN_FONT_SP, MAX_FONT_SP)).apply(); }
     public void putWidthDp(int v)        { sp.edit().putInt("width_dp",    clamp(v, MIN_WIDTH_DP, MAX_WIDTH_DP)).apply(); }
     public void putModelBaseUrl(String v){ sp.edit().putString("model_base_url", nullSafe(v, DEF_MODEL_BASE_URL)).apply(); }
+    public void putModelsOnlineTab(boolean v) { sp.edit().putBoolean("models_online_tab", v).apply(); }
     public void putOfflineAsrModelId(String v) { sp.edit().putString("offline_asr_model", v == null ? "" : v).apply(); }
     public void putEngineMode(int v)     { sp.edit().putInt("engine_mode", clamp(v, MODE_AUTO, MODE_OFFLINE)).apply(); }
     public void putTtsVoiceChinese(String v)   { sp.edit().putString("tts_voice_zh", nullSafe(v, DEF_TTS_VOICE_ZH)).apply(); }

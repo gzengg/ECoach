@@ -187,6 +187,14 @@
     <string name="models_mode_offline">仅离线</string>
     <string name="models_mode_hint">自动：装了离线模型就用离线，没装就走在线（默认与旧版一致）。</string>
 
+    <!-- 模型页的「在线 / 离线」子 Tab -->
+    <string name="models_tab_online">在线</string>
+    <string name="models_tab_offline">离线</string>
+    <string name="models_iface_collapsed">▸</string>
+    <string name="models_iface_expanded">▾</string>
+    <string name="models_iface_no_model">未设置模型</string>
+    <string name="models_iface_no_key">未配 Key</string>
+
     <string name="models_source_title">下载源</string>
     <string name="models_source_save">保存下载源</string>
     <string name="models_source_saved">下载源已保存</string>

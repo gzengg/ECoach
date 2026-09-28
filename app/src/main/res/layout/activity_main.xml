@@ -265,7 +265,7 @@
                 android:focusable="true"
                 android:focusableInTouchMode="true">
 
-                <!-- 运行模式 + 占用 + 识别模型选择 -->
+                <!-- 引擎模式：自动=先试离线再回落在线；显式模式只走一侧（与「在线/离线」子 Tab 无关） -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -313,337 +313,448 @@
                         android:textSize="13sp"
                         android:textColor="@color/text_secondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:textSize="13sp"
-                        android:textColor="@color/text_secondary"
-                        android:text="@string/models_pick_asr" />
-                    <HorizontalScrollView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:scrollbars="none"
-                        android:layout_marginTop="4dp">
-                        <LinearLayout android:id="@+id/asrModelChips"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal" />
-                    </HorizontalScrollView>
                 </LinearLayout>
 
-                <!-- ══ 在线模型：三套接口各自独立（问答 / 识别 / 朗读），可分别指向不同服务商 ══ -->
-
-                <!-- 分组 A：问答模型 -->
+                <!-- 在线 / 离线子 Tab：在线=配接口（三套各自独立，默认收起成一行摘要），
+                     离线=下模型（识别档位 + 模型列表）。用 bg_chip + pill_primary 选中态，
+                     与上面的模式芯片在容器样式上区分开（两行都是等宽芯片，不区分会看成同一组）。 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/card_surface"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
+                    android:background="@drawable/bg_chip"
+                    android:orientation="horizontal"
+                    android:padding="4dp"
                     android:layout_marginBottom="8dp">
+                    <TextView android:id="@+id/btnTabOnline"
+                        style="@style/ModelChip"
+                        android:text="@string/models_tab_online" />
+                    <TextView android:id="@+id/btnTabOffline"
+                        style="@style/ModelChip"
+                        android:text="@string/models_tab_offline" />
+                </LinearLayout>
 
-                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
-                        android:text="@string/set_group_chat" />
+                <!-- ══ 在线：三套接口（问答 / 识别 / 朗读）各自独立，可指向不同服务商 ══ -->
+                <LinearLayout android:id="@+id/pageOnline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
 
-                    <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_provider" />
-                        <TextView android:id="@+id/btnProviderChat" style="@style/ModelAction"
-                            android:text="@string/set_provider_pick" />
+                    <!-- 分组 A：问答模型（OpenAI 兼容，四种协议） -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/card_surface"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:layout_marginBottom="8dp">
+
+                        <LinearLayout android:id="@+id/headIfaceChat"
+                            style="@style/SettingRow"
+                            android:layout_marginTop="0dp"
+                            android:background="?android:attr/selectableItemBackground">
+                            <TextView style="@style/SettingLabel"
+                                android:text="@string/set_group_chat" />
+                            <TextView android:id="@+id/sumIfaceChat"
+                                style="@style/SettingTrailing"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:gravity="center_vertical|end"
+                                android:maxLines="1"
+                                android:ellipsize="end" />
+                            <TextView android:id="@+id/caretIfaceChat"
+                                style="@style/SettingTrailing"
+                                android:text="@string/models_iface_collapsed" />
+                        </LinearLayout>
+
+                        <LinearLayout android:id="@+id/boxIfaceChat"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+
+                            <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_provider" />
+                                <TextView android:id="@+id/btnProviderChat" style="@style/ModelAction"
+                                    android:text="@string/set_provider_pick" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_protocol" />
+                                <HorizontalScrollView
+                                    android:layout_width="0dp"
+                                    android:layout_weight="1"
+                                    android:layout_height="@dimen/height_chip"
+                                    android:scrollbars="none">
+                                    <LinearLayout android:id="@+id/chatProtocolChips"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="match_parent"
+                                        android:orientation="horizontal" />
+                                </HorizontalScrollView>
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_endpoint"
+                                    android:labelFor="@id/etBaseUrl" />
+                                <EditText android:id="@+id/etBaseUrl" style="@style/SettingInput"
+                                    android:inputType="textUri"
+                                    android:hint="@string/set_base_url_hint" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_key"
+                                    android:labelFor="@id/etApiKey" />
+                                <EditText android:id="@+id/etApiKey" style="@style/SettingInput"
+                                    android:inputType="textPassword" />
+                                <TextView android:id="@+id/btnToggleKey" style="@style/SettingTrailing"
+                                    android:text="@string/set_show_key" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_model"
+                                    android:labelFor="@id/etChatModel" />
+                                <EditText android:id="@+id/etChatModel" style="@style/SettingInput" />
+                                <TextView android:id="@+id/btnPickChat" style="@style/SettingTrailing"
+                                    android:text="@string/set_pick" />
+                            </LinearLayout>
+
+                            <TextView android:id="@+id/btnProbeChat" style="@style/ModelAction"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/set_probe_this" />
+                            <TextView android:id="@+id/tvProbeChat"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_tertiary"
+                                android:visibility="gone" />
+                        </LinearLayout>
                     </LinearLayout>
 
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_protocol" />
-                        <HorizontalScrollView
-                            android:layout_width="0dp"
-                            android:layout_weight="1"
-                            android:layout_height="@dimen/height_chip"
-                            android:scrollbars="none">
-                            <LinearLayout android:id="@+id/chatProtocolChips"
+                    <!-- 分组 B：识别模型（qwen-audio 系列走 DashScope，端点是完整 URL） -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/card_surface"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:layout_marginBottom="8dp">
+
+                        <LinearLayout android:id="@+id/headIfaceAsr"
+                            style="@style/SettingRow"
+                            android:layout_marginTop="0dp"
+                            android:background="?android:attr/selectableItemBackground">
+                            <TextView style="@style/SettingLabel"
+                                android:text="@string/set_group_asr" />
+                            <TextView android:id="@+id/sumIfaceAsr"
+                                style="@style/SettingTrailing"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:gravity="center_vertical|end"
+                                android:maxLines="1"
+                                android:ellipsize="end" />
+                            <TextView android:id="@+id/caretIfaceAsr"
+                                style="@style/SettingTrailing"
+                                android:text="@string/models_iface_collapsed" />
+                        </LinearLayout>
+
+                        <LinearLayout android:id="@+id/boxIfaceAsr"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+
+                            <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_provider" />
+                                <TextView android:id="@+id/btnProviderAsr" style="@style/ModelAction"
+                                    android:text="@string/set_provider_pick" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_protocol" />
+                                <HorizontalScrollView
+                                    android:layout_width="0dp"
+                                    android:layout_weight="1"
+                                    android:layout_height="@dimen/height_chip"
+                                    android:scrollbars="none">
+                                    <LinearLayout android:id="@+id/asrProtocolChips"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="match_parent"
+                                        android:orientation="horizontal" />
+                                </HorizontalScrollView>
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_endpoint"
+                                    android:labelFor="@id/etAsrBaseUrl" />
+                                <EditText android:id="@+id/etAsrBaseUrl" style="@style/SettingInput"
+                                    android:inputType="textUri"
+                                    android:hint="@string/set_asr_url_hint" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_key"
+                                    android:labelFor="@id/etAsrKey" />
+                                <EditText android:id="@+id/etAsrKey" style="@style/SettingInput"
+                                    android:inputType="textPassword"
+                                    android:hint="@string/set_key_follow_hint" />
+                                <TextView android:id="@+id/btnToggleAsrKey" style="@style/SettingTrailing"
+                                    android:text="@string/set_show_key" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_model"
+                                    android:labelFor="@id/etAsrModel" />
+                                <EditText android:id="@+id/etAsrModel" style="@style/SettingInput" />
+                                <TextView android:id="@+id/btnPickAsr" style="@style/SettingTrailing"
+                                    android:text="@string/set_pick" />
+                            </LinearLayout>
+
+                            <TextView android:id="@+id/btnProbeAsr" style="@style/ModelAction"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/set_probe_this" />
+                            <TextView android:id="@+id/tvProbeAsr"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_tertiary"
+                                android:visibility="gone" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- 分组 C：朗读模型（mimo TTS 走 OpenAI 兼容的 chat/completions） -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/card_surface"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:layout_marginBottom="8dp">
+
+                        <LinearLayout android:id="@+id/headIfaceTts"
+                            style="@style/SettingRow"
+                            android:layout_marginTop="0dp"
+                            android:background="?android:attr/selectableItemBackground">
+                            <TextView style="@style/SettingLabel"
+                                android:text="@string/set_group_tts" />
+                            <TextView android:id="@+id/sumIfaceTts"
+                                style="@style/SettingTrailing"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:gravity="center_vertical|end"
+                                android:maxLines="1"
+                                android:ellipsize="end" />
+                            <TextView android:id="@+id/caretIfaceTts"
+                                style="@style/SettingTrailing"
+                                android:text="@string/models_iface_collapsed" />
+                        </LinearLayout>
+
+                        <LinearLayout android:id="@+id/boxIfaceTts"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+
+                            <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_provider" />
+                                <TextView android:id="@+id/btnProviderTts" style="@style/ModelAction"
+                                    android:text="@string/set_provider_pick" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_protocol" />
+                                <HorizontalScrollView
+                                    android:layout_width="0dp"
+                                    android:layout_weight="1"
+                                    android:layout_height="@dimen/height_chip"
+                                    android:scrollbars="none">
+                                    <LinearLayout android:id="@+id/ttsProtocolChips"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="match_parent"
+                                        android:orientation="horizontal" />
+                                </HorizontalScrollView>
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_endpoint"
+                                    android:labelFor="@id/etTtsBaseUrl" />
+                                <EditText android:id="@+id/etTtsBaseUrl" style="@style/SettingInput"
+                                    android:inputType="textUri"
+                                    android:hint="@string/set_base_url_hint" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_key"
+                                    android:labelFor="@id/etTtsKey" />
+                                <EditText android:id="@+id/etTtsKey" style="@style/SettingInput"
+                                    android:inputType="textPassword"
+                                    android:hint="@string/set_key_follow_hint" />
+                                <TextView android:id="@+id/btnToggleTtsKey" style="@style/SettingTrailing"
+                                    android:text="@string/set_show_key" />
+                            </LinearLayout>
+
+                            <LinearLayout style="@style/SettingRow">
+                                <TextView style="@style/SettingLabel"
+                                    android:text="@string/set_label_model"
+                                    android:labelFor="@id/etTtsModel" />
+                                <EditText android:id="@+id/etTtsModel" style="@style/SettingInput"
+                                    android:hint="mimo-v2.5-tts" />
+                                <TextView android:id="@+id/btnPickTts" style="@style/SettingTrailing"
+                                    android:text="@string/set_pick" />
+                            </LinearLayout>
+
+                            <TextView android:id="@+id/btnProbeTts" style="@style/ModelAction"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/set_probe_this" />
+                            <TextView android:id="@+id/tvProbeTts"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_tertiary"
+                                android:visibility="gone" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- 分组 D：朗读音色（随 TTS 模型变：mimo / MiniMax / 豆包 / OpenAI 各一套声） -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/card_surface"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
+                            android:text="@string/set_tts_voice_hint" />
+
+                        <!-- 音色行：点击弹选择 sheet；当前值由代码回填 -->
+                        <FrameLayout
+                            android:id="@+id/btnVoiceEn"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@drawable/card_row"
+                            android:clickable="true"
+                            android:focusable="true">
+                            <TextView style="@style/SettingLabel"
+                                android:layout_gravity="center_vertical"
+                                android:text="@string/set_tts_voice_en" />
+                            <TextView android:id="@+id/tvVoiceEn"
                                 android:layout_width="wrap_content"
-                                android:layout_height="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_vertical|end"
+                                android:layout_marginEnd="12dp"
+                                android:textSize="13sp"
+                                android:textColor="@color/text_primary" />
+                        </FrameLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginHorizontal="16dp"
+                            android:background="@color/stroke_soft" />
+
+                        <FrameLayout
+                            android:id="@+id/btnVoiceZh"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@drawable/card_row"
+                            android:clickable="true"
+                            android:focusable="true">
+                            <TextView style="@style/SettingLabel"
+                                android:layout_gravity="center_vertical"
+                                android:text="@string/set_tts_voice_zh" />
+                            <TextView android:id="@+id/tvVoiceZh"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_vertical|end"
+                                android:layout_marginEnd="12dp"
+                                android:textSize="13sp"
+                                android:textColor="@color/text_primary" />
+                        </FrameLayout>
+
+                        <!-- 探测当前 TTS 模型的可选音色（mimo 这类会把可用音色回显在报错里） -->
+                        <TextView android:id="@+id/btnDetectVoices" style="@style/ModelAction"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/set_detect_voices" />
+                    </LinearLayout>
+
+                    <!-- 保存：在线接口的地址 / Key / 模型（协议与服务商点了就生效） -->
+                    <Button android:id="@+id/btnSaveModels"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="15sp"
+                        android:text="@string/set_save" />
+
+                </LinearLayout>
+
+                <!-- ══ 离线：识别档位 + 模型列表（下载 / 删除都在行内） ══ -->
+                <LinearLayout android:id="@+id/pageOffline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <!-- 识别档位：装了多个档位时选一个；一个没装则在识别时回落在线 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/card_surface"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView style="@style/SettingHeader"
+                            android:layout_marginTop="0dp"
+                            android:text="@string/models_pick_asr" />
+
+                        <HorizontalScrollView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:scrollbars="none"
+                            android:layout_marginTop="4dp">
+                            <LinearLayout android:id="@+id/asrModelChips"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
                                 android:orientation="horizontal" />
                         </HorizontalScrollView>
                     </LinearLayout>
 
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_endpoint"
-                            android:labelFor="@id/etBaseUrl" />
-                        <EditText android:id="@+id/etBaseUrl" style="@style/SettingInput"
-                            android:inputType="textUri"
-                            android:hint="@string/set_base_url_hint" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_key"
-                            android:labelFor="@id/etApiKey" />
-                        <EditText android:id="@+id/etApiKey" style="@style/SettingInput"
-                            android:inputType="textPassword" />
-                        <TextView android:id="@+id/btnToggleKey" style="@style/SettingTrailing"
-                            android:text="@string/set_show_key" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_model"
-                            android:labelFor="@id/etChatModel" />
-                        <EditText android:id="@+id/etChatModel" style="@style/SettingInput" />
-                        <TextView android:id="@+id/btnPickChat" style="@style/SettingTrailing"
-                            android:text="@string/set_pick" />
-                    </LinearLayout>
-
-                    <TextView android:id="@+id/btnProbeChat" style="@style/ModelAction"
-                        android:layout_marginTop="6dp"
-                        android:text="@string/set_probe_this" />
-                    <TextView android:id="@+id/tvProbeChat"
+                    <!-- 模型列表（运行时动态填充） -->
+                    <LinearLayout
+                        android:id="@+id/modelList"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_tertiary"
-                        android:visibility="gone" />
+                        android:orientation="vertical" />
                 </LinearLayout>
-
-                <!-- 分组 B：识别模型（qwen-audio 系列走 DashScope，端点是完整 URL） -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/card_surface"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
-                        android:text="@string/set_group_asr" />
-
-                    <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_provider" />
-                        <TextView android:id="@+id/btnProviderAsr" style="@style/ModelAction"
-                            android:text="@string/set_provider_pick" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_protocol" />
-                        <HorizontalScrollView
-                            android:layout_width="0dp"
-                            android:layout_weight="1"
-                            android:layout_height="@dimen/height_chip"
-                            android:scrollbars="none">
-                            <LinearLayout android:id="@+id/asrProtocolChips"
-                                android:layout_width="wrap_content"
-                                android:layout_height="match_parent"
-                                android:orientation="horizontal" />
-                        </HorizontalScrollView>
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_endpoint"
-                            android:labelFor="@id/etAsrBaseUrl" />
-                        <EditText android:id="@+id/etAsrBaseUrl" style="@style/SettingInput"
-                            android:inputType="textUri"
-                            android:hint="@string/set_asr_url_hint" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_key"
-                            android:labelFor="@id/etAsrKey" />
-                        <EditText android:id="@+id/etAsrKey" style="@style/SettingInput"
-                            android:inputType="textPassword"
-                            android:hint="@string/set_key_follow_hint" />
-                        <TextView android:id="@+id/btnToggleAsrKey" style="@style/SettingTrailing"
-                            android:text="@string/set_show_key" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_model"
-                            android:labelFor="@id/etAsrModel" />
-                        <EditText android:id="@+id/etAsrModel" style="@style/SettingInput" />
-                        <TextView android:id="@+id/btnPickAsr" style="@style/SettingTrailing"
-                            android:text="@string/set_pick" />
-                    </LinearLayout>
-
-                    <TextView android:id="@+id/btnProbeAsr" style="@style/ModelAction"
-                        android:layout_marginTop="6dp"
-                        android:text="@string/set_probe_this" />
-                    <TextView android:id="@+id/tvProbeAsr"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_tertiary"
-                        android:visibility="gone" />
-                </LinearLayout>
-
-                <!-- 分组 C：朗读模型（mimo TTS 走 OpenAI 兼容的 chat/completions） -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/card_surface"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
-                        android:text="@string/set_group_tts" />
-
-                    <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_provider" />
-                        <TextView android:id="@+id/btnProviderTts" style="@style/ModelAction"
-                            android:text="@string/set_provider_pick" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_protocol" />
-                        <HorizontalScrollView
-                            android:layout_width="0dp"
-                            android:layout_weight="1"
-                            android:layout_height="@dimen/height_chip"
-                            android:scrollbars="none">
-                            <LinearLayout android:id="@+id/ttsProtocolChips"
-                                android:layout_width="wrap_content"
-                                android:layout_height="match_parent"
-                                android:orientation="horizontal" />
-                        </HorizontalScrollView>
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_endpoint"
-                            android:labelFor="@id/etTtsBaseUrl" />
-                        <EditText android:id="@+id/etTtsBaseUrl" style="@style/SettingInput"
-                            android:inputType="textUri"
-                            android:hint="@string/set_base_url_hint" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_key"
-                            android:labelFor="@id/etTtsKey" />
-                        <EditText android:id="@+id/etTtsKey" style="@style/SettingInput"
-                            android:inputType="textPassword"
-                            android:hint="@string/set_key_follow_hint" />
-                        <TextView android:id="@+id/btnToggleTtsKey" style="@style/SettingTrailing"
-                            android:text="@string/set_show_key" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:text="@string/set_label_model"
-                            android:labelFor="@id/etTtsModel" />
-                        <EditText android:id="@+id/etTtsModel" style="@style/SettingInput"
-                            android:hint="mimo-v2.5-tts" />
-                        <TextView android:id="@+id/btnPickTts" style="@style/SettingTrailing"
-                            android:text="@string/set_pick" />
-                    </LinearLayout>
-
-                    <TextView android:id="@+id/btnProbeTts" style="@style/ModelAction"
-                        android:layout_marginTop="6dp"
-                        android:text="@string/set_probe_this" />
-                    <TextView android:id="@+id/tvProbeTts"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_tertiary"
-                        android:visibility="gone" />
-                </LinearLayout>
-
-                <!-- 分组 D：朗读音色（随 TTS 模型变：mimo / MiniMax / 豆包 / OpenAI 各一套声） -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/card_surface"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
-                        android:text="@string/set_tts_voice_hint" />
-
-                    <!-- 音色行：点击弹选择 sheet；当前值由代码回填 -->
-                    <FrameLayout
-                        android:id="@+id/btnVoiceEn"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:background="@drawable/card_row"
-                        android:clickable="true"
-                        android:focusable="true">
-                        <TextView style="@style/SettingLabel"
-                            android:layout_gravity="center_vertical"
-                            android:text="@string/set_tts_voice_en" />
-                        <TextView android:id="@+id/tvVoiceEn"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center_vertical|end"
-                            android:layout_marginEnd="12dp"
-                            android:textSize="13sp"
-                            android:textColor="@color/text_primary" />
-                    </FrameLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginHorizontal="16dp"
-                        android:background="@color/stroke_soft" />
-
-                    <FrameLayout
-                        android:id="@+id/btnVoiceZh"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:background="@drawable/card_row"
-                        android:clickable="true"
-                        android:focusable="true">
-                        <TextView style="@style/SettingLabel"
-                            android:layout_gravity="center_vertical"
-                            android:text="@string/set_tts_voice_zh" />
-                        <TextView android:id="@+id/tvVoiceZh"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center_vertical|end"
-                            android:layout_marginEnd="12dp"
-                            android:textSize="13sp"
-                            android:textColor="@color/text_primary" />
-                    </FrameLayout>
-
-                    <!-- 探测当前 TTS 模型的可选音色（mimo 这类会把可用音色回显在报错里） -->
-                    <TextView android:id="@+id/btnDetectVoices" style="@style/ModelAction"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/set_detect_voices" />
-                </LinearLayout>
-
-                <!-- 保存：在线接口的地址 / Key / 模型（协议与服务商点了就生效） -->
-                <Button android:id="@+id/btnSaveModels"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textSize="15sp"
-                    android:text="@string/set_save" />
-
-                <!-- 模型列表（运行时动态填充） -->
-                <LinearLayout
-                    android:id="@+id/modelList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
             </LinearLayout>
         </ScrollView>
 

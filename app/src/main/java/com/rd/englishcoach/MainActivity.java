@@ -112,6 +112,10 @@ public class MainActivity extends Activity {
         });
 
         bottomBar.setListener(this::switchTab);
+        // 模型页子 Tab 联动：顶栏「下载源」只在离线侧显示（在线侧是配接口，用不到下载源）
+        modelsPage.setSubTabListener(online -> {
+            if (topAction == BottomBar.TAB_MODELS) applyTopAction();
+        });
 
         // 处理重新授权请求
         if (getIntent().getBooleanExtra("reconsent", false)) {
@@ -167,6 +171,20 @@ public class MainActivity extends Activity {
 
     // ── Tab 切换（导航随页面上下文变化） ──────────────────
 
+    /**
+     * 顶栏上下文动作的显隐与文案：历史页 = 清空全部，模型页 = 下载源（<b>仅离线子 Tab</b>）。
+     *
+     * <p>抽成一个方法是因为顶栏现在有两个触发点：切页（{@link #switchTab}）和模型页子 Tab
+     * 切换（子 Tab 监听）。写两处早晚会不一致。</p>
+     */
+    private void applyTopAction() {
+        boolean history = topAction == BottomBar.TAB_HISTORY;
+        boolean models = topAction == BottomBar.TAB_MODELS && !modelsPage.onlineTab();
+        btnTopAction.setVisibility(history || models ? View.VISIBLE : View.GONE);
+        btnTopAction.setText(history ? R.string.history_clear_all : R.string.models_source_title);
+        btnTopAction.setTextColor(getColor(history ? R.color.danger : R.color.text_secondary));
+    }
+
     void switchTab(int tab) {
         findViewById(R.id.pageListen).setVisibility(
                 tab == BottomBar.TAB_LISTEN ? View.VISIBLE : View.GONE);
@@ -183,12 +201,7 @@ public class MainActivity extends Activity {
                 : tab == BottomBar.TAB_HISTORY ? R.string.tab_history
                 : tab == BottomBar.TAB_MODELS ? R.string.tab_models : R.string.tab_settings);
         topAction = tab;
-        btnTopAction.setVisibility(tab == BottomBar.TAB_HISTORY
-                || tab == BottomBar.TAB_MODELS ? View.VISIBLE : View.GONE);
-        btnTopAction.setText(tab == BottomBar.TAB_HISTORY
-                ? R.string.history_clear_all : R.string.models_source_title);
-        btnTopAction.setTextColor(getColor(
-                tab == BottomBar.TAB_HISTORY ? R.color.danger : R.color.text_secondary));
+        applyTopAction();
 
         if (tab == BottomBar.TAB_HISTORY) {
             historyPage.refresh();
