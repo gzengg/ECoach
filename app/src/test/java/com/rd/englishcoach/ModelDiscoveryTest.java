@@ -124,4 +124,52 @@ public class ModelDiscoveryTest {
         assertEquals(2, all.size());
         assertEquals(2, ModelDiscovery.byKind(all, ModelDiscovery.Kind.CHAT).size());
     }
+
+    /**
+     * Gemini 的目录形状与其他家都不同：列表在 {@code models}（不是 {@code data}）、
+     * id 带 {@code models/} 前缀、字段叫 {@code displayName} / {@code inputTokenLimit}。
+     * 不认这三种形状中的任意一种，用户换成 Gemini 就「一个模型都选不了」。
+     */
+    @Test
+    public void parseModels_geminiShape() {
+        String json = "{\"models\":[{\"name\":\"models/gemini-2.5-flash\","
+                + "\"displayName\":\"Gemini 2.5 Flash\",\"inputTokenLimit\":1048576}]}";
+        List<ModelDiscovery.ModelInfo> all = ModelDiscovery.parseModels(json);
+        assertEquals(1, all.size());
+        assertEquals("models/ 前缀必须剥掉（拼 URL 时自己加）", "gemini-2.5-flash", all.get(0).id);
+        assertEquals("Gemini 2.5 Flash", all.get(0).name);
+        assertEquals(1048576, all.get(0).contextLength);
+    }
+
+    /** Anthropic 的目录条目只有 id + display_name（无 supported_protocols）。 */
+    @Test
+    public void parseModels_anthropicShape() {
+        String json = "{\"data\":[{\"id\":\"claude-sonnet-4-5\","
+                + "\"display_name\":\"Claude Sonnet 4.5\"}]}";
+        List<ModelDiscovery.ModelInfo> all = ModelDiscovery.parseModels(json);
+        assertEquals(1, all.size());
+        assertEquals("claude-sonnet-4-5", all.get(0).id);
+        assertEquals("Claude Sonnet 4.5", all.get(0).name);
+    }
+
+    /**
+     * 拉目录的鉴权头按协议发：Gemini 只认 x-goog-api-key，Anthropic 要 x-api-key + 版本头。
+     * 统一发 Bearer 的话这两家直接 401，用户看到的是「没拿到模型」但地址完全正确。
+     */
+    @Test
+    public void headers_perProtocol() {
+        assertTrue(ModelDiscovery.headers(ChatProtocols.GEMINI, "k").containsKey("x-goog-api-key"));
+        assertFalse("Gemini 不能发 Bearer（会 401）",
+                ModelDiscovery.headers(ChatProtocols.GEMINI, "k").containsKey("Authorization"));
+
+        assertTrue(ModelDiscovery.headers(ChatProtocols.ANTHROPIC, "k").containsKey("x-api-key"));
+        assertEquals("2023-06-01",
+                ModelDiscovery.headers(ChatProtocols.ANTHROPIC, "k").get("anthropic-version"));
+
+        assertEquals("Bearer k",
+                ModelDiscovery.headers(ChatProtocols.OPENAI_CHAT, "k").get("Authorization"));
+
+        // 无 Key 时不得凭空发空头（有些网关会因空 Authorization 直接 401）
+        assertFalse(ModelDiscovery.headers(ChatProtocols.OPENAI_CHAT, "").containsKey("Authorization"));
+    }
 }

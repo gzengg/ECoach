@@ -341,13 +341,28 @@ public class SettingsLayoutTest {
 
     @Test
     public void pickerRows_areHorizontallyScrollable() throws Exception {
-        // 识别模型芯片行在 XML（模型页）；音色芯片行迁到 Bottom Sheet（SettingsPage 代码构建）。
+        // 识别模型芯片行在 XML（模型页）；音色芯片行在 OnlineSection 的 Bottom Sheet（代码构建）。
         String layout = readFile("src/main/res/layout/activity_main.xml");
         assertTrue("识别模型选择行必须横向可滚（HorizontalScrollView）",
                 layout.contains("HorizontalScrollView"));
 
-        String settingsPage = readFile("src/main/java/com/rd/englishcoach/SettingsPage.java");
+        String online = readFile("src/main/java/com/rd/englishcoach/OnlineSection.java");
         assertTrue("音色选择 sheet 的芯片行也必须横向可滚",
-                settingsPage.contains("HorizontalScrollView"));
+                online.contains("HorizontalScrollView"));
+    }
+
+    @Test
+    public void settingsPage_hasNoInterfaceFields() throws Exception {
+        // 回归（v4.3）：地址/Key/模型/音色都搬到模型页了，设置页里不该再出现这些控件。
+        // 一旦有人把它们搬回去，设置页又会被撑成「提示词与外观被挤到屏幕外」的老样子。
+        String page = readFile("src/main/java/com/rd/englishcoach/SettingsPage.java");
+        for (String id : new String[]{"etBaseUrl", "etApiKey", "etAsrBaseUrl", "etTtsBaseUrl",
+                "btnPickChat", "btnProviderChat", "btnVoiceEn"}) {
+            assertFalse("设置页不应再引用 " + id + "（应在 OnlineSection / 模型页）",
+                    page.contains(id));
+        }
+        // 但提示词与外观必须留下
+        assertTrue("设置页必须保留系统提示词", page.contains("etSysPrompt"));
+        assertTrue("设置页必须保留悬浮窗外观", page.contains("btnFontMinus"));
     }
 }

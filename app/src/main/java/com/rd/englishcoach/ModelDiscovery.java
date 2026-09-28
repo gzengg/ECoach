@@ -7,14 +7,21 @@ import org.json.JSONObject;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 在线模型发现 + 三类接口连通性探测。
  *
  * <p>TokenDance 这类 OpenAI 兼容网关的 {@code GET {base}/models} 会返回全部模型及其
- * {@code supported_protocols}，据此把模型分成「问答 / 识别 / 朗读」三类，供设置页点击选择。
- * 解析是纯函数（单测直接调），只有 {@link #fetchModels} 与 probe* 走网络。</p>
+ * {@code supported_protocols}，据此把模型分成「问答 / 识别 / 朗读」三类，供模型页点击选择。
+ * 解析是纯函数（单测直接调），只有 {@link #fetch} 与 probe* 走网络。</p>
+ *
+ * <p><b>鉴权与响应格式随协议走</b>（照 kelivo 的 listModels 做法）：OpenAI 兼容用
+ * {@code Authorization: Bearer}；Gemini 要 {@code x-goog-api-key} 且目录在 {@code models[]}
+ * （id 是 {@code models/xxx}，还有 {@code displayName}）；Anthropic 要 {@code x-api-key}
+ * 加 {@code anthropic-version}。不按协议发头的话，这三家都会拉不到模型。</p>
  */
 final class ModelDiscovery {
 
@@ -35,20 +42,50 @@ final class ModelDiscovery {
 
     enum Kind { CHAT, ASR, TTS }
 
+    /** 拉目录的结果：{@code error != null} 表示失败，{@code error} 是给用户看的可读原因。 */
+    static final class Listing {
+        final List<ModelInfo> models;
+        final String error;
+
+        Listing(List<ModelInfo> models, String error) {
+            this.models = models;
+            this.error = error;
+        }
+
+        boolean ok() { return error == null; }
+    }
+
     private ModelDiscovery() {}
 
     // ── 解析与分类（纯函数，单测直接调） ─────────
 
+    /**
+     * 解析模型目录，兼容三种形态：OpenAI / new-api 的 {@code data[]}、Gemini 的 {@code models[]}。
+     *
+     * <p>Gemini 的条目没有 {@code id}：id 在 {@code name} 里且带 {@code models/} 前缀
+     * （{@code "models/gemini-2.5-flash"}），显示名在 {@code displayName}，上下文长度叫
+     * {@code inputTokenLimit}——不认这几个字段就会「目录拿到了但列表是空的」。</p>
+     */
     static List<ModelInfo> parseModels(String json) {
         List<ModelInfo> out = new ArrayList<>();
         try {
-            JSONArray data = new JSONObject(json).optJSONArray("data");
+            JSONObject root = new JSONObject(json);
+            JSONArray data = root.optJSONArray("data");
+            if (data == null) data = root.optJSONArray("models"); // Gemini
             if (data == null) return out;
             for (int i = 0; i < data.length(); i++) {
                 JSONObject o = data.optJSONObject(i);
                 if (o == null) continue;
                 String id = o.optString("id", "");
+                String label = o.optString("name", "");
+                // Anthropic 的目录叫 display_name（没有 name）——不认它就只剩一串 id 可看
+                if (label.isEmpty()) label = o.optString("display_name", "");
+                if (id.isEmpty()) {
+                    id = stripModelsPrefix(label);   // Gemini：name 才是 id
+                    label = o.optString("displayName", id);
+                }
                 if (id.isEmpty()) continue;
+                if (label.isEmpty()) label = id;
                 List<String> protocols = new ArrayList<>();
                 // 不同网关字段名不一：TokenDance 用 supported_protocols，
                 // tbtk/new-api 用 supported_endpoint_types（值为 openai / openai-response / anthropic）
@@ -57,13 +94,18 @@ final class ModelDiscovery {
                 if (ps != null) {
                     for (int j = 0; j < ps.length(); j++) protocols.add(ps.optString(j, ""));
                 }
-                out.add(new ModelInfo(id, o.optString("name", id), protocols,
-                        o.optLong("context_length", 0)));
+                long ctx = o.optLong("context_length", 0);
+                if (ctx == 0) ctx = o.optLong("inputTokenLimit", 0);   // Gemini
+                out.add(new ModelInfo(id, label, protocols, ctx));
             }
         } catch (JSONException ignored) {
             // 非 JSON（网关 HTML / 报错体）→ 当空列表，UI 报「没拿到模型」
         }
         return out;
+    }
+
+    private static String stripModelsPrefix(String name) {
+        return name.startsWith("models/") ? name.substring("models/".length()) : name;
     }
 
     /**
@@ -134,23 +176,71 @@ final class ModelDiscovery {
         return b + "/models";
     }
 
-    /** {@code GET {目录}}。有的网关（new-api/tbtk）列表也要鉴权，所以要带 key；失败返回空列表。 */
-    static List<ModelInfo> fetchModels(String apiBase, String apiKey) {
+    /**
+     * 按协议拉模型目录（{@code GET {目录}}）。
+     *
+     * <p>失败时返回的 {@link Listing#error} 带<b>实际原因</b>（HTTP 码 + URL + 响应片段）——
+     * 旧版一律吞成空列表，UI 只能说「检查 Base URL 是否可达」，401/404/超时完全分不清。</p>
+     */
+    static Listing fetch(String protocol, String apiBase, String apiKey) {
+        String url = modelsUrl(apiBase);
         HttpURLConnection conn = null;
         try {
-            conn = (HttpURLConnection) new URL(modelsUrl(apiBase)).openConnection();
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod("GET");
             conn.setConnectTimeout(15_000);
             conn.setReadTimeout(30_000);
             conn.setRequestProperty("Accept", "application/json");
-            if (apiKey != null && !apiKey.isEmpty()) {
-                conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            for (Map.Entry<String, String> e : headers(protocol, apiKey).entrySet()) {
+                conn.setRequestProperty(e.getKey(), e.getValue());
             }
-            return parseModels(Http.readStream(conn.getInputStream()));
+            int code = conn.getResponseCode();
+            String body = Http.readStream(code >= 400
+                    ? conn.getErrorStream() : conn.getInputStream());
+            if (code >= 400) {
+                return new Listing(new ArrayList<>(),
+                        "HTTP " + code + " · " + url + "\n" + brief(body));
+            }
+            List<ModelInfo> models = parseModels(body);
+            if (models.isEmpty()) {
+                return new Listing(models, "返回的不是模型列表 · " + url + "\n" + brief(body));
+            }
+            return new Listing(models, null);
         } catch (Exception e) {
-            return new ArrayList<>();
+            return new Listing(new ArrayList<>(), "请求失败 · " + url + "\n" + msg(e));
         } finally {
             if (conn != null) conn.disconnect();
         }
+    }
+
+    /**
+     * 拉目录该带的鉴权头。
+     *
+     * <p>OpenAI 兼容 / MiniMax / 豆包 / new-api 都是 {@code Bearer}；
+     * Gemini 只认 {@code x-goog-api-key}；Anthropic 要 {@code x-api-key}（并各自带版本头）。</p>
+     */
+    static Map<String, String> headers(String protocol, String apiKey) {
+        Map<String, String> h = new LinkedHashMap<>();
+        boolean hasKey = apiKey != null && !apiKey.isEmpty();
+        if (ChatProtocols.GEMINI.equals(protocol)) {
+            if (hasKey) h.put("x-goog-api-key", apiKey);
+        } else if (ChatProtocols.ANTHROPIC.equals(protocol)) {
+            if (hasKey) {
+                h.put("x-api-key", apiKey);
+                h.put("Authorization", "Bearer " + apiKey); // 网关 / 原生通吃
+            }
+            h.put("anthropic-version", "2023-06-01");
+        } else if (hasKey) {
+            h.put("Authorization", "Bearer " + apiKey);
+        }
+        return h;
+    }
+
+    /** 响应片段裁成一行，够定位就行（网关报错体可能是一整页 HTML）。 */
+    private static String brief(String body) {
+        if (body == null) return "";
+        String s = body.trim().replaceAll("\\s+", " ");
+        return s.length() > 200 ? s.substring(0, 200) + "…" : s;
     }
 
     private static String trimSlash(String s) {

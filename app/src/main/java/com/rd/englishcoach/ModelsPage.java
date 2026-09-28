@@ -21,8 +21,10 @@ import java.util.Map;
  * 模型页：离线模型全生命周期 + 运行模式选择。
  *
  * <p>由旧设置页「模型」Tab 原样迁来（{@code ModelManager}/{@code ModelCatalog} 零改动），
- * 两处变化：</p>
+ * 变化：</p>
  * <ul>
+ *   <li>v4.3 起<b>在线接口配置也在这页</b>（问答 / 识别 / 朗读 + 朗读音色，见 {@link OnlineSection}），
+ *       设置页只留提示词与外观；</li>
  *   <li>下载源编辑从页内表单移到顶栏入口的 Bottom Sheet（页内少一块卡片）；
  *       「顺手保存」的逻辑收敛到 sheet 的保存按钮，下载一律用已保存值；</li>
  *   <li>删除确认 / 下载失败详情从 AlertDialog 改为 Bottom Sheet
@@ -37,6 +39,8 @@ final class ModelsPage implements ModelManager.Listener {
     private final Prefs prefs;
     private final ModelManager models;
     private final BottomSheetPanel sheet;
+    /** 在线接口配置（问答 / 识别 / 朗读 + 音色）——v4.3 从设置页搬来。 */
+    private final OnlineSection online;
 
     private final TextView tvModelSummary;
     private final LinearLayout asrChips;
@@ -57,6 +61,10 @@ final class ModelsPage implements ModelManager.Listener {
         asrChips = root.findViewById(R.id.asrModelChips);
         modelList = root.findViewById(R.id.modelList);
 
+        // 在线接口区块：本页自己的「保存」按钮负责把地址/Key/模型落盘
+        online = new OnlineSection(act, root);
+        root.findViewById(R.id.btnSaveModels).setOnClickListener(v -> online.save());
+
         btnModeAuto = root.findViewById(R.id.btnModeAuto);
         btnModeOnline = root.findViewById(R.id.btnModeOnline);
         btnModeOffline = root.findViewById(R.id.btnModeOffline);
@@ -68,11 +76,12 @@ final class ModelsPage implements ModelManager.Listener {
         buildAsrPicker();
     }
 
-    /** Tab 切进本页时刷新（安装状态可能被外部改动过）。 */
+    /** Tab 切进本页时刷新（安装状态与在线配置可能被外部改动过）。 */
     void refresh() {
         applyModeStyle();
         refreshModelSummary();
         buildAsrPicker();
+        online.refresh();
     }
 
     /** 自动/仅离线模式下识别模型缺失 → 「模型」Tab 亮 warn 角标。 */

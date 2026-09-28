@@ -6,8 +6,9 @@
   页面职责（一页一件事）：
     pageListen   监听控制（状态 + CTA + 动态按钮）
     pageHistory  转录/取词历史（搜索 + 空状态 + 长按操作）
-    pageModels   离线模型管理（运行模式 + 列表；下载源在顶栏 Bottom Sheet）
-    pageSettings 接口 / 提示词 / 外观 / 音色（允许滚动，分组各自成块）
+    pageModels   模型（在线：问答/识别/朗读三套接口 + 音色；离线：运行模式 + 模型列表；
+                 下载源在顶栏 Bottom Sheet）
+    pageSettings 系统提示词 / 悬浮窗外观（允许滚动，分组各自成块）
 
   视觉全部复用 Aurora Glass token；id 规则：既有 id 一律保留。
 -->
@@ -255,11 +256,14 @@
             android:paddingBottom="16dp"
             android:visibility="gone">
 
+            <!-- focusableInTouchMode：抢初始焦点，打开时不弹键盘、不自己滚走 -->
             <LinearLayout
                 android:id="@+id/pageModelsRoot"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:focusable="true"
+                android:focusableInTouchMode="true">
 
                 <!-- 运行模式 + 占用 + 识别模型选择 -->
                 <LinearLayout
@@ -328,38 +332,9 @@
                     </HorizontalScrollView>
                 </LinearLayout>
 
-                <!-- 模型列表（运行时动态填充） -->
-                <LinearLayout
-                    android:id="@+id/modelList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-            </LinearLayout>
-        </ScrollView>
+                <!-- ══ 在线模型：三套接口各自独立（问答 / 识别 / 朗读），可分别指向不同服务商 ══ -->
 
-        <!-- ── 页面 4：设置 ── -->
-        <ScrollView
-            android:id="@+id/pageSettings"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fitsSystemWindows="true"
-            android:clipToPadding="false"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="16dp"
-            android:visibility="gone">
-
-            <!-- focusableInTouchMode：抢初始焦点，打开时不弹键盘、不自己滚走 -->
-            <LinearLayout
-                android:id="@+id/settingsRoot"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingBottom="4dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true">
-
-                <!-- 分组 1：问答模型 -->
+                <!-- 分组 A：问答模型 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -374,6 +349,13 @@
                         android:text="@string/set_group_chat" />
 
                     <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_provider" />
+                        <TextView android:id="@+id/btnProviderChat" style="@style/ModelAction"
+                            android:text="@string/set_provider_pick" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
                         <TextView style="@style/SettingLabel"
                             android:text="@string/set_label_protocol" />
                         <HorizontalScrollView
@@ -415,9 +397,20 @@
                         <TextView android:id="@+id/btnPickChat" style="@style/SettingTrailing"
                             android:text="@string/set_pick" />
                     </LinearLayout>
+
+                    <TextView android:id="@+id/btnProbeChat" style="@style/ModelAction"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/set_probe_this" />
+                    <TextView android:id="@+id/tvProbeChat"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_tertiary"
+                        android:visibility="gone" />
                 </LinearLayout>
 
-                <!-- 分组 2：识别模型（qwen-audio 系列走 DashScope，端点是完整 URL） -->
+                <!-- 分组 B：识别模型（qwen-audio 系列走 DashScope，端点是完整 URL） -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -432,6 +425,13 @@
                         android:text="@string/set_group_asr" />
 
                     <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_provider" />
+                        <TextView android:id="@+id/btnProviderAsr" style="@style/ModelAction"
+                            android:text="@string/set_provider_pick" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
                         <TextView style="@style/SettingLabel"
                             android:text="@string/set_label_protocol" />
                         <HorizontalScrollView
@@ -474,9 +474,20 @@
                         <TextView android:id="@+id/btnPickAsr" style="@style/SettingTrailing"
                             android:text="@string/set_pick" />
                     </LinearLayout>
+
+                    <TextView android:id="@+id/btnProbeAsr" style="@style/ModelAction"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/set_probe_this" />
+                    <TextView android:id="@+id/tvProbeAsr"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_tertiary"
+                        android:visibility="gone" />
                 </LinearLayout>
 
-                <!-- 分组 3：朗读模型（mimo TTS 走 OpenAI 兼容的 chat/completions） -->
+                <!-- 分组 C：朗读模型（mimo TTS 走 OpenAI 兼容的 chat/completions） -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -491,6 +502,13 @@
                         android:text="@string/set_group_tts" />
 
                     <LinearLayout style="@style/SettingRow" android:layout_marginTop="0dp">
+                        <TextView style="@style/SettingLabel"
+                            android:text="@string/set_label_provider" />
+                        <TextView android:id="@+id/btnProviderTts" style="@style/ModelAction"
+                            android:text="@string/set_provider_pick" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
                         <TextView style="@style/SettingLabel"
                             android:text="@string/set_label_protocol" />
                         <HorizontalScrollView
@@ -534,9 +552,20 @@
                         <TextView android:id="@+id/btnPickTts" style="@style/SettingTrailing"
                             android:text="@string/set_pick" />
                     </LinearLayout>
+
+                    <TextView android:id="@+id/btnProbeTts" style="@style/ModelAction"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/set_probe_this" />
+                    <TextView android:id="@+id/tvProbeTts"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_tertiary"
+                        android:visibility="gone" />
                 </LinearLayout>
 
-                <!-- 分组 2：系统提示词 -->
+                <!-- 分组 D：朗读音色（随 TTS 模型变：mimo / MiniMax / 豆包 / OpenAI 各一套声） -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -547,67 +576,7 @@
                     android:paddingBottom="8dp"
                     android:layout_marginBottom="8dp">
 
-                    <TextView android:id="@+id/etSysPromptLabel" style="@style/SettingHeader"
-                        android:text="@string/set_sys_prompt"
-                        android:labelFor="@id/etSysPrompt" />
-                    <EditText android:id="@+id/etSysPrompt" style="@style/SettingField"
-                        android:layout_height="96dp"
-                        android:gravity="top|start"
-                        android:inputType="textMultiLine|textNoSuggestions"
-                        android:scrollbars="vertical" />
-                </LinearLayout>
-
-                <!-- 分组 3：悬浮窗外观 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/card_surface"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView style="@style/SettingHeader"
-                        android:text="@string/set_appearance" />
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:layout_width="0dp"
-                            android:layout_weight="1"
-                            android:text="@string/set_font_size" />
-                        <TextView android:id="@+id/btnFontMinus" style="@style/SettingStepper"
-                            android:text="-" />
-                        <TextView android:id="@+id/tvFontValue" style="@style/SettingValue" />
-                        <TextView android:id="@+id/btnFontPlus" style="@style/SettingStepper"
-                            android:text="+" />
-                    </LinearLayout>
-
-                    <LinearLayout style="@style/SettingRow">
-                        <TextView style="@style/SettingLabel"
-                            android:layout_width="0dp"
-                            android:layout_weight="1"
-                            android:text="@string/set_width" />
-                        <TextView android:id="@+id/btnWidthMinus" style="@style/SettingStepper"
-                            android:text="-" />
-                        <TextView android:id="@+id/tvWidthValue" style="@style/SettingValue" />
-                        <TextView android:id="@+id/btnWidthPlus" style="@style/SettingStepper"
-                            android:text="+" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <!-- 分组 4：朗读音色（在线 mimo；点击弹 Bottom Sheet 横向选择） -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/card_surface"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView style="@style/SettingHeader"
+                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
                         android:text="@string/set_tts_voice_hint" />
 
                     <!-- 音色行：点击弹选择 sheet；当前值由代码回填 -->
@@ -656,14 +625,51 @@
                     </FrameLayout>
 
                     <!-- 探测当前 TTS 模型的可选音色（mimo 这类会把可用音色回显在报错里） -->
-                    <TextView android:id="@+id/btnDetectVoices"
-                        style="@style/SettingTrailing"
-                        android:layout_gravity="end"
-                        android:layout_marginTop="4dp"
+                    <TextView android:id="@+id/btnDetectVoices" style="@style/ModelAction"
+                        android:layout_marginTop="8dp"
                         android:text="@string/set_detect_voices" />
                 </LinearLayout>
 
-                <!-- 分组 7：诊断（在线接口连通性） -->
+                <!-- 保存：在线接口的地址 / Key / 模型（协议与服务商点了就生效） -->
+                <Button android:id="@+id/btnSaveModels"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="15sp"
+                    android:text="@string/set_save" />
+
+                <!-- 模型列表（运行时动态填充） -->
+                <LinearLayout
+                    android:id="@+id/modelList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ── 页面 4：设置 ── -->
+        <ScrollView
+            android:id="@+id/pageSettings"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fitsSystemWindows="true"
+            android:clipToPadding="false"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="16dp"
+            android:visibility="gone">
+
+            <!-- focusableInTouchMode：抢初始焦点，打开时不弹键盘、不自己滚走 -->
+            <LinearLayout
+                android:id="@+id/settingsRoot"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="4dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true">
+
+                <!-- 分组 1：系统提示词 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -674,18 +680,53 @@
                     android:paddingBottom="8dp"
                     android:layout_marginBottom="8dp">
 
-                    <TextView style="@style/SettingHeader" android:layout_marginTop="0dp"
-                        android:text="@string/set_diag" />
+                    <TextView android:id="@+id/etSysPromptLabel" style="@style/SettingHeader"
+                        android:text="@string/set_sys_prompt"
+                        android:labelFor="@id/etSysPrompt" />
+                    <EditText android:id="@+id/etSysPrompt" style="@style/SettingField"
+                        android:layout_height="96dp"
+                        android:gravity="top|start"
+                        android:inputType="textMultiLine|textNoSuggestions"
+                        android:scrollbars="vertical" />
+                </LinearLayout>
 
-                    <TextView android:id="@+id/btnDetectConnectivity"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_marginTop="4dp"
-                        android:gravity="center_vertical"
-                        android:background="@drawable/btn_text"
-                        android:textSize="13sp"
-                        android:textColor="@color/accent_solid"
-                        android:text="@string/set_detect_connectivity" />
+                <!-- 分组 2：悬浮窗外观 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_surface"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView style="@style/SettingHeader"
+                        android:text="@string/set_appearance" />
+
+                    <LinearLayout style="@style/SettingRow">
+                        <TextView style="@style/SettingLabel"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="@string/set_font_size" />
+                        <TextView android:id="@+id/btnFontMinus" style="@style/SettingStepper"
+                            android:text="-" />
+                        <TextView android:id="@+id/tvFontValue" style="@style/SettingValue" />
+                        <TextView android:id="@+id/btnFontPlus" style="@style/SettingStepper"
+                            android:text="+" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/SettingRow">
+                        <TextView style="@style/SettingLabel"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="@string/set_width" />
+                        <TextView android:id="@+id/btnWidthMinus" style="@style/SettingStepper"
+                            android:text="-" />
+                        <TextView android:id="@+id/tvWidthValue" style="@style/SettingValue" />
+                        <TextView android:id="@+id/btnWidthPlus" style="@style/SettingStepper"
+                            android:text="+" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <!-- 按钮 -->
