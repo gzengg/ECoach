@@ -124,6 +124,13 @@ public class FileTranscribeService extends Service {
                 queue.clear();
             }
             Log.i(TAG, "收到取消：停止整队");
+            // 队列没在跑时没人会调 finishQueue（worker 已退出）→ 自己收尾，
+            // 否则前台通知会一直挂着，用户以为还在转
+            if (!running) {
+                cleanupPending();
+                stopForeground(STOP_FOREGROUND_REMOVE);
+                stopSelf();
+            }
             return START_NOT_STICKY;
         }
         if (!ACTION_START.equals(intent.getAction())) return START_NOT_STICKY;
@@ -332,14 +339,16 @@ public class FileTranscribeService extends Service {
             current = null;
         }
         running = false;
-        if (canceled) {
-            // 用户主动停止：还没开始的记录直接删掉（空记录只会脏了历史）
-            for (FileTranscriptStore.Entry e : store.getAll()) {
-                if (FileTranscriptStore.STATUS_PENDING.equals(e.status)) store.delete(e.id);
-            }
-        }
+        if (canceled) cleanupPending();
         broadcast(true);
         main.post(() -> postDoneNotification(doneCount, failCount));
+    }
+
+    /** 用户主动停止时，还没开始的记录直接删掉（空记录只会脏了历史）。 */
+    private void cleanupPending() {
+        for (FileTranscriptStore.Entry e : store.getAll()) {
+            if (FileTranscriptStore.STATUS_PENDING.equals(e.status)) store.delete(e.id);
+        }
     }
 
     /**
@@ -440,6 +449,12 @@ public class FileTranscribeService extends Service {
     /** 队列跑完：换成可划走的「已完成」通知，并脱离前台状态。 */
     private void postDoneNotification(int done, int failed) {
         if (done == 0 && failed == 0) {
+            stopSelf();
+            return;
+        }
+        if (canceled) {
+            // 用户自己按的「停止」：再弹一条「转录完成」只会让人困惑
+            stopForeground(STOP_FOREGROUND_REMOVE);
             stopSelf();
             return;
         }
