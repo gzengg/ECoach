@@ -144,6 +144,44 @@
                     android:layout_marginTop="8dp"
                     android:text="@string/btn_new_chat"
                     android:visibility="gone" />
+
+                <!-- 本地文件转录入口（音频 / 视频 → 文字），复用 card_surface 与次级按钮 -->
+                <LinearLayout
+                    android:id="@+id/cardFileTranscribe"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:background="@drawable/card_surface"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/file_entry_title"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvFileState"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:lineSpacingExtra="3dp"
+                        android:text="@string/file_entry_desc"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/btnPickFiles"
+                        style="@style/AppBtnSecondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/file_entry_btn" />
+                </LinearLayout>
             </LinearLayout>
         </ScrollView>
 
@@ -182,6 +220,10 @@
                     style="@style/ModelChip"
                     android:layout_marginEnd="0dp"
                     android:text="@string/history_tab_grab" />
+                <TextView android:id="@+id/btnHistFiles"
+                    style="@style/ModelChip"
+                    android:layout_marginEnd="0dp"
+                    android:text="@string/history_tab_files" />
             </LinearLayout>
 
             <FrameLayout

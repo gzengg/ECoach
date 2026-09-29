@@ -102,6 +102,7 @@
     <string name="history_clear_confirm">清空全部 %1$d 条记录？此操作不可撤销。</string>
     <string name="history_tab_transcript">转录（%1$d）</string>
     <string name="history_tab_grab">取词（%1$d）</string>
+    <string name="history_tab_files">文件（%1$d）</string>
     <string name="history_answer_prefix">答: </string>
 
     <!-- 悬浮窗 / 服务提示 -->
@@ -250,4 +251,65 @@
     <string name="set_tts_voice_zh">中文音色</string>
     <string name="set_tts_voice_hint">朗读音色；离线 Piper 装好后优先用离线。</string>
     <string name="set_tts_voice_manual">手填音色</string>
+
+    <!-- 本地文件转录（音频 / 视频） -->
+    <string name="file_entry_title">本地文件转录</string>
+    <string name="file_entry_desc">选音频或视频文件识别成文字，长文件可在后台继续。</string>
+    <string name="file_entry_btn">选择文件</string>
+    <string name="file_picker_title">选择音频或视频</string>
+    <string name="file_queue_added">已加入 %1$d 个文件，正在后台转录</string>
+    <string name="file_status_pending">排队中（%1$d 个待转录）</string>
+    <string name="file_status_running">正在转录 %1$s（%2$d%%）</string>
+    <string name="file_status_done">文件转录已完成</string>
+    <string name="file_status_failed">有文件转录失败，详情见「历史 → 文件」</string>
+    <string name="file_slow_note">长文件耗时较久，可切到其它页面，进度见通知栏。</string>
+
+    <string name="file_busy_listening">实时监听正在运行。文件转录与监听互斥（两者都占识别模型），请先到「听力」页停止监听。</string>
+    <string name="file_busy_ok">知道了</string>
+    <string name="file_busy_running">已有转录任务在跑，请等它结束或到「历史 → 文件」停止</string>
+
+    <string name="file_err_no_audio">这个文件里没有音轨</string>
+    <string name="file_err_unsupported">设备不支持这个文件的音频编码，可先用电脑转成 mp3 / m4a 再试</string>
+    <string name="file_err_decode">音频解码失败，文件可能已损坏或不完整</string>
+    <string name="file_err_open">打不开这个文件（可能已被删除，或授权已失效）</string>
+
+    <string name="file_notif_channel">文件转录</string>
+    <string name="file_notif_channel_desc">显示文件转录进度</string>
+    <string name="file_notif_title">正在转录 %1$s</string>
+    <string name="file_notif_waiting">等待转录（还有 %1$d 个）</string>
+    <string name="file_notif_done_title">文件转录完成</string>
+    <string name="file_notif_done_text">已完成 %1$d 个文件，点击查看</string>
+    <string name="file_notif_failed_text">%1$d 个完成，%2$d 个失败，点击查看</string>
+    <string name="file_notif_action_stop">停止</string>
+    <string name="file_notif_chars">已识别 %1$d 字</string>
+
+    <string name="file_clear_confirm">清空全部 %1$d 条文件转录记录？此操作不可撤销。</string>
+    <string name="file_item_meta">%1$s · %2$d 字</string>
+    <string name="file_empty">还没有文件转录记录</string>
+    <string name="file_state_pending">排队中</string>
+    <string name="file_state_running">转录中 %1$d%%</string>
+    <string name="file_state_done">已完成</string>
+    <string name="file_state_failed">已失败</string>
+    <string name="file_state_canceled">已停止</string>
+    <string name="file_state_interrupted">已中断</string>
+    <string name="file_incomplete_note">（未完成，可继续）</string>
+
+    <string name="file_action_copy">复制全文</string>
+    <string name="file_action_share">分享</string>
+    <string name="file_action_export_txt">导出文本</string>
+    <string name="file_action_export_srt">导出字幕</string>
+    <string name="file_action_speak">朗读</string>
+    <string name="file_action_resume">继续转录</string>
+    <string name="file_action_retry">重试</string>
+    <string name="file_action_delete">删除</string>
+    <string name="file_action_close">关闭</string>
+    <string name="file_copy_done">已复制到剪贴板</string>
+    <string name="file_export_txt_title">导出为文本</string>
+    <string name="file_export_srt_title">导出为字幕</string>
+    <string name="file_export_done">已导出 %1$s</string>
+    <string name="file_export_failed">导出失败：%1$s</string>
+    <string name="file_empty_text">还没有识别出文字</string>
+    <string name="file_srt_offline_only">这次识别走的是在线接口，只拿到纯文本。字幕需要离线模型的逐段时间轴（设置 → 模型）。</string>
+    <string name="file_speak_need_listen">朗读要先开启「听力」实时监听</string>
+    <string name="file_resumed">已继续转录</string>
 </resources>

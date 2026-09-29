@@ -46,11 +46,20 @@ public class MainActivity extends Activity {
     private static final int REQ_OVERLAY = 101;
     private static final int REQ_NOTIFY  = 102;
     private static final int REQ_PROJECTION = 103;
+    private static final int REQ_PICK_FILES = 104;
+    private static final int REQ_PICK_NOTIFY = 105;
+
+    /** 通知栏点「已完成」进来时带的目标 Tab。 */
+    static final String EXTRA_TAB = "tab";
 
     private TextView tvStatus;
     private View dotStatus;
     private Button btnStart;
     private View btnStop, btnNewChat, tvListenHint;
+    /** 文件转录入口卡片的状态行（空闲时显示说明，跑任务时显示进度）。 */
+    private TextView tvFileState;
+    /** 选了文件但还在等通知权限的结果。 */
+    private PickedFiles pendingPick;
 
     private BottomBar bottomBar;
     private TextView tvTopTitle, btnTopAction;
@@ -77,6 +86,7 @@ public class MainActivity extends Activity {
         btnStop   = findViewById(R.id.btnStop);
         btnNewChat = findViewById(R.id.btnNewChat);
         tvListenHint = findViewById(R.id.tvListenHint);
+        tvFileState = findViewById(R.id.tvFileState);
 
         bottomBar = findViewById(R.id.bottomBar);
         tvTopTitle = findViewById(R.id.tvTopTitle);
@@ -102,6 +112,8 @@ public class MainActivity extends Activity {
         });
         // 未配 API Key 的引导提示 → 跳「设置」Tab
         tvListenHint.setOnClickListener(v -> switchTab(BottomBar.TAB_SETTINGS));
+        // 本地文件转录入口（与实时监听互斥）
+        findViewById(R.id.btnPickFiles).setOnClickListener(v -> pickFiles());
         // 顶栏上下文动作：历史页=清空全部，模型页=下载源
         btnTopAction.setOnClickListener(v -> {
             if (topAction == BottomBar.TAB_HISTORY) {
@@ -138,6 +150,20 @@ public class MainActivity extends Activity {
                         historyDirty = true;
                         bottomBar.setBadge(BottomBar.TAB_HISTORY, true);
                     }
+                } else if (ServiceEvents.ACTION_FILE_PROGRESS.equals(intent.getAction())) {
+                    boolean running = intent.getBooleanExtra(ServiceEvents.EXTRA_RUNNING, false);
+                    String text = intent.getStringExtra(ServiceEvents.EXTRA_TEXT);
+                    tvFileState.setText(running && text != null
+                            ? text : getString(R.string.file_entry_desc));
+                    // 刚有一个文件结束 → 历史（文件 Tab）需要重建列表；进度本身不重建
+                    if (intent.getBooleanExtra(ServiceEvents.EXTRA_TASK_DONE, false)) {
+                        if (bottomBar.selected() == BottomBar.TAB_HISTORY) {
+                            historyPage.refresh();
+                        } else {
+                            historyDirty = true;
+                            bottomBar.setBadge(BottomBar.TAB_HISTORY, true);
+                        }
+                    }
                 }
             }
         };
@@ -150,12 +176,26 @@ public class MainActivity extends Activity {
         super.onResume();
         IntentFilter filter = new IntentFilter(ServiceEvents.ACTION_STATE_CHANGED);
         filter.addAction(ServiceEvents.ACTION_HISTORY_CHANGED);
+        filter.addAction(ServiceEvents.ACTION_FILE_PROGRESS);
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(serviceReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(serviceReceiver, filter);
         }
         updateStatus(CaptureService.current != null); // 兜底：防止广播丢失
+        // 通知栏点进来时直接落到历史页；否则状态行回到空闲文案
+        int wantTab = getIntent().getIntExtra(EXTRA_TAB, -1);
+        if (wantTab >= 0) {
+            getIntent().removeExtra(EXTRA_TAB);
+            switchTab(wantTab);
+            if (getIntent().getBooleanExtra(HistoryPage.EXTRA_FILE_TAB, false)) {
+                getIntent().removeExtra(HistoryPage.EXTRA_FILE_TAB);
+                historyPage.selectFileTab();
+            }
+        }
+        if (!FileTranscribeService.running) {
+            tvFileState.setText(R.string.file_entry_desc);
+        }
         historyPage.refresh();
         modelsPage.refresh();
         settingsPage.refresh();
@@ -286,7 +326,120 @@ public class MainActivity extends Activity {
         startActivityForResult(mpm.createScreenCaptureIntent(), REQ_PROJECTION);
     }
 
-    // ── 权限结果 ────────────────────────────
+    // ── 本地文件转录入口 ──────────────────
+
+    /** 一次选择的产物（uri / 文件名 / 大小，三个列表一一对应）。 */
+    private static final class PickedFiles {
+        final java.util.List<String> uris = new java.util.ArrayList<>();
+        final java.util.List<String> names = new java.util.ArrayList<>();
+        final java.util.List<Long> sizes = new java.util.ArrayList<>();
+
+        boolean isEmpty() {
+            return uris.isEmpty();
+        }
+    }
+
+    /**
+     * 选文件 → 开前台服务转录。
+     * 与实时监听互斥（见 {@link #fileTranscribeAllowed()}）。
+     */
+    void pickFiles() {
+        if (!fileTranscribeAllowed()) return;
+        // 只筛音频/视频，但用 */* + EXTRA_MIME_TYPES：部分 ROM 对 setType("audio/*") 不回传多选
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*")
+                .putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "video/*"})
+                .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(i, REQ_PICK_FILES);
+    }
+
+    private void onFilesPicked(Intent data) {
+        PickedFiles picked = collect(data);
+        if (picked.isEmpty()) return;
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            // 通知权限只影响「后台看不看得见进度」，没给也照转 → 先存起来再过回调
+            pendingPick = picked;
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    REQ_PICK_NOTIFY);
+            return;
+        }
+        startTranscribe(picked);
+    }
+
+    private void startTranscribe(PickedFiles picked) {
+        FileTranscribeService.enqueue(this, picked.uris, picked.names, picked.sizes);
+        tvStatus.setText(getString(R.string.file_queue_added, picked.uris.size()));
+        tvFileState.setText(getString(R.string.file_status_pending, picked.uris.size()));
+    }
+
+    private PickedFiles collect(Intent data) {
+        PickedFiles out = new PickedFiles();
+        ClipData clip = data.getClipData();
+        if (clip != null) {
+            for (int i = 0; i < clip.getItemCount(); i++) addPicked(out, clip.getItemAt(i).getUri());
+        } else if (data.getData() != null) {
+            addPicked(out, data.getData());
+        }
+        return out;
+    }
+
+    /**
+     * 把 SAF 的 uri 变成「持久可读 + 文件名 + 大小」。
+     * 持久化授权是「继续」的前提：进程被杀后源文件还得打得开。
+     */
+    private void addPicked(PickedFiles out, Uri uri) {
+        if (uri == null) return;
+        try {
+            getContentResolver().takePersistableUriPermission(uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (Exception ignored) {
+            // 少数提供方不支持持久化：本次仍可转，只是不能「继续」
+        }
+        String name = null;
+        long size = 0;
+        try (android.database.Cursor c = getContentResolver().query(uri, new String[]{
+                android.provider.OpenableColumns.DISPLAY_NAME,
+                android.provider.OpenableColumns.SIZE}, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int ni = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                int si = c.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                if (ni >= 0 && !c.isNull(ni)) name = c.getString(ni);
+                if (si >= 0 && !c.isNull(si)) size = c.getLong(si);
+            }
+        } catch (Exception ignored) {
+            // 查询失败不影响转录，退回用 uri 末段当名字
+        }
+        out.uris.add(uri.toString());
+        out.names.add(name != null ? name : String.valueOf(uri.getLastPathSegment()));
+        out.sizes.add(size);
+    }
+
+    /**
+     * 文件转录的互斥门禁：实时监听与已有转录任务都不能同时跑。
+     * 两者都要加载离线识别模型（native 常驻上百 MB），并发等于把模型载两份。
+     *
+     * @return true = 可以开始 / 继续转录
+     */
+    boolean fileTranscribeAllowed() {
+        if (CaptureService.current != null) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.file_entry_title)
+                    .setMessage(R.string.file_busy_listening)
+                    .setPositiveButton(R.string.file_busy_ok, null)
+                    .show();
+            return false;
+        }
+        if (FileTranscribeService.running) {
+            setStatusText(getString(R.string.file_busy_running));
+            return false;
+        }
+        return true;
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -296,6 +449,13 @@ public class MainActivity extends Activity {
             } else {
                 tvStatus.setText(R.string.status_permission_missing);
             }
+            return;
+        }
+        if (requestCode == REQ_PICK_NOTIFY) {
+            // 通知权限只是「看得见进度」，拒绝了也照转
+            PickedFiles p = pendingPick;
+            pendingPick = null;
+            if (p != null) startTranscribe(p);
         }
     }
 
@@ -322,6 +482,8 @@ public class MainActivity extends Activity {
                 tvStatus.setText(R.string.status_projection_denied);
                 if (dotStatus != null) dotStatus.setBackgroundResource(R.drawable.dot_idle);
             }
+        } else if (requestCode == REQ_PICK_FILES) {
+            if (resultCode == Activity.RESULT_OK && data != null) onFilesPicked(data);
         } else {
             modelsPage.onActivityResult(requestCode, resultCode, data); // 本地导入选完文件回来
         }

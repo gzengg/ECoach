@@ -94,10 +94,12 @@ public class HistoryTabsTest {
     // ── 两个类型 Tab ────────────────────────────
 
     @Test
-    public void historyPage_hasTwoTabs() throws Exception {
+    public void historyPage_hasThreeTabs() throws Exception {
         String src = historyPage();
         assertTrue("必须有「转录」Tab", src.contains("history_tab_transcript"));
         assertTrue("必须有「取词」Tab", src.contains("history_tab_grab"));
+        assertTrue("必须有「文件」Tab（文件转录记录独立成 Tab）",
+                src.contains("history_tab_files") && src.contains("TAB_FILES"));
         assertTrue("必须用 countByType 给 Tab 显示条数",
                 src.contains("HistoryStore.countByType"));
     }
@@ -116,7 +118,7 @@ public class HistoryTabsTest {
     public void historyPage_filtersListByType() throws Exception {
         String src = historyPage();
         assertTrue("列表必须按类型过滤（取词与转录分开）",
-                src.contains("e.isGrab() != showGrab"));
+                src.contains("e.isGrab() != wantGrab"));
         assertTrue("取词条目按「原文 → 译文」展示",
                 src.contains("\" → \""));
     }
@@ -125,7 +127,9 @@ public class HistoryTabsTest {
     public void historyPage_tabSwitchReRendersInPlace() throws Exception {
         String src = historyPage();
         assertTrue("切 Tab 必须原地重渲染（不重建页面）",
-                src.contains("showGrab = false; render()") && src.contains("showGrab = true; render()"));
+                src.contains("tab = TAB_TRANSCRIPT; render()")
+                        && src.contains("tab = TAB_GRAB; render()")
+                        && src.contains("tab = TAB_FILES; render()"));
     }
 
     @Test

@@ -23,6 +23,8 @@ final class AsrChain {
     private final AsrEngine offline;
     private final AsrEngine online;
     private String lastNote;
+    /** 上次成功识别走的是不是离线引擎（文件转录据此判断能否出字幕）。 */
+    private boolean lastWasOffline;
 
     AsrChain(Context ctx) {
         this.ctx = ctx.getApplicationContext();
@@ -59,6 +61,7 @@ final class AsrChain {
         java.util.List<String> failures = new java.util.ArrayList<>();
         boolean anyAvailable = false;
         lastNote = null;
+        lastWasOffline = false;
         for (AsrEngine engine : order(prefs.engineMode(), offline, online)) {
             if (!engine.isAvailable()) continue;
             anyAvailable = true;
@@ -66,6 +69,7 @@ final class AsrChain {
                 String text = engine.transcribe(pcm, sampleRate);
                 if (text != null && !text.trim().isEmpty()) {
                     lastNote = engine.lastNote();   // 诊断摘要给 UI（音频多长/切了几段/多少字）
+                    lastWasOffline = (engine == offline);
                     return text.trim();
                 }
             } catch (Exception e) {
@@ -92,6 +96,11 @@ final class AsrChain {
     /** 上次识别的诊断摘要（可空）：显示在悬浮窗状态栏，用于定位「只识别出一小段」类问题。 */
     String lastNote() {
         return lastNote;
+    }
+
+    /** 上次成功识别是否来自离线引擎（在线协议只给纯文本，拿不到时间轴）。 */
+    boolean lastWasOffline() {
+        return lastWasOffline;
     }
 
     /** 释放离线模型占用的 native 内存（服务销毁时调用）。 */

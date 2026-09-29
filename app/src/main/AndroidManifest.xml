@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- 文件转录：dataSync 型前台服务（本地文件 I/O + 长耗时识别），Android 14+ 需要该权限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -30,6 +32,12 @@
             android:name=".CaptureService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+
+        <!-- 本地音频/视频文件转录（不内置模型，与实时监听互斥） -->
+        <service
+            android:name=".FileTranscribeService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 

@@ -23,8 +23,16 @@ public final class ServiceEvents {
     public static final String ACTION_STATE_CHANGED = "com.rd.englishcoach.STATE_CHANGED";
     /** 历史有新记录（转录/取词/答案回填）→ 主界面「历史」Tab 亮角标。 */
     public static final String ACTION_HISTORY_CHANGED = "com.rd.englishcoach.HISTORY_CHANGED";
+    /** 文件转录进度 / 状态变化（主界面入口卡片 + 历史页列表）。 */
+    public static final String ACTION_FILE_PROGRESS = "com.rd.englishcoach.FILE_PROGRESS";
     public static final String EXTRA_RUNNING = "running";
     public static final String EXTRA_REASON  = "reason";
+    /** 入口卡片状态行文案（已本地化，可空 = 没有在跑的任务）。 */
+    public static final String EXTRA_TEXT = "text";
+    public static final String EXTRA_DONE = "done";
+    public static final String EXTRA_FAILED = "failed";
+    /** 是否刚有一个文件结束（历史列表据此重建，不必每秒重建）。 */
+    public static final String EXTRA_TASK_DONE = "task_done";
 
     // reason 常量
     public static final String REASON_STARTED          = "started";
@@ -43,5 +51,17 @@ public final class ServiceEvents {
     /** 构造一条「历史有新记录」广播。 */
     public static Intent buildHistoryBroadcast(android.content.Context ctx) {
         return new Intent(ACTION_HISTORY_CHANGED).setPackage(ctx.getPackageName());
+    }
+
+    /** 构造一条文件转录进度广播。 */
+    public static Intent buildFileProgressBroadcast(android.content.Context ctx, boolean running,
+            String text, int done, int failed, boolean taskDone) {
+        return new Intent(ACTION_FILE_PROGRESS)
+                .putExtra(EXTRA_RUNNING, running)
+                .putExtra(EXTRA_TEXT, text)
+                .putExtra(EXTRA_DONE, done)
+                .putExtra(EXTRA_FAILED, failed)
+                .putExtra(EXTRA_TASK_DONE, taskDone)
+                .setPackage(ctx.getPackageName());
     }
 }
