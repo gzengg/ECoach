@@ -48,6 +48,8 @@ public class MainActivity extends Activity {
     private static final int REQ_PROJECTION = 103;
     private static final int REQ_PICK_FILES = 104;
     private static final int REQ_PICK_NOTIFY = 105;
+    private static final int REQ_EXPORT_TXT = 106;
+    private static final int REQ_EXPORT_SRT = 107;
 
     /** 通知栏点「已完成」进来时带的目标 Tab。 */
     static final String EXTRA_TAB = "tab";
@@ -60,6 +62,8 @@ public class MainActivity extends Activity {
     private TextView tvFileState;
     /** 选了文件但还在等通知权限的结果。 */
     private PickedFiles pendingPick;
+    /** 等 SAF 建文件回来再写的正文（导出 txt / srt 用）。 */
+    private String pendingExportText;
 
     private BottomBar bottomBar;
     private TextView tvTopTitle, btnTopAction;
@@ -345,7 +349,6 @@ public class MainActivity extends Activity {
      */
     void pickFiles() {
         if (!fileTranscribeAllowed()) return;
-        // 只筛音频/视频，但用 */* + EXTRA_MIME_TYPES：部分 ROM 对 setType("audio/*") 不回传多选
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
                 .setType("*/*")
@@ -441,6 +444,70 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    // ── 文件转录结果的带出（分享 / 导出） ──
+
+    /** 系统分享纯文本（长文本走 EXTRA_TEXT，不额外写临时文件）。 */
+    void shareText(String text, String subject) {
+        Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
+                .putExtra(Intent.EXTRA_SUBJECT, subject)
+                .putExtra(Intent.EXTRA_TEXT, text);
+        startActivity(Intent.createChooser(send, getString(R.string.file_action_share)));
+    }
+
+    /**
+     * 导出转录结果：先让用户用 SAF 选存哪，回调回来再写正文。
+     *
+     * @param sourceName 源文件名，用来推默认文件名（lecture.mp4 → lecture.srt）
+     */
+    void exportTranscript(String text, String sourceName, boolean srt) {
+        pendingExportText = text;
+        Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType(srt ? "application/x-subrip" : "text/plain")
+                .putExtra(Intent.EXTRA_TITLE, suggestFileName(sourceName, srt ? ".srt" : ".txt"));
+        startActivityForResult(i, srt ? REQ_EXPORT_SRT : REQ_EXPORT_TXT);
+    }
+
+    /** 去掉源扩展名再拼新后缀；没有扩展名就直接拼、名字为空时用兼底名。 */
+    static String suggestFileName(String sourceName, String suffix) {
+        String base = sourceName == null || sourceName.isEmpty()
+                ? "transcript" : sourceName;
+        int dot = base.lastIndexOf('.');
+        if (dot > 0) base = base.substring(0, dot);
+        return base + suffix;
+    }
+
+    /** 写 SAF 建好的文件（UTF-8 覆盖写），结果反馈到状态行。 */
+    private void writeExport(Uri uri) {
+        String text = pendingExportText;
+        pendingExportText = null;
+        if (text == null) return;
+        String name = displayName(uri);
+        try (java.io.OutputStream os = getContentResolver().openOutputStream(uri, "wt")) {
+            if (os == null) throw new java.io.IOException("open failed");
+            os.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            setStatusText(getString(R.string.file_export_done, name));
+        } catch (Exception e) {
+            setStatusText(getString(R.string.file_export_failed,
+                    e.getMessage() != null ? e.getMessage() : e.toString()));
+        }
+    }
+
+    /** SAF uri → 展示用文件名（拿不到就回退末段）。 */
+    private String displayName(Uri uri) {
+        try (android.database.Cursor c = getContentResolver().query(uri,
+                new String[]{android.provider.OpenableColumns.DISPLAY_NAME},
+                null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (i >= 0 && !c.isNull(i)) return c.getString(i);
+            }
+        } catch (Exception ignored) {
+            // 查询失败不影响导出
+        }
+        return String.valueOf(uri.getLastPathSegment());
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == REQ_RECORD || requestCode == REQ_NOTIFY) {
@@ -484,6 +551,12 @@ public class MainActivity extends Activity {
             }
         } else if (requestCode == REQ_PICK_FILES) {
             if (resultCode == Activity.RESULT_OK && data != null) onFilesPicked(data);
+        } else if (requestCode == REQ_EXPORT_TXT || requestCode == REQ_EXPORT_SRT) {
+            if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+                writeExport(data.getData());
+            } else {
+                pendingExportText = null;   // 用户取消导出，别把正文留在内存里
+            }
         } else {
             modelsPage.onActivityResult(requestCode, resultCode, data); // 本地导入选完文件回来
         }

@@ -400,12 +400,15 @@ final class HistoryPage {
     private void showFileMenu(View anchor, FileTranscriptStore.Entry e) {
         PopupMenu menu = new PopupMenu(act, anchor, Gravity.END);
         menu.getMenu().add(R.string.file_action_copy);
-        if (FileTranscriptStore.isResumable(e.status)) menu.getMenu().add(R.string.file_action_resume);
+        menu.getMenu().add(R.string.file_action_share);
+        if (canResume(e)) menu.getMenu().add(R.string.file_action_resume);
         menu.getMenu().add(R.string.file_action_delete);
         menu.setOnMenuItemClickListener(item -> {
             CharSequence title = item.getTitle();
             if (act.getString(R.string.file_action_copy).contentEquals(title)) {
                 act.copyText(e.fullText());
+            } else if (act.getString(R.string.file_action_share).contentEquals(title)) {
+                act.shareText(e.fullText(), e.fileName);
             } else if (act.getString(R.string.file_action_resume).contentEquals(title)) {
                 resumeTranscribe(e);
             } else {
@@ -477,11 +480,14 @@ final class HistoryPage {
         tlp.topMargin = act.dp(12);
         box.addView(tv, tlp);
 
-        // 操作分两行：动作多，一行在窄屏上会挤成一团
+        // 操作分三行：动作多，一行在窄屏上会挤成一团
         LinearLayout row1 = actionRow();
         TextView btnCopy = actionButton(R.string.file_action_copy, act.getColor(R.color.success));
         btnCopy.setOnClickListener(v -> act.copyText(e.fullText()));
         row1.addView(btnCopy);
+        TextView btnShare = actionButton(R.string.file_action_share, act.getColor(R.color.text_primary));
+        btnShare.setOnClickListener(v -> act.shareText(e.fullText(), e.fileName));
+        row1.addView(btnShare);
         if (act.canSpeak() && !e.fullText().isEmpty()) {
             TextView btnSpeak = actionButton(R.string.file_action_speak,
                     act.getColor(R.color.text_primary));
@@ -490,12 +496,24 @@ final class HistoryPage {
         }
         box.addView(row1);
 
+        // 导出：字幕需要逐段时间轴，在线接口拿不到（srtAvailable=false）→ 先提示原因
         LinearLayout row2 = actionRow();
-        if (FileTranscriptStore.isResumable(e.status)) {
+        TextView btnTxt = actionButton(R.string.file_action_export_txt,
+                act.getColor(R.color.text_primary));
+        btnTxt.setOnClickListener(v -> exportTxt(e));
+        row2.addView(btnTxt);
+        TextView btnSrt = actionButton(R.string.file_action_export_srt,
+                act.getColor(R.color.text_primary));
+        btnSrt.setOnClickListener(v -> exportSrt(e));
+        row2.addView(btnSrt);
+        box.addView(row2);
+
+        LinearLayout row3 = actionRow();
+        if (canResume(e)) {
             TextView btnResume = actionButton(R.string.file_action_resume,
                     act.getColor(R.color.accent_solid));
             btnResume.setOnClickListener(v -> resumeTranscribe(e));
-            row2.addView(btnResume);
+            row3.addView(btnResume);
         }
         TextView btnDelete = actionButton(R.string.file_action_delete, act.getColor(R.color.danger));
         btnDelete.setOnClickListener(v -> {
@@ -504,10 +522,39 @@ final class HistoryPage {
             act.setStatusText(act.getString(R.string.status_deleted));
             render();
         });
-        row2.addView(btnDelete);
-        box.addView(row2);
+        row3.addView(btnDelete);
+        box.addView(row3);
 
         sheet.show(box);
+    }
+
+    /** 导出文本（服务在跑时不拦：只读已完成的分段，不影响识别）。 */
+    private void exportTxt(FileTranscriptStore.Entry e) {
+        String text = TranscriptExport.toTxt(e.segments);
+        if (text.isEmpty()) {
+            act.setStatusText(act.getString(R.string.file_empty_text));
+            return;
+        }
+        act.exportTranscript(text, e.fileName, false);
+    }
+
+    /** 导出字幕：没时间轴就不生成文件，直接说清为什么（在线只给纯文本）。 */
+    private void exportSrt(FileTranscriptStore.Entry e) {
+        if (!e.srtAvailable) {
+            act.setStatusText(act.getString(R.string.file_srt_offline_only));
+            return;
+        }
+        String srt = TranscriptExport.toSrt(e.segments);
+        if (srt.isEmpty()) {
+            act.setStatusText(act.getString(R.string.file_empty_text));
+            return;
+        }
+        act.exportTranscript(srt, e.fileName, true);
+    }
+
+    /** 能不能「继续」：中间态且当前没有任务在跑（RUNNING 可能是上次被杀留下的）。 */
+    private static boolean canResume(FileTranscriptStore.Entry e) {
+        return FileTranscriptStore.isResumable(e.status) && !FileTranscribeService.running;
     }
 
     private LinearLayout actionRow() {
