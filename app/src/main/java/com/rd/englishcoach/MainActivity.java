@@ -24,6 +24,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 /**
  * 主界面 v4.1：单 Activity + 四个页面 View 显隐切换（监听 / 历史 / 模型 / 设置），
@@ -623,6 +624,14 @@ public class MainActivity extends Activity {
 
     void setStatusText(String text) {
         tvStatus.setText(text);
+    }
+
+    /**
+     * 历史页（以及其它不在监听页的页面）的提示：{@code tvStatus} 在监听页上，
+     * 用户在其它 Tab 时发过去等于没发，所以这些提示一律弹 Toast。
+     */
+    void toast(String text) {
+        Toast.makeText(this, text, Toast.LENGTH_LONG).show();
     }
 
     void copyText(String text) {

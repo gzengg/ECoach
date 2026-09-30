@@ -36,8 +36,15 @@ final class FileAsrPipeline {
         /** 识别出一块文本；起止时间已是文件时间轴。 */
         void onSegment(long startMs, long endMs, String text, boolean offline);
 
-        /** 解码进度（文件时间轴，毫秒）。 */
-        void onProgress(long positionMs, long durationMs);
+        /**
+         * 已「识别完」的文件位置（文件时间轴，毫秒）。
+         *
+         * <p>⚠️ 不能上报解码位置：解码远跑在识别前面（35 秒一读、28 秒一块，而识别一块要好几秒），
+         * 报解码位置就是「一上来跳到 52%，然后长时间不动，最后直接 100%」。
+         * 它同时是断点续转的落点——报解码位置还会让中途被杀的任务从「还没识别过的音频」之后接着跑，
+         * 直接丢掉剩下的内容。</p>
+         */
+        void onProgress(long recognizedMs, long durationMs);
 
         boolean isCanceled();
     }
@@ -79,8 +86,6 @@ final class FileAsrPipeline {
                 started = true;
                 sink.onStart(originMs);
             }
-            sink.onProgress(reader.positionMs(), reader.durationMs());
-
             float[] buf = concat(carry, chunk);
             if (buf.length == 0) break;
 
@@ -109,6 +114,8 @@ final class FileAsrPipeline {
                     lastError = e.getMessage() != null ? e.getMessage() : e.toString();
                     Log.w(TAG, "第 " + (i + 1) + " 块识别失败（跳过，继续下一块）", e);
                 }
+                // 进度按「已识别完的音频」走：块失败也算消耗掉了，否则进度会卡住
+                sink.onProgress(originMs + ms(pos), reader.durationMs());
             }
 
             // parts 是 buf 的连续切片，所以已识别的长度就是下次该跳过的前缀长度

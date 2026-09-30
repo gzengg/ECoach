@@ -55,6 +55,23 @@ public class FileExportWiringTest {
         int guard = src.indexOf("if (!e.srtAvailable)");
         int build = src.indexOf("TranscriptExport.toSrt", guard);
         assertTrue("拦截必须发生在生成字幕之前", guard >= 0 && build > guard);
+        assertTrue("按钮下方要先写出原因，不能等用户点了才知道",
+                src.contains("R.string.file_srt_offline_only"));
+    }
+
+    /**
+     * 真机现象：在线识别后点「导出为字幕」没任何提示。
+     *
+     * <p>原因：历史页把提示写进了 {@code act.setStatusText()}，而那个 TextView 在<b>监听页</b>上，
+     * 用户在历史 Tab 根本看不见。历史页的提示必须弹 Toast。</p>
+     */
+    @Test
+    public void historyPageMessages_areVisibleOnAnyTab() throws Exception {
+        String src = historyPage();
+        assertTrue("历史页的提示必须弹 Toast（setStatusText 写的是监听页的状态行）",
+                src.contains("act.toast("));
+        assertFalse("历史页不许再用 act.setStatusText：在其它 Tab 上等于没提示",
+                src.contains("act.setStatusText("));
     }
 
     @Test

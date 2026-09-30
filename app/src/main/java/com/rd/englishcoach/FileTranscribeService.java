@@ -290,8 +290,8 @@ public class FileTranscribeService extends Service {
                 }
 
                 @Override
-                public void onProgress(long positionMs, long durationMs) {
-                    if (positionMs > live.progressMs) live.progressMs = positionMs;
+                public void onProgress(long recognizedMs, long durationMs) {
+                    if (recognizedMs > live.progressMs) live.progressMs = recognizedMs;
                     notifyProgress(false);
                 }
 

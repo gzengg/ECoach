@@ -132,7 +132,7 @@ final class HistoryPage {
             sheet.dismiss();
             if (tab == TAB_FILES) fileStore.clear();
             else store.clear();
-            act.setStatusText(act.getString(R.string.status_history_cleared));
+            act.toast(act.getString(R.string.status_history_cleared));
             render();
         });
         actions.addView(clear);
@@ -388,7 +388,7 @@ final class HistoryPage {
                 act.copyText(body);
             } else {
                 store.deleteAt(idx);
-                act.setStatusText(act.getString(R.string.status_deleted));
+                act.toast(act.getString(R.string.status_deleted));
                 render(); // 原地刷新，保留当前 Tab 与搜索词
             }
             return true;
@@ -413,7 +413,7 @@ final class HistoryPage {
                 resumeTranscribe(e);
             } else {
                 fileStore.delete(e.id);
-                act.setStatusText(act.getString(R.string.status_deleted));
+                act.toast(act.getString(R.string.status_deleted));
                 render();
             }
             return true;
@@ -448,7 +448,7 @@ final class HistoryPage {
         btnDelete.setOnClickListener(v -> {
             sheet.dismiss();
             store.deleteAt(idx);
-            act.setStatusText(act.getString(R.string.status_deleted));
+            act.toast(act.getString(R.string.status_deleted));
             render();
         });
         actions.addView(btnDelete);
@@ -507,6 +507,15 @@ final class HistoryPage {
         btnSrt.setOnClickListener(v -> exportSrt(e));
         row2.addView(btnSrt);
         box.addView(row2);
+        if (!e.srtAvailable) {
+            // 先说清「为什么没有字幕」：只靠点击后的 Toast，用户得先碰一次壁才知道
+            TextView hint = new TextView(act);
+            hint.setText(R.string.file_srt_offline_only);
+            hint.setTextSize(13);
+            hint.setTextColor(act.getColor(R.color.text_secondary));
+            hint.setPadding(0, act.dp(8), 0, 0);
+            box.addView(hint);
+        }
 
         LinearLayout row3 = actionRow();
         if (canResume(e)) {
@@ -519,7 +528,7 @@ final class HistoryPage {
         btnDelete.setOnClickListener(v -> {
             sheet.dismiss();
             fileStore.delete(e.id);
-            act.setStatusText(act.getString(R.string.status_deleted));
+            act.toast(act.getString(R.string.status_deleted));
             render();
         });
         row3.addView(btnDelete);
@@ -532,7 +541,7 @@ final class HistoryPage {
     private void exportTxt(FileTranscriptStore.Entry e) {
         String text = TranscriptExport.toTxt(e.segments);
         if (text.isEmpty()) {
-            act.setStatusText(act.getString(R.string.file_empty_text));
+            act.toast(act.getString(R.string.file_empty_text));
             return;
         }
         act.exportTranscript(text, e.fileName, false);
@@ -541,12 +550,12 @@ final class HistoryPage {
     /** 导出字幕：没时间轴就不生成文件，直接说清为什么（在线只给纯文本）。 */
     private void exportSrt(FileTranscriptStore.Entry e) {
         if (!e.srtAvailable) {
-            act.setStatusText(act.getString(R.string.file_srt_offline_only));
+            act.toast(act.getString(R.string.file_srt_offline_only));
             return;
         }
         String srt = TranscriptExport.toSrt(e.segments);
         if (srt.isEmpty()) {
-            act.setStatusText(act.getString(R.string.file_empty_text));
+            act.toast(act.getString(R.string.file_empty_text));
             return;
         }
         act.exportTranscript(srt, e.fileName, true);
@@ -572,7 +581,7 @@ final class HistoryPage {
         if (!act.fileTranscribeAllowed()) return;
         sheet.dismiss();
         FileTranscribeService.resume(act, e.id);
-        act.setStatusText(act.getString(R.string.file_resumed));
+        act.toast(act.getString(R.string.file_resumed));
         render();
     }
 

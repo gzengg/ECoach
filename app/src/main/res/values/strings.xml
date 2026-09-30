@@ -309,7 +309,7 @@
     <string name="file_export_done">已导出 %1$s</string>
     <string name="file_export_failed">导出失败：%1$s</string>
     <string name="file_empty_text">还没有识别出文字</string>
-    <string name="file_srt_offline_only">这次识别走的是在线接口，只拿到纯文本。字幕需要离线模型的逐段时间轴（设置 → 模型）。</string>
+    <string name="file_srt_offline_only">字幕需要离线识别模型的逐段时间轴；这次走的是在线接口，只有纯文本。可在「模型」Tab 装好离线识别模型后重新转录。</string>
     <string name="file_speak_need_listen">朗读要先开启「听力」实时监听</string>
     <string name="file_resumed">已继续转录</string>
 </resources>

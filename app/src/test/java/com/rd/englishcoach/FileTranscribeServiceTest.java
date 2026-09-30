@@ -1,6 +1,7 @@
 package com.rd.englishcoach;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -98,5 +99,25 @@ public class FileTranscribeServiceTest {
         assertTrue("服务里不许直接改 UI（必须靠广播回主线程）",
                 !src.contains("setStatusText") && !src.contains(".setText("));
         assertTrue("跨进程状态变化用广播通知界面", src.contains("sendBroadcast"));
+    }
+
+    // ── 进度语义 ──────────────────────────
+
+    /**
+     * 真机现象：进度从 0% 跳到 52% 再直接到 100%。
+     *
+     * <p>因为上报的是<b>解码</b>位置：解码远跑在识别前面（35 秒一读、28 秒一块，
+     * 而识别一块要好几秒），于是第一块还没认完进度就已经过半；
+     * 而且它同时是断点续转的落点，中途被杀会从「还没识别过的音频」之后接着跑，
+     * 直接丢掉剩下内容。</p>
+     */
+    @Test
+    public void progress_followsRecognitionNotDecoding() throws Exception {
+        String pipeline = read("src/main/java/com/rd/englishcoach/FileAsrPipeline.java")
+                .replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\n]*", "");
+        assertTrue("进度必须按已识别位置上报（它同时是断点续转落点）",
+                pipeline.contains("sink.onProgress(originMs + ms(pos)"));
+        assertFalse("进度不许上报解码位置：解码跑在识别前面，会出现「一下过半、然后不动」",
+                pipeline.contains("sink.onProgress(reader.positionMs()"));
     }
 }
