@@ -31,8 +31,7 @@ import java.util.List;
  */
 public final class FileTranscriptStore {
 
-    private static final String TAG = "FileTranscriptStore";
-    private static final String FILE_NAME = "file_transcripts.json";
+    private static final String TAG = "FileTranscriptStore";    private static final String FILE_NAME = "file_transcripts.json";
     /** 条目上限，超出删最旧的（一小时转录约 8KB，200 条约 1.6MB 上限）。 */
     static final int MAX_ENTRIES = 200;
     /** 落盘节流窗口。 */
@@ -206,6 +205,9 @@ public final class FileTranscriptStore {
     private long lastWriteMs;
     /** 内存镜像；null = 尚未从文件加载。所有读写都走它，节流只影响「何时落盘」。 */
     private List<Entry> cache;
+    /** 上次加载/落盘时的文件快照（mtime + 长度），用来发现「别的实例写了盘」。 */
+    private long stampMtime = -1;
+    private long stampLen = -1;
 
     public FileTranscriptStore(Context ctx) {
         this(new File(ctx.getFilesDir(), FILE_NAME));
@@ -230,21 +232,44 @@ public final class FileTranscriptStore {
     }
 
     private synchronized List<Entry> cache() {
-        if (cache == null) {
-            List<Entry> loaded = new ArrayList<>();
-            JSONArray arr = rawArray();
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                try {
-                    loaded.add(Entry.fromJson(o));
-                } catch (Exception e) {
-                    logE("skip bad entry", e);
-                }
-            }
-            cache = loaded;
-        }
+        if (cache == null || diskChanged()) reload();
         return cache;
+    }
+
+    /**
+     * 盘上文件是否被别的实例改过 —— 服务写转录结果、界面读列表是两个 {@link FileTranscriptStore} 实例。
+     *
+     * <p>⚠️ 不比对就会出真机踩过的 bug：历史页的文件 Tab 在 App 启动时取了快照，
+     * 之后服务转完写盘，界面拿着旧快照永远显示「文件（0）」、列表空白，
+     * 而通知栏已经报了「转录完成」。</p>
+     */
+    private boolean diskChanged() {
+        if (file == null) return false;
+        return file.lastModified() != stampMtime || file.length() != stampLen;
+    }
+
+    /** 从文件重建内存镜像（坏文件就当空的，下次写入自愈）。 */
+    private void reload() {
+        List<Entry> loaded = new ArrayList<>();
+        JSONArray arr = rawArray();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.optJSONObject(i);
+            if (o == null) continue;
+            try {
+                loaded.add(Entry.fromJson(o));
+            } catch (Exception e) {
+                logE("skip bad entry", e);
+            }
+        }
+        cache = loaded;
+        markLoaded();
+    }
+
+    /** 记住当前盘上文件的快照，作为「有没有被别人改过」的基准。 */
+    private void markLoaded() {
+        if (file == null) return;
+        stampMtime = file.lastModified();
+        stampLen = file.length();
     }
 
     /** 全部记录（从旧到新）。返回副本，调用方改动不会影响内存镜像。 */
@@ -367,8 +392,13 @@ public final class FileTranscriptStore {
         }
         if (!tmp.renameTo(file)) {
             // 目标已存在时 rename 在部分文件系统上会失败，退回「删除后重命名」
-            if (file.delete() && tmp.renameTo(file)) return;
+            if (file.delete() && tmp.renameTo(file)) {
+                markLoaded();
+                return;
+            }
             logE("rename failed", null);
+            return;
         }
+        markLoaded();   // 自己刚写的快照：下次 cache() 不必把自己重读一遍
     }
 }

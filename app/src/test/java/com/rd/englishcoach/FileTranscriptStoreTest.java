@@ -313,4 +313,57 @@ public class FileTranscriptStoreTest {
                 new File(jsonFile.getAbsolutePath() + ".tmp").exists());
         assertTrue(jsonFile.exists());
     }
+
+    // ── 跨实例可见性 ───────────────────────
+    // 真机 bug：服务写、界面读是两个实例。界面在 App 启动时就取了快照，
+    // 之后服务转完写盘，界面拿着旧快照永远显示「文件（0）」、列表空白，
+    // 而通知栏已经报了「转录完成」。
+
+    @Test
+    public void readerCreatedBeforeWrite_seesIt() {
+        FileTranscriptStore reader = new FileTranscriptStore(jsonFile);
+        assertEquals("新实例起步是空的", 0, reader.size());
+
+        FileTranscriptStore writer = new FileTranscriptStore(jsonFile);
+        FileTranscriptStore.Entry e = entry("a");
+        e.status = FileTranscriptStore.STATUS_DONE;
+        e.segments.add(new FileTranscriptStore.Segment(0, 1000, "hello"));
+        writer.saveNow(e);
+
+        assertEquals("写盘后先建的实例必须能看到，否则历史「文件」Tab 永远是 0 条",
+                1, reader.size());
+        assertEquals("hello", reader.getAll().get(0).segments.get(0).text);
+    }
+
+    @Test
+    public void reader_seesProgressUpdatesFromWriter() {
+        FileTranscriptStore reader = new FileTranscriptStore(jsonFile);
+        FileTranscriptStore writer = new FileTranscriptStore(jsonFile);
+        FileTranscriptStore.Entry e = entry("a");
+        e.status = FileTranscriptStore.STATUS_RUNNING;
+        e.progressMs = 10_000;
+        writer.saveNow(e);
+        assertEquals(10_000, reader.find("a").progressMs);
+
+        e.progressMs = 30_000;
+        writer.saveNow(e);
+        assertEquals("进度刷新也要能读到（入口卡按它算百分比）",
+                30_000, reader.find("a").progressMs);
+    }
+
+    @Test
+    public void delete_isNotUndoneByReload() {
+        store.saveNow(entry("a"));
+        store.delete("a");
+        assertEquals(0, store.size());
+        assertEquals("删除后重新加载仍是 0 条", 0, new FileTranscriptStore(jsonFile).size());
+    }
+
+    @Test
+    public void writer_doesNotReloadItselfNeedlessly() {
+        // 自己刚写完的盘面就是自己的镜像，不能把自己重读一遍（否则节流期间的改动会被回退）
+        store.saveNow(entry("a"));
+        store.save(entry("b"));           // 节流窗口内，只在内存
+        assertEquals("自己写盘不算「别人改过」", 2, store.getAll().size());
+    }
 }

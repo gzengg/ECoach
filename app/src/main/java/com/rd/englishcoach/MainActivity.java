@@ -60,6 +60,8 @@ public class MainActivity extends Activity {
     private View btnStop, btnNewChat, tvListenHint;
     /** 文件转录入口卡片的状态行（空闲时显示说明，跑任务时显示进度）。 */
     private TextView tvFileState;
+    /** 入口卡状态要从已落盘的记录里推（服务写、界面读是两个实例）。 */
+    private FileTranscriptStore fileStore;
     /** 选了文件但还在等通知权限的结果。 */
     private PickedFiles pendingPick;
     /** 等 SAF 建文件回来再写的正文（导出 txt / srt 用）。 */
@@ -99,6 +101,7 @@ public class MainActivity extends Activity {
         historyPage = new HistoryPage(this, findViewById(R.id.pageHistory));
         modelsPage = new ModelsPage(this, findViewById(R.id.pageModels));
         settingsPage = new SettingsPage(this, findViewById(R.id.pageSettings));
+        fileStore = new FileTranscriptStore(this);
 
         // 主 CTA：走权限检查 → 投屏授权 → 起服务
         btnStart.setOnClickListener(v -> checkAndStart());
@@ -197,9 +200,8 @@ public class MainActivity extends Activity {
                 historyPage.selectFileTab();
             }
         }
-        if (!FileTranscribeService.running) {
-            tvFileState.setText(R.string.file_entry_desc);
-        }
+        // 页面暂停期间收不到广播，回到前台时按数据把入口卡重新推一次
+        updateFileEntry();
         historyPage.refresh();
         modelsPage.refresh();
         settingsPage.refresh();
@@ -378,6 +380,36 @@ public class MainActivity extends Activity {
         FileTranscribeService.enqueue(this, picked.uris, picked.names, picked.sizes);
         tvStatus.setText(getString(R.string.file_queue_added, picked.uris.size()));
         tvFileState.setText(getString(R.string.file_status_pending, picked.uris.size()));
+    }
+
+    /**
+     * 入口卡状态以「已落盘的数据 + 服务是否在跑」为准，不以视图里的旧文案为准。
+     *
+     * <p>⚠️ 真机踩过：选完文件回到页面时会先走 {@code onResume()}，而服务此刻还没把
+     * {@link FileTranscribeService#running} 立起来（服务启动走的是主线程消息），
+     * 无条件重置就会把刚写的「已加入队列」冲回默认描述 —— 看起来像点了没反应，
+     * 只有通知栏在动。</p>
+     */
+    private void updateFileEntry() {
+        boolean alive = FileTranscribeService.running;
+        int waiting = 0;
+        FileTranscriptStore.Entry current = null;
+        for (FileTranscriptStore.Entry e : fileStore.getRecent()) {
+            if (FileTranscriptStore.STATUS_PENDING.equals(e.status)) {
+                waiting++;
+            } else if (alive && current == null
+                    && FileTranscriptStore.STATUS_RUNNING.equals(e.status)) {
+                current = e;
+            }
+        }
+        if (current != null) {
+            tvFileState.setText(getString(R.string.file_status_running, current.fileName,
+                    Math.round(current.progress() * 100)));
+        } else if (waiting > 0) {
+            tvFileState.setText(getString(R.string.file_status_pending, waiting));
+        } else {
+            tvFileState.setText(R.string.file_entry_desc);
+        }
     }
 
     private PickedFiles collect(Intent data) {
